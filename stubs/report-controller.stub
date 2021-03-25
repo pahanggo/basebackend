@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Models\User;
+use App\Traits\ReportTrait;
+
+class DummyClass
+{
+    // report
+    use ReportTrait;
+
+    // only users with this permission can add & view this widget
+    public function getRequiredPermission()
+    {
+        // return 'Manage Roles and Permissions';
+    }
+
+    // grouping of report
+    public function getGroupName() : string
+    {
+        return 'Generated';
+    }
+
+    // what the user will see the widget name as
+    public function getReportName() : string
+    {
+        return 'DummyClass';
+    }
+
+    // return query to get data
+    protected function getQuery()
+    {
+        return User::orderBy('id');
+    }
+
+    protected function getViewPath() : string
+    {
+        return 'reports.dummyclass';
+    }
+}

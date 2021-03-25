@@ -1,0 +1,27 @@
+@extends($reportLayout)
+
+@section('report-body')
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($reportData as $row)
+            <tr>
+                <td>
+                    {{$row->id}}
+                </td>
+                <td>
+                    {{$row->name}}
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+{{$reportData->links()}}
+@endsection
