@@ -160,6 +160,11 @@ class UserCrudController extends CrudController
                 'type'  => 'text',
             ],
             [
+                'name'  => 'username',
+                'label' => 'Username',
+                'type'  => 'text',
+            ],
+            [
                 'name'  => 'email',
                 'label' => trans('backpack::permissionmanager.email'),
                 'type'  => 'email',
