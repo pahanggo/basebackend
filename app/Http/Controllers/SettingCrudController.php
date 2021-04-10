@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\CrudController;
 use App\Http\Requests\CreateSettingRequest;
+use App\Models\Setting;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
 
 class SettingCrudController extends CrudController
@@ -82,6 +83,8 @@ class SettingCrudController extends CrudController
             ],
         ]);
 
-        CRUD::addField(json_decode(CRUD::getCurrentEntry()->field, true));
+        $valueField = json_decode(CRUD::getCurrentEntry()->field, true);
+        $valueField['value'] = Setting::get($valueField['name']);
+        CRUD::addField($valueField);
     }
 }
