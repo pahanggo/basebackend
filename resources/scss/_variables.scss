@@ -1,0 +1,136 @@
+// -------------------
+// Backstrap Variables
+// -------------------
+// They override CoreUI and Bootstrap variables
+
+$white: #FFFFFF !default;
+$gray-base: #181b1e !default;
+$gray-100: #F9FBFD !default;
+$gray-200: #F1F4F8 !default;
+$gray-300: #D9E2EF !default;
+$gray-400: #C6D3E6 !default;
+$gray-500: #ABBCD5 !default;
+$gray-600: #869AB8 !default;
+$gray-700: #506690 !default;
+$gray-800: #384C74 !default;
+$gray-900: #1B2A4E !default;
+$black: #161C2D !default;
+
+$grays: () !default;
+$grays: map-merge(
+  (
+    "100": $gray-100,
+    "200": $gray-200,
+    "300": $gray-300,
+    "400": $gray-400,
+    "500": $gray-500,
+    "600": $gray-600,
+    "700": $gray-700,
+    "800": $gray-800,
+    "900": $gray-900
+  ),
+  $grays
+);
+
+$blue:       #467FD0 !default;
+$indigo:     #6610f2 !default;
+$purple:     #7c69ef !default;
+$pink:       #e83e8c !default;
+$red:        #df4759 !default;
+$orange:     #fd9644 !default;
+$yellow:     #ffc107 !default;
+$green:      #42ba96 !default;
+$teal:       #20c997 !default;
+$cyan:       #17a2b8 !default;
+$light-blue: #69d2f1 !default;
+
+$colors: () !default;
+$colors: map-merge(
+  (
+    "blue":       $blue,
+    "indigo":     $indigo,
+    "purple":     $purple,
+    "pink":       $pink,
+    "red":        $red,
+    "orange":     $orange,
+    "yellow":     $yellow,
+    "green":      $green,
+    "teal":       $teal,
+    "cyan":       $cyan,
+    "light-blue": $light-blue,
+    "white":      $white,
+    "gray":       $gray-600,
+    "gray-dark":  $gray-800
+  ),
+  $colors
+);
+
+$primary:       $purple !default;
+$secondary:     $gray-300 !default;
+$success:       $green !default;
+$info:          $blue !default;
+$warning:       $yellow !default;
+$danger:        $red !default;
+$light:         $gray-200 !default;
+$dark:          $black !default;
+
+$hover-color: rgba(124, 105, 239, 0.1);
+$border-color: rgba(0, 40, 100, 0.12);
+$muted-bg-color: rgba(0, 0, 0, 0.02);
+
+$theme-colors: () !default;
+$theme-colors: map-merge(
+  (
+    "primary":    $primary,
+    "default":    $secondary,
+    "secondary":  $secondary,
+    "success":    $success,
+    "info":       $info,
+    "notice":     $info,
+    "warning":    $warning,
+    "danger":     $danger,
+    "error":      $danger,
+    "light":      $light,
+    "dark":       $dark
+  ),
+  $theme-colors
+);
+
+// Alerts
+
+$alert-bg-level:                    0 !default;
+$alert-border-level:                +1 !default;
+$alert-color-level:                 -12 !default;
+
+// Inputs and buttons
+
+$input-btn-focus-width:       0rem !default;
+
+// General
+
+$body-bg:                     $gray-100 !default;
+
+// stylelint-disable value-keyword-case
+$font-family-sans-serif:      "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !default;
+$font-family-monospace:       SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !default;
+$font-family-base:            $font-family-sans-serif !default;
+// stylelint-enable value-keyword-case
+
+$font-size-base:              1rem !default; // Assumes the browser default, typically `16px`
+$font-size-lg:                $font-size-base * 1.25 !default;
+$font-size-sm:                $font-size-base * .875 !default;
+
+$font-weight-lighter:         lighter !default;
+$font-weight-light:           300 !default;
+$font-weight-normal:          400 !default;
+$font-weight-bold:            700 !default;
+$font-weight-bolder:          bolder !default;
+
+$font-weight-base:            $font-weight-normal !default;
+$line-height-base:            1.5 !default;
+
+
+// Modals
+
+$modal-content-border-color:        rgba($black, .1) !default;
+$modal-header-border-color:         $modal-content-border-color !default;

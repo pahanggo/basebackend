@@ -12,6 +12,7 @@ Supercharged starter kit featuring:
 - [Scribe for API Documentation](https://scribe.readthedocs.io/en/latest/guide-getting-started.html)
 - User editable dashboard widgets
 - Painless reporting boilerplate
+- Customizable SCSS
 
 ### Installation
 
@@ -55,4 +56,8 @@ To regenerate the api documentation run `php artisan scribe:generate`
 ### Customizing Generator Templates
 
 Generator templates can be editted inside the `stubs` directory
+
+### Customizing SCSS
+
+Source SCSS is in `resources/scss/style.css`. To customize it run `npm install` and then `npm run dev`. Production builds uses `npm run prod`.
 
