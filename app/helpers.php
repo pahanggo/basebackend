@@ -50,3 +50,12 @@ if(!function_exists('app_version')) {
         return json_decode(file_get_contents(base_path('composer.json')))->version;
     }
 }
+
+if(!function_exists('username_from_email')) {
+    function username_from_email($email) {
+        if(!trim($email)) {
+            return '';
+        }
+        return explode('@', $email)[0];
+    }
+}

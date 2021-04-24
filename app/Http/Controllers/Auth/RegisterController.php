@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Models\SocialAccount;
 use App\Models\User;
 use Backpack\CRUD\app\Library\Auth\RegistersUsers;
 use Illuminate\Auth\Events\Registered;
@@ -75,12 +76,23 @@ class RegisterController extends Controller
         $user_model_fqn = config('backpack.base.user_model_fqn');
         $user = new $user_model_fqn();
 
-        return $user->create([
+        $user = $user->create([
             'name'                             => $data['name'],
             'email'                            => $data['email'],
             backpack_authentication_column()   => $data[backpack_authentication_column()],
             'password'                         => bcrypt($data['password']),
         ]);
+
+        if($socialiteToken = request()->get('socialite_token')) {
+            $id = decrypt($socialiteToken);
+            $socialAccount = SocialAccount::findOrFail($id);
+            $user->avatar_url = $socialAccount->avatar;
+            $user->save();
+            $socialAccount->user_id = $user->id;
+            $socialAccount->save();
+        }
+
+        return $user;
     }
 
     /**

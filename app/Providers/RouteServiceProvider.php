@@ -48,6 +48,13 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
+
+            if(config('auth.socialite.enabled')) {
+                Route::middleware('web')
+                    ->namespace('\App\Http\Controllers\Socialite')
+                    ->prefix('oauth')
+                    ->group(base_path('routes/socialite.php'));
+            }
         });
 
         WidgetService::setup();

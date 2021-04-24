@@ -153,6 +153,56 @@
                 </div>
 
             </form>
+
+            @if(config('auth.socialite.enabled'))
+            <div class="card padding-10">
+                <div class="card-header">
+                    Linked Social Accounts
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        @if('auth.socialite.providers.google')
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="la la-google-plus"></i>
+                                Google Logins
+                            </div>
+                            <a href="{{route('socialite.google')}}" class="btn btn-primary">Link</a>
+                        </div>
+                        @foreach(user()->socialAccounts()->whereAccountType('google')->get() as $account)
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                {{$account->name}} <br>
+                                {{$account->email}}
+                            </div>
+                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">Unlink</a>
+                        </div>
+                        @endforeach
+                        <div class="mb-3"></div>
+                        @endif
+                        @if('auth.socialite.providers.github')
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="la la-github"></i>
+                                Github Logins
+                            </div>
+                            <a href="{{route('socialite.github')}}" class="btn btn-primary">Link</a>
+                        </div>
+                        @endif
+                        @foreach(user()->socialAccounts()->whereAccountType('github')->get() as $account)
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                {{$account->name}} <br>
+                                {{$account->email}}
+                            </div>
+                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">Unlink</a>
+                        </div>
+                        @endforeach
+                        <div class="mb-3"></div>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
     </div>

@@ -114,4 +114,11 @@ return [
 
     'password_timeout' => 10800,
 
+    'socialite' => [
+        'enabled' => env('SOCIALITE_ENABLED', true),
+        'providers' => [
+            'google' => env('GOOGLE_LOGIN_ENABLED', false),
+            'github' => env('GITHUB_LOGIN_ENABLED', false),
+        ],
+    ],
 ];

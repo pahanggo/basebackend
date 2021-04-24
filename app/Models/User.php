@@ -49,7 +49,7 @@ class User extends Authenticatable
 
     public function getWidgetsAttribute($value)
     {
-        return json_decode($value, true) ?? [['welcome','usercounter','rolecounter','permissioncounter','coffeecounter'],['location'],['newestusers','chart']];
+        return json_decode($value, true) ?? [['welcome']];
     }
 
     public function setWidgetsAttribute($value)
@@ -64,5 +64,15 @@ class User extends Authenticatable
         }
         $firstLetter = $this->getAttribute('name') ? mb_substr($this->name, 0, 1, 'UTF-8') : 'A';
         return Gravatar::fallback('https://placehold.it/160x160/00a65a/ffffff/&text=' . $firstLetter)->get($this->email);
+    }
+
+    public function socialAccounts()
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    public function socialiteLinked($type)
+    {
+        return $this->socialAccounts()->whereAccountType($type)->exists();
     }
 }
