@@ -10,6 +10,7 @@ Supercharged starter kit featuring:
 - [Log Viewer](https://github.com/Laravel-Backpack/LogManager)
 - [Laravel Sanctum for Token Auth](https://laravel.com/docs/8.x/sanctum#mobile-application-authentication)
 - [Scribe for API Documentation](https://scribe.readthedocs.io/en/latest/guide-getting-started.html)
+- [Social Logins](https://laravel.com/docs/8.x/socialite)
 - User editable dashboard widgets
 - Painless reporting boilerplate
 - Customizable SCSS
