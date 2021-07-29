@@ -28,11 +28,6 @@ Supercharged starter kit featuring:
 
 1. Create new table migration for the module eg: `php artisan make:migration create_plots_table` and run the migration
 2. Create Backpack crud: `php artisan backpack:crud Plot`
-3. Add new permissions in [`/app/permission`](/app/permission). For eg: `Manage Plots`
-4. Update the `database/seeders/UserSeeder` to add the permission
-5. Add the permission to the `Administrator` Role [`/app/role`](/app/role)
-6. Edit `routes/backpack/custom.php` with middleware `can:Manage Plots`
-7. Edit `resources/views/vendor/backpack/base/inc/sidebar_content.blade.php` to only show the `Plot` link using `@can('Manage Plots') .. @endcan`
 
 ### Creating New Dashboard Widgets
 
