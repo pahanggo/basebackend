@@ -4,7 +4,11 @@
     <h3 class="text-center mb-4">{{ trans('backpack::base.login') }}</h3>
 
     <div class="row justify-content-center mb-3">
+        @if(config('auth.socialite.enabled'))
         <div class="col-12 col-lg-8">
+        @else
+        <div class="col-12 col-lg-5">
+        @endif
             <div class="card-group">
                 <div class="card">
                     <div class="card-body">
