@@ -39,7 +39,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="control-label" for="email">Email Address</label>
+                                <label class="control-label" for="email">{{trans('backpack::base.email_address')}}</label>
 
                                 <div>
                                     <input type="email" class="form-control{{ $errors->has('email') ? ' is-invalid' : '' }}" name="email" id="email">
