@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\Backpack\CrudBackpackCommand;
 use App\Console\Commands\Backpack\CrudControllerBackpackCommand;
 use App\Console\Commands\Backpack\CrudModelBackpackCommand;
 use App\Console\Commands\Backpack\CrudRequestBackpackCommand;
@@ -25,6 +26,7 @@ class Kernel extends ConsoleKernel
         CrudControllerBackpackCommand::class,
         CrudModelBackpackCommand::class,
         CrudRequestBackpackCommand::class,
+        CrudBackpackCommand::class,
         MakeWidgetViewCommand::class,
         MakeWidgetControllerCommand::class,
         MakeWidgetCommand::class,

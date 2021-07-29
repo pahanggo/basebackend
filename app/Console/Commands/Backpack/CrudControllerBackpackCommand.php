@@ -82,10 +82,15 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      */
     protected function replaceNameStrings(&$stub, $name)
     {
-        $table = Str::plural(ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name).'\\', '', $name))), '_'));
+        $nameTitle = Str::of($name)->afterLast('\\');
+        $nameKebab = $nameTitle->kebab();
+        $nameSingular = $nameKebab->replace('-', ' ');
+        $namePlural = $nameSingular->plural();
 
-        $stub = str_replace('DummyTable', $table, $stub);
-        $stub = str_replace('dummy_class', strtolower(str_replace($this->getNamespace($name).'\\', '', $name)), $stub);
+        $stub = str_replace('DummyClass', $nameTitle, $stub);
+        $stub = str_replace('dummy-class', $nameKebab, $stub);
+        $stub = str_replace('dummy singular', $nameSingular, $stub);
+        $stub = str_replace('dummy plural', $namePlural, $stub);
 
         return $this;
     }

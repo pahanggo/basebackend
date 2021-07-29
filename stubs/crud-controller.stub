@@ -2,7 +2,8 @@
 
 namespace DummyNamespace;
 
-use App\Http\Requests\DummyClassRequest;
+use App\Http\Requests\DummyClassCreateRequest;
+use App\Http\Requests\DummyClassUpdateRequest;
 use App\Http\Controllers\CrudController;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
 
@@ -27,8 +28,8 @@ class DummyClassCrudController extends CrudController
     public function setup()
     {
         $this->crud->setModel(\App\Models\DummyClass::class);
-        $this->crud->setRoute(config('backpack.base.route_prefix') . '/dummy_class');
-        $this->crud->setEntityNameStrings('dummy_class', 'DummyTable');
+        $this->crud->setRoute(config('backpack.base.route_prefix') . '/dummy-class');
+        $this->crud->setEntityNameStrings('dummy singular', 'dummy plural');
     }
 
     /**
@@ -39,13 +40,7 @@ class DummyClassCrudController extends CrudController
      */
     protected function setupListOperation()
     {
-        $this->crud->setFromDb(); // columns
-
-        /**
-         * Columns can be defined using the fluent syntax or array syntax:
-         * - $this->crud->column('price')->type('number');
-         * - $this->crud->addColumn(['name' => 'price', 'type' => 'number']);
-         */
+        $this->crud->addColumns($this->fieldConfigs());
     }
 
     /**
@@ -56,15 +51,9 @@ class DummyClassCrudController extends CrudController
      */
     protected function setupCreateOperation()
     {
-        $this->crud->setValidation(DummyClassRequest::class);
+        $this->crud->setValidation(DummyClassCreateRequest::class);
 
-        $this->crud->setFromDb(); // fields
-
-        /**
-         * Fields can be defined using the fluent syntax or array syntax:
-         * - $this->crud->field('price')->type('number');
-         * - $this->crud->addField(['name' => 'price', 'type' => 'number']));
-         */
+        $this->crud->addFields($this->fieldConfigs());
     }
 
     /**
@@ -75,6 +64,26 @@ class DummyClassCrudController extends CrudController
      */
     protected function setupUpdateOperation()
     {
-        $this->setupCreateOperation();
+        $this->crud->setValidation(DummyClassUpdateRequest::class);
+
+        $this->crud->addFields($this->fieldConfigs());
+    }
+
+    /**
+     * Define what happens when the Show operation is loaded.
+     *
+     * @see https://backpackforlaravel.com/docs/crud-operation-show
+     * @return void
+     */
+    protected function setupShowOperation()
+    {
+        $this->crud->set('show.setFromDb', false);
+        $this->crud->addColumns($this->fieldConfigs());
+    }
+
+    protected function fieldConfigs()
+    {
+        $this->crud->setFromDb();
+        return [];
     }
 }
