@@ -14,15 +14,15 @@ Supercharged starter kit featuring:
 - User editable dashboard widgets
 - Painless reporting boilerplate
 - Customizable SCSS
+- BM Translation
 
 ### Installation
 
 1. Clone this repository
 2. Create database
-3. Copy .env.example to .env and update the database
-4. Run `php artisan migrate --seed`
-5. Fire up the server `php artisan serve`
-6. Login via [`/app`](/app) with username `Administrator` and password `administrator`
+3. Run the installation file `./install.sh`
+4. Fire up the server `php artisan serve`
+5. Login via [`/app`](/app) with username `Administrator` and password `administrator`
 
 ### Creating New Modules
 
