@@ -54,6 +54,8 @@ class UserSeeder extends Seeder
 
             $createdRole->permissions()->sync(collect($rolePermissions)->pluck('id'));
 
+            if($role != 'Administrator') continue;
+
             $user = User::updateOrCreate([
                 'username' => $role,
             ], [
