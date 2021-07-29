@@ -29,7 +29,7 @@ class DummyClassCrudController extends CrudController
     {
         $this->crud->setModel(\App\Models\DummyClass::class);
         $this->crud->setRoute(config('backpack.base.route_prefix') . '/dummy-class');
-        $this->crud->setEntityNameStrings('dummy singular', 'dummy plural');
+        $this->crud->setEntityNameStrings(__('dummy singular'), __('dummy plural'));
     }
 
     /**
