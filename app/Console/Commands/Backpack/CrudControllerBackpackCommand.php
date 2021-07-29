@@ -4,6 +4,7 @@ namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CrudControllerBackpackCommand extends GeneratorCommand
@@ -35,6 +36,13 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      * @var string
      */
     protected $type = 'Controller';
+
+    /**
+     * Class imports.
+     *
+     * @var array
+     */
+    protected $imports = [];
 
     /**
      * Get the destination class path.
@@ -105,7 +113,7 @@ class CrudControllerBackpackCommand extends GeneratorCommand
             $attributes = $model->getFillable();
         } else {
             // otherwise, if guarded is used, just pick up the columns straight from the bd table
-            $attributes = \Schema::getColumnListing($model->getTable());
+            $attributes = Schema::getColumnListing($model->getTable());
         }
 
         return $attributes;
@@ -130,25 +138,67 @@ class CrudControllerBackpackCommand extends GeneratorCommand
 
         $attributes = $this->getAttributes($model);
 
-        // create an array with the needed code for defining fields
-        $fields = Arr::except($attributes, ['id', 'created_at', 'updated_at', 'deleted_at']);
-        $fields = collect($fields)
-            ->map(function ($field) {
-                return "CRUD::field('$field');";
-            })
-            ->toArray();
+        $instance = new $model;
 
-        // create an array with the needed code for defining columns
-        $columns = Arr::except($attributes, ['id']);
-        $columns = collect($columns)
-            ->map(function ($column) {
-                return "CRUD::column('$column');";
-            })
-            ->toArray();
+        $fields = [];
+        foreach($attributes as $field) {
+            if(in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) continue;
+            $columnType = Schema::getColumnType($instance->getTable(), $field);
+            $label = Str::of($field)->replace('_', ' ')->title();
+
+            if($columnType == 'bigint' && strstr($field, '_id')) {
+                $baseName = Str::of($field)
+                    ->before('_id');
+                $modelName = $baseName->studly();
+                $entity = $modelName->camel();
+                $label = $baseName->replace('_', ' ')->title();
+                $modelFqdn = 'use App\\Models\\' . $modelName . ';';
+                if(!in_array($modelFqdn, $this->imports)) {
+                    $this->imports[] = $modelFqdn;
+                }
+                $fields[] = "[
+                'label'     => __('$label'),
+                'name'      => '$field',
+                'type'      => 'select',
+                'entity'    => '$entity',
+                'attribute' => 'name',
+                'model'     => $modelName::class,
+            ],";
+            } else {
+                $type = null;
+                switch ($columnType) {
+                    case 'bigint':
+                        $type = 'number';
+                        break;
+                    case 'datetime':
+                        $type = 'datetime';
+                        break;
+                    case 'boolean':
+                        $type = 'boolean';
+                        break;
+                    case 'decimal':
+                        $type = 'number';
+                        break;
+                    case 'text':
+                        $type = 'textarea';
+                        break;
+                    case 'string':
+                    default:
+                        $type = 'text';
+                        break;
+                }
+                $fields[] = "[
+                'label' => __('$label'),
+                'name'  => '$field',
+                'type'  => '$type',
+            ],";
+            }
+        }
 
         // replace setFromDb with actual fields and columns
-        $stub = str_replace('CRUD::setFromDb(); // fields', implode(PHP_EOL.'        ', $fields), $stub);
-        $stub = str_replace('CRUD::setFromDb(); // columns', implode(PHP_EOL.'        ', $columns), $stub);
+        $stub = str_replace('return []; // fields and columns', 'return [' . PHP_EOL . '            ' . implode(PHP_EOL.'            ', $fields). PHP_EOL .'        ];', $stub);
+
+        $stub = str_replace('// class imports', implode(PHP_EOL, $this->imports), $stub);
 
         return $this;
     }

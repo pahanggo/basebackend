@@ -1,6 +1,0 @@
-- audit logs
-- manual
-
-- socialite
-    - if account exists => input password
-    - if account does not exist => create

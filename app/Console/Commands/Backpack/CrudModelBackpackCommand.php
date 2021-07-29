@@ -3,6 +3,8 @@
 namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CrudModelBackpackCommand extends GeneratorCommand
@@ -174,7 +176,39 @@ class CrudModelBackpackCommand extends GeneratorCommand
     {
         $stub = $this->files->get($this->getStub());
 
-        return $this->replaceNamespace($stub, $name)->replaceTable($stub, $name)->replaceClass($stub, $name);
+        return $this->replaceNamespace($stub, $name)
+            ->replaceTable($stub, $name)
+            ->addRelationships($stub, $name)
+            ->replaceClass($stub, $name)
+            ;
+    }
+
+    protected function addRelationships(&$stub, $name)
+    {
+        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name) . '\\', '', $name))), '_');
+
+        $table = Str::snake(Str::plural($name));
+
+        $columns = DB::getSchemaBuilder()->getColumnListing($table);
+        $relationships = [];
+        foreach($columns as $field) {
+            $columnType = DB::getSchemaBuilder()->getColumnType($table, $field);
+
+            if ($columnType == 'bigint' && strstr($field, '_id')) {
+                $baseName = Str::of($field)
+                    ->before('_id');
+                $modelName = $baseName->studly();
+                $entity = $modelName->camel();
+                $relationships[] = "    public function $entity()
+    {
+        return \$this->belongsTo($modelName::class);
+    }";
+            }
+        }
+
+        $stub = str_replace('    // relations', implode(PHP_EOL . PHP_EOL, $relationships), $stub);
+
+        return $this;
     }
 
     /**

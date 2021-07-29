@@ -3,6 +3,8 @@
 namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CrudRequestBackpackCommand extends GeneratorCommand
 {
@@ -68,6 +70,40 @@ class CrudRequestBackpackCommand extends GeneratorCommand
     protected function getDefaultNamespace($rootNamespace)
     {
         return $rootNamespace.'\Http\Requests';
+    }
+
+    protected function addColumns(&$stub, $name)
+    {
+        $name = substr($name, 0, strlen($name) - 6);
+        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name) . '\\', '', $name))), '_');
+
+        $table = Str::snake(Str::plural($name));
+
+        $columns = DB::getSchemaBuilder()->getColumnListing($table);
+        $fields = [];
+        foreach ($columns as $field) {
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) continue;
+            $fields[] = "            '$field' => 'required',";
+        }
+
+        $stub = str_replace("            // 'name' => 'required',", implode(PHP_EOL, $fields), $stub);
+
+        return $this;
+    }
+
+    /**
+     * Build the class with the given name.
+     *
+     * @param  string  $name
+     * @return string
+     *
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     */
+    protected function buildClass($name)
+    {
+        $stub = $this->files->get($this->getStub());
+
+        return $this->replaceNamespace($stub, $name)->addColumns($stub, $name)->replaceClass($stub, $name);
     }
 
     /**

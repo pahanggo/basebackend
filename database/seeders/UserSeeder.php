@@ -29,6 +29,7 @@ class UserSeeder extends Seeder
                 'Access Reports',
                 'Assume Users',
                 'View API Docs',
+                // more permissions
             ],
             'User' => []
         ];
