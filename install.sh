@@ -6,6 +6,10 @@ if [[ -f "$FILE" ]]; then
     exit 0;
 fi
 
+echo
+echo "Starting Installation"
+echo "--------------------------"
+echo
 echo "Application Name:"
 read AppName
 echo
@@ -46,17 +50,38 @@ else
 fi
 echo
 
-
-read -p "Enable debugbar? [y/N]:" -n 1 EnableDebugbar
+read -p "Enable debugbar? [Y/n]:" -n 1 EnableDebugbar
 echo
-if [[ ! $EnableDebugbar =~ ^[Yy]$ ]]
+if [[ ! $EnableDebugbar =~ ^[Nn]$ ]]
 then
-    EnableDebugbar=false
-else
     EnableDebugbar=true
+else
+    EnableDebugbar=false
 fi
 
-echo "Copying .env.example file..."
+echo 'Input settings:'
+echo
+echo "Application Name: ${AppName}"
+echo "Application Locale: ${AppLocale}"
+echo "Database Name: ${DbName}"
+echo "Database Username: ${DbUsername}"
+echo "Database Password: ${DbPassword}"
+echo "Enable Social Logins: ${EnableSocialLogin}"
+echo "Enable Debugbar: ${EnableDebugbar}"
+echo "--------------------------"
+echo
+
+read -p "All set? [y/N]:" -n 1 DoContinue
+echo
+if [[ ! $DoContinue =~ ^[Yy]$ ]]
+then
+    echo 'Bye!'
+    exit 0
+fi
+echo
+
+php composer.phar install
+
 cp .env.example .env
 
 sed -i "s/APP_NAME=\"BaseBackend\"/APP_NAME=\"$AppName\"/g" .env
@@ -69,10 +94,16 @@ sed -i "s/SOCIALITE_ENABLED=false/SOCIALITE_ENABLED=$EnableSocialLogin/g" .env
 sed -i "s/GOOGLE_LOGIN_ENABLED=false/GOOGLE_LOGIN_ENABLED=$EnableSocialLogin/g" .env
 sed -i "s/GITHUB_LOGIN_ENABLED=false/GITHUB_LOGIN_ENABLED=$EnableSocialLogin/g" .env
 
-# echo "Generating app key..."
 php artisan key:generate
 
-# echo "Migrating database..."
+php artisan storage:link
+
 php artisan migrate --seed
 
+echo
+echo
+echo "----------------------"
 echo "Installation complete!"
+echo "----------------------"
+
+php artisan inspire
