@@ -1,5 +1,6 @@
-<li class="nav-item d-none d-sm-block">
-    {{backpack_auth()->user()->name}}
+<li class="nav-item d-none d-sm-block text-right avatar-name">
+    {{user()->name}} <br>
+    <small>{{implode(',', user()->roles->pluck('name')->toArray())}}</small>
 </li>
 <li class="nav-item dropdown pr-4">
     <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
@@ -9,7 +10,7 @@
         <a class="dropdown-item" href="{{ route('backpack.account.info') }}"><i class="la la-user"></i> {{ trans('backpack::base.my_account') }}</a>
         <div class="dropdown-divider"></div>
         @if(isAssuming())
-        <a class="dropdown-item" href="{{ route('users.resume') }}"><i class="la la-lock"></i> Resume</a>
+        <a class="dropdown-item" href="{{ route('users.resume') }}"><i class="la la-lock"></i> {{__('Resume')}}</a>
         @else
         <a class="dropdown-item" href="{{ backpack_url('logout') }}"><i class="la la-lock"></i> {{ trans('backpack::base.logout') }}</a>
         @endif

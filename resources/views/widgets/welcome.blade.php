@@ -7,10 +7,10 @@
         </div>
         <div class="ml-sm-2">
             <h1 class="mb-0 d-none d-sm-block">
-                Welcome {{$user->name}}
+                {{__('Welcome')}} {{$user->name}}
             </h1>
             <h3 class="mb-0 d-block d-sm-none mt-2">
-                Welcome {{$user->name}}
+                {{__('Welcome')}} {{$user->name}}
             </h3>
             <div>
                 <small>

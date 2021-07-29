@@ -11,10 +11,10 @@
     <section class="content-header">
         <div class="container-fluid mb-3">
             <h1>
-                Reports
+                {{__('Reports')}}
             </h1>
             <small>
-                Choose one of the reports below to generate:
+                {{__('Choose one of the reports below to generate')}}:
             </small>
             <hr>
         </div>

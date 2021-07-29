@@ -2,7 +2,7 @@
 <li class="nav-item"><a class="nav-link" href="{{ backpack_url('dashboard') }}"><i class="la la-home nav-icon"></i> {{ trans('backpack::base.dashboard') }}</a></li>
 
 @can('Access Reports')
-<li class="nav-item"><a class="nav-link" href="{{ backpack_url('report') }}"><i class="la la-table nav-icon"></i> Reports</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ backpack_url('report') }}"><i class="la la-table nav-icon"></i> {{__('Reports')}}</a></li>
 @endcan
 @canany([
     'Manage Users',
@@ -11,24 +11,24 @@
     'View System Logs',
 ])
 <li class="nav-item nav-dropdown">
-    <a class="nav-link nav-dropdown-toggle" href="#"><i class="nav-icon la la-users"></i> Administration</a>
+    <a class="nav-link nav-dropdown-toggle" href="#"><i class="nav-icon la la-users"></i> {{__('Administration')}}</a>
     <ul class="nav-dropdown-items">
         @can('Manage Users')
-        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('user') }}"><i class="nav-icon la la-user"></i> <span>Users</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('user') }}"><i class="nav-icon la la-user"></i> <span>{{__('Users')}}</span></a></li>
         @endcan
         @can('Manage Roles and Permissions')
-        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('role') }}"><i class="nav-icon la la-id-badge"></i> <span>Roles</span></a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('permission') }}"><i class="nav-icon la la-key"></i> <span>Permissions</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('role') }}"><i class="nav-icon la la-id-badge"></i> <span>{{__('Roles')}}</span></a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ backpack_url('permission') }}"><i class="nav-icon la la-key"></i> <span>{{__('Permissions')}}</span></a></li>
         @endcan
         @can('Manage Settings')
-        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('setting') }}'><i class='nav-icon la la-cog'></i> <span>Settings</span></a></li>
+        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('setting') }}'><i class='nav-icon la la-cog'></i> <span>{{__('Settings')}}</span></a></li>
         @endcan
         @can('View System Logs')
-        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('log') }}'><i class='nav-icon la la-terminal'></i> Logs</a></li>
+        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('log') }}'><i class='nav-icon la la-terminal'></i> {{__('Logs')}}</a></li>
         @endcan
     </ul>
 </li>
 @endcanany
 @can('View API Docs')
-<li class='nav-item'><a target="_blank" class='nav-link' href='{{ backpack_url('api-docs') }}'><i class='nav-icon la la-book'></i> API Documentation</a></li>
+<li class='nav-item'><a target="_blank" class='nav-link' href='{{ backpack_url('api-docs') }}'><i class='nav-icon la la-book'></i> {{__('API Documentation')}}</a></li>
 @endcan

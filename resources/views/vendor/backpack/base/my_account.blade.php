@@ -65,7 +65,7 @@
                                 <a onclick="changeProfilePicture()" class="user-image d-block" style="cursor:pointer;bottom: -10px;">
                                     <img src="{{$user->getAvatarUrl()}}" class="img has-hover img-avatar" style="height: 70px">
                                 </a>
-                                <small>Change Avatar</small>
+                                <small>{{__('Change Avatar')}}</small>
                             </div>
 
                             <div class="col-md-3 form-group">
@@ -87,7 +87,7 @@
                             </div>
 
                             <div class="col-md-3 form-group">
-                                <label class="required">Email</label>
+                                <label class="required">{{trans('backpack::base.email_address')}}</label>
                                 <input required class="form-control" type="email" name="email" value="{{ old('email') ? old('email') : $user->email }}">
                             </div>
                         </div>
@@ -157,7 +157,7 @@
             @if(config('auth.socialite.enabled'))
             <div class="card padding-10">
                 <div class="card-header">
-                    Linked Social Accounts
+                    {{__('Linked Social Accounts')}}
                 </div>
                 <div class="card-body">
                     <div class="list-group">
@@ -165,9 +165,9 @@
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="la la-google-plus"></i>
-                                Google Logins
+                                {{__('Google Logins')}}
                             </div>
-                            <a href="{{route('socialite.google')}}" class="btn btn-primary">Link</a>
+                            <a href="{{route('socialite.google')}}" class="btn btn-primary">{{__('Link')}}</a>
                         </div>
                         @foreach(user()->socialAccounts()->whereAccountType('google')->get() as $account)
                         <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -175,7 +175,7 @@
                                 {{$account->name}} <br>
                                 {{$account->email}}
                             </div>
-                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">Unlink</a>
+                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">{{__('Unlink')}}</a>
                         </div>
                         @endforeach
                         <div class="mb-3"></div>
@@ -184,9 +184,9 @@
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="la la-github"></i>
-                                Github Logins
+                                {{__('Github Logins')}}
                             </div>
-                            <a href="{{route('socialite.github')}}" class="btn btn-primary">Link</a>
+                            <a href="{{route('socialite.github')}}" class="btn btn-primary">{{__('Link')}}</a>
                         </div>
                         @endif
                         @foreach(user()->socialAccounts()->whereAccountType('github')->get() as $account)
@@ -195,7 +195,7 @@
                                 {{$account->name}} <br>
                                 {{$account->email}}
                             </div>
-                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">Unlink</a>
+                            <a href="{{route('socialite.unlink', ['token' => encrypt($account->id)])}}" class="btn btn-warning">{{__('Unlink')}}</a>
                         </div>
                         @endforeach
                         <div class="mb-3"></div>
@@ -213,7 +213,7 @@
     <div class="modal-lg modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Change Avatar</h5>
+                <h5 class="modal-title">{{__('Change Avatar')}}</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -225,8 +225,8 @@
                 <img src="" alt="" id="chosenAvatarOutput">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="saveAvatar()">Save Avatar</button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveAvatar()">{{__('Save Avatar')}}</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{{__('Close')}}</button>
             </div>
         </div>
     </div>

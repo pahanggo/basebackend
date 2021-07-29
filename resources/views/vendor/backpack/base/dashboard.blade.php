@@ -5,7 +5,7 @@
         <div ng-repeat="col in row track by $index" class="col-sm-2" id="widget_@{{$parent.$index}}_@{{$index}}">
             <div class="card">
                 <div class="card-header">
-                    Loading...
+                    {{__('Loading')}}...
                 </div>
             </div>
         </div>
@@ -21,7 +21,7 @@
         </div>
         <div class="col-sm-2" ng-if="$index > 0 && editing">
             <button type="button" class="btn btn-sm btn-warning btn-block" ng-click="removeWidgetRow($index)">
-                <i class="la la-minus"></i> Row
+                <i class="la la-minus"></i> {{__('Row')}}
             </button>
         </div>
     </div>
@@ -29,14 +29,14 @@
     <div class="row">
         <div class="col-sm-12">
             <button type="button" class="btn btn-sm" ng-class="{'btn-default':!editing, 'btn-success':editing}" ng-click="toggleEditing()">
-                <span ng-if="editing"><i class="la la-check"></i> Done</span>
-                <span ng-if="!editing"><i class="la la-pencil"></i> Edit</span>
+                <span ng-if="editing"><i class="la la-check"></i> {{__('Done')}}</span>
+                <span ng-if="!editing"><i class="la la-pencil"></i> {{__('Edit')}}</span>
             </button>
             <button ng-if="!editing" type="button" class="btn btn-sm btn-default" ng-click="refreshWidgets()">
-                <i class="la la-refresh"></i> Refresh
+                <i class="la la-refresh"></i> {{__('Refresh')}}
             </button>
             <button ng-if="editing" type="button" class="btn btn-sm btn-info" ng-click="addWidgetRow()">
-                <i class="la la-plus"></i> Row
+                <i class="la la-plus"></i> {{__('Row')}}
             </button>
         </div>
     </div>
