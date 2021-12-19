@@ -40,7 +40,7 @@ class DummyClassCrudController extends CrudController
      */
     protected function setupListOperation()
     {
-        $this->crud->addColumns($this->fieldConfigs());
+        $this->crud->addColumns($this->columnConfigs());
     }
 
     /**
@@ -78,7 +78,12 @@ class DummyClassCrudController extends CrudController
     protected function setupShowOperation()
     {
         $this->crud->set('show.setFromDb', false);
-        $this->crud->addColumns($this->fieldConfigs());
+        $this->crud->addColumns($this->columnConfigs());
+    }
+
+    protected function columnConfigs()
+    {
+        return []; // fields and columns
     }
 
     protected function fieldConfigs()
