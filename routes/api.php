@@ -14,11 +14,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
 Route::group([
     'namespace'  => 'App\Http\Controllers\Api',
     'middleware' => 'api',
     'as'         => 'api.',
 ], function(){
+    Route::get('/', 'BaseController@index');
+
     Route::group([
         'prefix' => 'auth/',
         'as'     => 'auth.'

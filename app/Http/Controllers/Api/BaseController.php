@@ -8,6 +8,14 @@ use Illuminate\Http\Response;
 
 class BaseController extends Controller
 {
+
+    public function index()
+    {
+        return $this->send([
+            'status' => 'online',
+        ]);
+    }
+
     protected function profileData($user)
     {
         $profileData =  $user->only('name', 'username', 'email');
