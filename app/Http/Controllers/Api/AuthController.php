@@ -148,4 +148,9 @@ class AuthController extends BaseController
 
         return $manager->broker($passwords);
     }
+
+    public function logout()
+    {
+        return $this->send();
+    }
 }
