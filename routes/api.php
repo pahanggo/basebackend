@@ -24,6 +24,8 @@ Route::group([
         'as'     => 'auth.'
     ], function(){
         Route::post('login', 'AuthController@login');
+        Route::post('register', 'AuthController@register');
+        Route::post('forgot-password', 'AuthController@forgotPassword');
     });
 
     Route::group([
@@ -32,5 +34,8 @@ Route::group([
         'as'         => 'user.'
     ], function(){
         Route::get('/', 'UserController@profile');
+        Route::post('/', 'UserController@updateProfile');
+        Route::post('/avatar', 'UserController@updateAvatar');
+        Route::post('/password', 'UserController@changePassword');
     });
 });

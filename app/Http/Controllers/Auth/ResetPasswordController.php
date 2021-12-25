@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Notifications\PasswordChangedNotification;
 use Backpack\CRUD\app\Library\Auth\ResetsPasswords;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Password;
 
 class ResetPasswordController extends Controller
@@ -33,7 +36,20 @@ class ResetPasswordController extends Controller
      */
     public function redirectTo()
     {
-        return backpack_url();
+        return '/password-changed';
+    }
+
+    protected function resetPassword($user, $password)
+    {
+        $this->setUserPassword($user, $password);
+
+        $user->setRememberToken(Str::random(60));
+
+        $user->save();
+
+        $user->notify(new PasswordChangedNotification());
+
+        event(new PasswordReset($user));
     }
 
     /**

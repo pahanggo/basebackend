@@ -218,6 +218,11 @@ class UserCrudController extends CrudController
         $meta = explode(',', $request->payload);
         $content = base64_decode($meta[1]);
         $filename = Uuid::uuid4()->__toString() . '.png';
+
+        $existingFile = str_replace('/storage', '', $user->getAvatarUrl());
+        if(Storage::disk('public')->exists($existingFile)) {
+            Storage::disk('public')->delete($existingFile);
+        }
         Storage::disk('public')->put('/avatars/' . $filename, $content);
         $user->update(['avatar_url' => '/storage/avatars/' . $filename]);
         return $user->avatar_url;

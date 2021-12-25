@@ -11,7 +11,7 @@ class BaseController extends Controller
     protected function profileData($user)
     {
         $profileData =  $user->only('name', 'username', 'email');
-        $profileData['avatar_url'] = $user->getAvatarUrl();
+        $profileData['avatar_url'] = url($user->getAvatarUrl());
         $profileData['roles'] = $user->roles()->pluck('name');
         return $profileData;
     }
@@ -26,7 +26,7 @@ class BaseController extends Controller
         ]);
     }
 
-    public function error($errors = [], $message = 'Error', $code = 500)
+    public function error($errors = [], $message = 'Error', $code = 400)
     {
         return new Response([
             'message'    => $message,

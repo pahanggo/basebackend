@@ -1,5 +1,6 @@
 <?php
 
+use Knuckles\Scribe\Extracting\Strategies;
 return [
 
     /*
@@ -164,12 +165,6 @@ return [
         'middleware' => ['web', 'admin', 'can:View API Docs'],
     ],
 
-    /**
-     * Add a Try It Out button to your endpoints so consumers can test endpoints right from their browser.
-     * Don't forget to enable CORS headers for your endpoints.
-     */
-    'interactive' => true,
-
     /*
      * How is your API authenticated? This information will be used in the displayed docs, generated examples and response calls.
      */
@@ -234,7 +229,7 @@ INTRO
      *
      */
     'example_languages' => [
-        'javascript',
+        'javascript', 'bash', 'php', 'python',
     ],
 
     /*
@@ -266,7 +261,7 @@ INTRO
      * Setting `laravel.add_routes` to true (above) will also add a route for the spec.
      */
     'openapi' => [
-        'enabled' => false,
+        'enabled' => true,
 
         /*
          * Manually override some generated content in the spec. Dot notation is supported.
@@ -294,11 +289,6 @@ INTRO
     'logo' => false,
 
     /*
-     * The router your API is using (Laravel or Dingo).
-     */
-    'router' => 'laravel',
-
-    /*
      * If you would like the package to generate the same example values for parameters on each run,
      * set this to any number (eg. 1234)
      */
@@ -318,7 +308,7 @@ INTRO
             \Knuckles\Scribe\Extracting\Strategies\UrlParameters\GetFromUrlParamTag::class,
         ],
         'queryParameters' => [
-            \Knuckles\Scribe\Extracting\Strategies\QueryParameters\GetFromQueryParamTag::class,
+            \Knuckles\Scribe\Extracting\Strategies\QueryParameters\GetFromQueryParamTag::class, Strategies\QueryParameters\GetFromFormRequest::class, Strategies\QueryParameters\GetFromInlineValidator::class,
         ],
         'headers' => [
             \Knuckles\Scribe\Extracting\Strategies\Headers\GetFromRouteRules::class,
@@ -327,6 +317,7 @@ INTRO
         'bodyParameters' => [
             \Knuckles\Scribe\Extracting\Strategies\BodyParameters\GetFromFormRequest::class,
             \Knuckles\Scribe\Extracting\Strategies\BodyParameters\GetFromBodyParamTag::class,
+            Strategies\BodyParameters\GetFromInlineValidator::class,
         ],
         'responses' => [
             \Knuckles\Scribe\Extracting\Strategies\Responses\UseTransformerTags::class,
@@ -358,15 +349,29 @@ INTRO
     'routeMatcher' => \Knuckles\Scribe\Matching\RouteMatcher::class,
 
     /**
-     * [Advanced] If one of your app's database drivers does not support transactions,
-     * docs generation (instantiating Eloquent models and making response calls) will likely fail.
-     * To avoid that, you can add the driver class name here. Be warned: that means all database changes will persist.
-     */
-    'continue_without_database_transactions' => [],
-
-    /**
      * For response calls, api resource responses and transformer responses, Scribe will try to start database transactions, so no changes are persisted to your database.
      * Tell Scribe which connections should be transacted here. If you only use the default db connection, you can leave this as is.
      */
-    'database_connections_to_transact' => [config('database.default')]
+    'database_connections_to_transact' => [config('database.default')],
+    'theme' => 'default',
+    'try_it_out' => [
+        /**
+         * Add a Try It Out button to your endpoints so consumers can test endpoints right from their browser.
+         * Don't forget to enable CORS headers for your endpoints.
+         */
+        'enabled' => false,
+        /**
+         * The base URL for the API tester to use (for example, you can set this to your staging URL).
+         * Leave as null to use the current app URL (config(app.url)).
+         */
+        'base_url' => null,
+        /**
+         * Fetch a CSRF token before each request, and add it as an X-XSRF-TOKEN header. Needed if you're using Laravel Sanctum.
+         */
+        'use_csrf' => false,
+        /**
+         * The URL to fetch the CSRF token from (if `use_csrf` is true).
+         */
+        'csrf_url' => '/sanctum/csrf-cookie',
+    ]
 ];
