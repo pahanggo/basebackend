@@ -59,7 +59,7 @@ return [
         'line_1'   => 'Anda menerima emel ini kerana kami menerima permintaan untuk menukarkan kata laluan anda.',
         'line_2'   => 'Sila klik pada butang di bawah untuk menukarkan kata laluan anda:',
         'button'   => 'Ubah Kata Laluan',
-        'notice'   => 'Juka anda tidak memohon untuk tukar kata laluan, tiada tindakan lanjut diperlukan.',
+        'notice'   => 'Jika anda tidak memohon untuk tukar kata laluan, tiada tindakan lanjut diperlukan.',
     ],
 
     'step'                 => 'Langkah',
