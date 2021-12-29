@@ -5,6 +5,7 @@
   padding: $sidebar-padding;
   color: $sidebar-color;
   background: $sidebar-bg;
+  background-color: transparent;
   @include borders($sidebar-borders);
 
   .sidebar-close {

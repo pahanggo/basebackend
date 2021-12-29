@@ -486,6 +486,7 @@ html[dir="rtl"] {
     z-index: $zindex-sticky - 1;
     width: $sidebar-width;
     height: calc(100vh - #{$navbar-height});
+    background-color: white;
   }
 
   .sidebar-minimizer {
