@@ -329,6 +329,7 @@
          crud.functionsToRunOnDataTablesDrawEvent.forEach(function(functionName) {
             crud.executeFunctionByName(functionName);
          });
+         $('#crudTable .dropdown-menu > a').addClass('dropdown-item');
       } ).dataTable();
 
       // when datatables-colvis (column visibility) is toggled
