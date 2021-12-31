@@ -93,6 +93,9 @@
                                     <li class="tocify-item level-2" data-unique="endpoints-POSTapi-user">
                         <a href="#endpoints-POSTapi-user">Update User Profile</a>
                     </li>
+                                    <li class="tocify-item level-2" data-unique="endpoints-POSTapi-auth-logout">
+                        <a href="#endpoints-POSTapi-auth-logout">POST api/auth/logout</a>
+                    </li>
                                                     </ul>
                             </ul>
         
@@ -105,7 +108,7 @@
                             <li><a href="http://github.com/knuckleswtf/scribe">Documentation powered by Scribe ✍</a></li>
                     </ul>
         <ul class="toc-footer" id="last-updated">
-        <li>Last updated: December 26 2021</li>
+        <li>Last updated: January 1 2022</li>
     </ul>
 </div>
 
@@ -123,7 +126,7 @@ You can switch the language used with the tabs at the top right (or from the nav
 <pre><code class="language-yaml">http://localhost:8000</code></pre>
 
         <h1 id="authenticating-requests">Authenticating requests</h1>
-<p>This API is authenticated by sending an <strong><code>Authorization</code></strong> header with the value <strong><code>"Bearer {YOUR_AUTH_KEY}"</code></strong>.</p>
+<p>To authenticate requests, include an <strong><code>Authorization</code></strong> header with the value <strong><code>"Bearer {YOUR_AUTH_KEY}"</code></strong>.</p>
 <p>All authenticated endpoints are marked with a <code>requires authentication</code> badge in the documentation below.</p>
 <p>You can retrieve your token by logging in via the <code>/api/auth/login</code> endpoint.</p>
 
@@ -153,8 +156,8 @@ const headers = {
 };
 
 let body = {
-    "username": "doloremque",
-    "password": "excepturi"
+    "username": "eius",
+    "password": "est"
 };
 
 fetch(url, {
@@ -170,8 +173,8 @@ fetch(url, {
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"username\": \"doloremque\",
-    \"password\": \"excepturi\"
+    \"username\": \"eius\",
+    \"password\": \"est\"
 }"
 </code></pre></div>
 
@@ -186,8 +189,8 @@ $response = $client-&gt;post(
             'Accept' =&gt; 'application/json',
         ],
         'json' =&gt; [
-            'username' =&gt; 'doloremque',
-            'password' =&gt; 'excepturi',
+            'username' =&gt; 'eius',
+            'password' =&gt; 'est',
         ],
     ]
 );
@@ -201,8 +204,8 @@ import json
 
 url = 'http://localhost:8000/api/auth/login'
 payload = {
-    "username": "doloremque",
-    "password": "excepturi"
+    "username": "eius",
+    "password": "est"
 }
 headers = {
   'Content-Type': 'application/json',
@@ -224,6 +227,7 @@ response.json()</code></pre></div>
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
         &quot;user&quot;: {
+            &quot;id&quot;: 23,
             &quot;name&quot;: &quot;User&quot;,
             &quot;username&quot;: &quot;User&quot;,
             &quot;email&quot;: &quot;user@example.com&quot;,
@@ -277,7 +281,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="username"
                data-endpoint="POSTapi-auth-login"
-               value="doloremque"
+               value="eius"
                data-component="body" hidden>
     <br>
 <p>The user's name</p>
@@ -287,7 +291,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="password"
                data-endpoint="POSTapi-auth-login"
-               value="excepturi"
+               value="est"
                data-component="body" hidden>
     <br>
 <p>The user's password</p>
@@ -372,6 +376,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -440,11 +445,11 @@ const headers = {
 };
 
 let body = {
-    "name": "aut",
-    "username": "veniam",
-    "email": "quas",
-    "password": "reprehenderit",
-    "password_confirmation": "debitis"
+    "name": "rerum",
+    "username": "consequatur",
+    "email": "officiis",
+    "password": "aut",
+    "password_confirmation": "ipsa"
 };
 
 fetch(url, {
@@ -460,11 +465,11 @@ fetch(url, {
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"name\": \"aut\",
-    \"username\": \"veniam\",
-    \"email\": \"quas\",
-    \"password\": \"reprehenderit\",
-    \"password_confirmation\": \"debitis\"
+    \"name\": \"rerum\",
+    \"username\": \"consequatur\",
+    \"email\": \"officiis\",
+    \"password\": \"aut\",
+    \"password_confirmation\": \"ipsa\"
 }"
 </code></pre></div>
 
@@ -479,11 +484,11 @@ $response = $client-&gt;post(
             'Accept' =&gt; 'application/json',
         ],
         'json' =&gt; [
-            'name' =&gt; 'aut',
-            'username' =&gt; 'veniam',
-            'email' =&gt; 'quas',
-            'password' =&gt; 'reprehenderit',
-            'password_confirmation' =&gt; 'debitis',
+            'name' =&gt; 'rerum',
+            'username' =&gt; 'consequatur',
+            'email' =&gt; 'officiis',
+            'password' =&gt; 'aut',
+            'password_confirmation' =&gt; 'ipsa',
         ],
     ]
 );
@@ -497,11 +502,11 @@ import json
 
 url = 'http://localhost:8000/api/auth/register'
 payload = {
-    "name": "aut",
-    "username": "veniam",
-    "email": "quas",
-    "password": "reprehenderit",
-    "password_confirmation": "debitis"
+    "name": "rerum",
+    "username": "consequatur",
+    "email": "officiis",
+    "password": "aut",
+    "password_confirmation": "ipsa"
 }
 headers = {
   'Content-Type': 'application/json',
@@ -522,6 +527,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -564,7 +570,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="name"
                data-endpoint="POSTapi-auth-register"
-               value="aut"
+               value="rerum"
                data-component="body" hidden>
     <br>
 <p>The new user's name</p>
@@ -574,7 +580,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="username"
                data-endpoint="POSTapi-auth-register"
-               value="veniam"
+               value="consequatur"
                data-component="body" hidden>
     <br>
 <p>The new user's username</p>
@@ -584,7 +590,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="email"
                data-endpoint="POSTapi-auth-register"
-               value="quas"
+               value="officiis"
                data-component="body" hidden>
     <br>
 <p>The new user's email</p>
@@ -594,7 +600,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="password"
                data-endpoint="POSTapi-auth-register"
-               value="reprehenderit"
+               value="aut"
                data-component="body" hidden>
     <br>
 <p>The password</p>
@@ -604,7 +610,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="password_confirmation"
                data-endpoint="POSTapi-auth-register"
-               value="debitis"
+               value="ipsa"
                data-component="body" hidden>
     <br>
 <p>The password again</p>
@@ -633,7 +639,7 @@ const headers = {
 };
 
 let body = {
-    "username": "facere"
+    "username": "rerum"
 };
 
 fetch(url, {
@@ -649,7 +655,7 @@ fetch(url, {
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"username\": \"facere\"
+    \"username\": \"rerum\"
 }"
 </code></pre></div>
 
@@ -664,7 +670,7 @@ $response = $client-&gt;post(
             'Accept' =&gt; 'application/json',
         ],
         'json' =&gt; [
-            'username' =&gt; 'facere',
+            'username' =&gt; 'rerum',
         ],
     ]
 );
@@ -678,7 +684,7 @@ import json
 
 url = 'http://localhost:8000/api/auth/forgot-password'
 payload = {
-    "username": "facere"
+    "username": "rerum"
 }
 headers = {
   'Content-Type': 'application/json',
@@ -699,6 +705,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -741,7 +748,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="username"
                data-endpoint="POSTapi-auth-forgot-password"
-               value="facere"
+               value="rerum"
                data-component="body" hidden>
     <br>
 <p>The user's username or email</p>
@@ -787,7 +794,7 @@ fetch(url, {
     --header "Authorization: Bearer {YOUR_AUTH_KEY}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
-    --form "photo=@/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpEUmmid" </code></pre></div>
+    --form "photo=@/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpjbUKfQ" </code></pre></div>
 
 
 <div class="php-example">
@@ -803,7 +810,7 @@ $response = $client-&gt;post(
         'multipart' =&gt; [
             [
                 'name' =&gt; 'photo',
-                'contents' =&gt; fopen('/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpEUmmid', 'r')
+                'contents' =&gt; fopen('/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpjbUKfQ', 'r')
             ],
         ],
     ]
@@ -818,7 +825,7 @@ import json
 
 url = 'http://localhost:8000/api/user/avatar'
 files = {
-  'photo': open('/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpEUmmid', 'rb')
+  'photo': open('/private/var/folders/xz/sb1jl4ls79n2j30yh2ysvwfh0000gn/T/phpjbUKfQ', 'rb')
 }
 headers = {
   'Authorization': 'Bearer {YOUR_AUTH_KEY}',
@@ -840,6 +847,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -921,9 +929,9 @@ const headers = {
 };
 
 let body = {
-    "existing_password": "optio",
-    "password": "distinctio",
-    "password_confirmation": "laudantium"
+    "existing_password": "consectetur",
+    "password": "eum",
+    "password_confirmation": "sequi"
 };
 
 fetch(url, {
@@ -940,9 +948,9 @@ fetch(url, {
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"existing_password\": \"optio\",
-    \"password\": \"distinctio\",
-    \"password_confirmation\": \"laudantium\"
+    \"existing_password\": \"consectetur\",
+    \"password\": \"eum\",
+    \"password_confirmation\": \"sequi\"
 }"
 </code></pre></div>
 
@@ -958,9 +966,9 @@ $response = $client-&gt;post(
             'Accept' =&gt; 'application/json',
         ],
         'json' =&gt; [
-            'existing_password' =&gt; 'optio',
-            'password' =&gt; 'distinctio',
-            'password_confirmation' =&gt; 'laudantium',
+            'existing_password' =&gt; 'consectetur',
+            'password' =&gt; 'eum',
+            'password_confirmation' =&gt; 'sequi',
         ],
     ]
 );
@@ -974,9 +982,9 @@ import json
 
 url = 'http://localhost:8000/api/user/password'
 payload = {
-    "existing_password": "optio",
-    "password": "distinctio",
-    "password_confirmation": "laudantium"
+    "existing_password": "consectetur",
+    "password": "eum",
+    "password_confirmation": "sequi"
 }
 headers = {
   'Authorization': 'Bearer {YOUR_AUTH_KEY}',
@@ -998,6 +1006,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -1048,7 +1057,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="existing_password"
                data-endpoint="POSTapi-user-password"
-               value="optio"
+               value="consectetur"
                data-component="body" hidden>
     <br>
 <p>The existing password</p>
@@ -1058,7 +1067,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="password"
                data-endpoint="POSTapi-user-password"
-               value="distinctio"
+               value="eum"
                data-component="body" hidden>
     <br>
 <p>The new password</p>
@@ -1068,7 +1077,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="password_confirmation"
                data-endpoint="POSTapi-user-password"
-               value="laudantium"
+               value="sequi"
                data-component="body" hidden>
     <br>
 <p>The new password again</p>
@@ -1099,9 +1108,9 @@ const headers = {
 };
 
 let body = {
-    "name": "adipisci",
-    "username": "ea",
-    "email": "explicabo"
+    "name": "perferendis",
+    "username": "recusandae",
+    "email": "nostrum"
 };
 
 fetch(url, {
@@ -1118,9 +1127,9 @@ fetch(url, {
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"name\": \"adipisci\",
-    \"username\": \"ea\",
-    \"email\": \"explicabo\"
+    \"name\": \"perferendis\",
+    \"username\": \"recusandae\",
+    \"email\": \"nostrum\"
 }"
 </code></pre></div>
 
@@ -1136,9 +1145,9 @@ $response = $client-&gt;post(
             'Accept' =&gt; 'application/json',
         ],
         'json' =&gt; [
-            'name' =&gt; 'adipisci',
-            'username' =&gt; 'ea',
-            'email' =&gt; 'explicabo',
+            'name' =&gt; 'perferendis',
+            'username' =&gt; 'recusandae',
+            'email' =&gt; 'nostrum',
         ],
     ]
 );
@@ -1152,9 +1161,9 @@ import json
 
 url = 'http://localhost:8000/api/user'
 payload = {
-    "name": "adipisci",
-    "username": "ea",
-    "email": "explicabo"
+    "name": "perferendis",
+    "username": "recusandae",
+    "email": "nostrum"
 }
 headers = {
   'Authorization': 'Bearer {YOUR_AUTH_KEY}',
@@ -1176,6 +1185,7 @@ response.json()</code></pre></div>
 <code class="language-json">{
     &quot;message&quot;: &quot;Successful&quot;,
     &quot;data&quot;: {
+        &quot;id&quot;: 23,
         &quot;name&quot;: &quot;User&quot;,
         &quot;username&quot;: &quot;User&quot;,
         &quot;email&quot;: &quot;user@example.com&quot;,
@@ -1226,7 +1236,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="name"
                data-endpoint="POSTapi-user"
-               value="adipisci"
+               value="perferendis"
                data-component="body" hidden>
     <br>
 <p>The user's name</p>
@@ -1236,7 +1246,7 @@ response.json()</code></pre></div>
                 <input type="text"
                name="username"
                data-endpoint="POSTapi-user"
-               value="ea"
+               value="recusandae"
                data-component="body" hidden>
     <br>
 <p>The user's username</p>
@@ -1246,12 +1256,118 @@ response.json()</code></pre></div>
                 <input type="text"
                name="email"
                data-endpoint="POSTapi-user"
-               value="explicabo"
+               value="nostrum"
                data-component="body" hidden>
     <br>
 <p>The user's email</p>
         </p>
         </form>
+
+            <h2 id="endpoints-POSTapi-auth-logout">POST api/auth/logout</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-auth-logout">
+<blockquote>Example request:</blockquote>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "http://localhost:8000/api/auth/logout"
+);
+
+const headers = {
+    "Authorization": "Bearer {YOUR_AUTH_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "http://localhost:8000/api/auth/logout" \
+    --header "Authorization: Bearer {YOUR_AUTH_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="php-example">
+    <pre><code class="language-php">$client = new \GuzzleHttp\Client();
+$response = $client-&gt;post(
+    'http://localhost:8000/api/auth/logout',
+    [
+        'headers' =&gt; [
+            'Authorization' =&gt; 'Bearer {YOUR_AUTH_KEY}',
+            'Content-Type' =&gt; 'application/json',
+            'Accept' =&gt; 'application/json',
+        ],
+    ]
+);
+$body = $response-&gt;getBody();
+print_r(json_decode((string) $body));</code></pre></div>
+
+
+<div class="python-example">
+    <pre><code class="language-python">import requests
+import json
+
+url = 'http://localhost:8000/api/auth/logout'
+headers = {
+  'Authorization': 'Bearer {YOUR_AUTH_KEY}',
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+}
+
+response = requests.request('POST', url, headers=headers)
+response.json()</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-auth-logout">
+</span>
+<span id="execution-results-POSTapi-auth-logout" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-auth-logout"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-auth-logout"></code></pre>
+</span>
+<span id="execution-error-POSTapi-auth-logout" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-auth-logout"></code></pre>
+</span>
+<form id="form-POSTapi-auth-logout" data-method="POST"
+      data-path="api/auth/logout"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      data-headers='{"Authorization":"Bearer {YOUR_AUTH_KEY}","Content-Type":"application\/json","Accept":"application\/json"}'
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-auth-logout', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/auth/logout</code></b>
+        </p>
+                <p>
+            <label id="auth-POSTapi-auth-logout" hidden>Authorization header:
+                <b><code>Bearer </code></b><input type="text"
+                                                                name="Authorization"
+                                                                data-prefix="Bearer "
+                                                                data-endpoint="POSTapi-auth-logout"
+                                                                data-component="header"></label>
+        </p>
+                </form>
 
     
 

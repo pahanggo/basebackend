@@ -27,6 +27,7 @@ class UserController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
@@ -54,6 +55,7 @@ class UserController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
@@ -82,6 +84,7 @@ class UserController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
@@ -124,6 +127,7 @@ class UserController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
@@ -139,7 +143,7 @@ class UserController extends BaseController
         $data = $request->only(['existing_password', 'password']);
         if(!Hash::check($data['existing_password'], $request->user()->password)) {
             return $this->error([
-                'existing_password' => 'Existing password is invalid',
+                'existing_password' => ['Existing password is invalid'],
             ]);
         }
 

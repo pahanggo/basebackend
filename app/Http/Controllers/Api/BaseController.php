@@ -18,7 +18,7 @@ class BaseController extends Controller
 
     protected function profileData($user)
     {
-        $profileData =  $user->only('name', 'username', 'email');
+        $profileData =  $user->only('id', 'name', 'username', 'email');
         $profileData['avatar_url'] = url($user->getAvatarUrl());
         $profileData['roles'] = $user->roles()->pluck('name');
         return $profileData;

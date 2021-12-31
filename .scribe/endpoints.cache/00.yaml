@@ -22,14 +22,14 @@ endpoints:
         name: username
         description: 'The user''s name'
         required: false
-        example: doloremque
+        example: eius
         type: string
         custom: []
       password:
         name: password
         description: 'The user''s password'
         required: false
-        example: excepturi
+        example: est
         type: string
         custom: []
     responses:
@@ -40,6 +40,7 @@ endpoints:
             "message": "Successful",
             "data": {
               "user": {
+                "id": 23,
                 "name": "User",
                 "username": "User",
                 "email": "user@example.com",
@@ -85,6 +86,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -116,35 +118,35 @@ endpoints:
         name: name
         description: 'The new user''s name'
         required: false
-        example: aut
+        example: rerum
         type: string
         custom: []
       username:
         name: username
         description: 'The new user''s username'
         required: false
-        example: veniam
+        example: consequatur
         type: string
         custom: []
       email:
         name: email
         description: 'The new user''s email'
         required: false
-        example: quas
+        example: officiis
         type: string
         custom: []
       password:
         name: password
         description: 'The password'
         required: false
-        example: reprehenderit
+        example: aut
         type: string
         custom: []
       password_confirmation:
         name: password_confirmation
         description: 'The password again'
         required: false
-        example: debitis
+        example: ipsa
         type: string
         custom: []
     responses:
@@ -154,6 +156,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -185,7 +188,7 @@ endpoints:
         name: username
         description: 'The user''s username or email'
         required: false
-        example: facere
+        example: rerum
         type: string
         custom: []
     responses:
@@ -195,6 +198,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -237,6 +241,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -269,21 +274,21 @@ endpoints:
         name: existing_password
         description: 'The existing password'
         required: false
-        example: optio
+        example: consectetur
         type: string
         custom: []
       password:
         name: password
         description: 'The new password'
         required: false
-        example: distinctio
+        example: eum
         type: string
         custom: []
       password_confirmation:
         name: password_confirmation
         description: 'The new password again'
         required: false
-        example: laudantium
+        example: sequi
         type: string
         custom: []
     responses:
@@ -293,6 +298,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -325,21 +331,21 @@ endpoints:
         name: name
         description: 'The user''s name'
         required: false
-        example: adipisci
+        example: perferendis
         type: string
         custom: []
       username:
         name: username
         description: 'The user''s username'
         required: false
-        example: ea
+        example: recusandae
         type: string
         custom: []
       email:
         name: email
         description: 'The user''s email'
         required: false
-        example: explicabo
+        example: nostrum
         type: string
         custom: []
     responses:
@@ -349,6 +355,7 @@ endpoints:
           {
             "message": "Successful",
             "data": {
+              "id": 23,
               "name": "User",
               "username": "User",
               "email": "user@example.com",
@@ -360,4 +367,22 @@ endpoints:
           }
         headers: []
         description: '200'
+    responseFields: []
+  -
+    httpMethods:
+      - POST
+    uri: api/auth/logout
+    metadata:
+      title: ''
+      description: ''
+      authenticated: true
+      custom: []
+    headers:
+      Authorization: 'Bearer {YOUR_AUTH_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    queryParameters: []
+    bodyParameters: []
+    responses: []
     responseFields: []

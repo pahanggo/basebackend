@@ -30,6 +30,7 @@ class AuthController extends BaseController
      *   "message": "Successful",
      *   "data": {
      *     "user": {
+     *       "id": 23,
      *       "name": "User",
      *       "username": "User",
      *       "email": "user@example.com",
@@ -78,6 +79,7 @@ class AuthController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
@@ -118,6 +120,7 @@ class AuthController extends BaseController
      * @response {
      *   "message": "Successful",
      *   "data": {
+     *     "id": 23,
      *     "name": "User",
      *     "username": "User",
      *     "email": "user@example.com",
