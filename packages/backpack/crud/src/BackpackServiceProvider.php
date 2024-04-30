@@ -26,10 +26,8 @@ class BackpackServiceProvider extends ServiceProvider
 
     // Indicates if loading of the provider is deferred.
     protected $defer = false;
-    // Where the route file lives, both inside the package and in the app (if overwritten).
-    public $routeFilePath = '/routes/backpack/base.php';
     // Where custom routes can be written, and will be registered by Backpack.
-    public $customRoutesFilePath = '/routes/backpack/custom.php';
+    public $customRoutesFilePath = '/routes/crud.php';
 
     /**
      * Perform post-registration booting of services.
@@ -42,7 +40,6 @@ class BackpackServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(realpath(__DIR__.'/resources/lang'), 'backpack');
         $this->loadConfigs();
         $this->registerMiddlewareGroup($this->app->router);
-        $this->setupRoutes($this->app->router);
         $this->setupCustomRoutes($this->app->router);
         $this->publishFiles();
     }
@@ -113,7 +110,6 @@ class BackpackServiceProvider extends ServiceProvider
             __DIR__.'/resources/views/base/inc/topbar_left_content.blade.php'  => resource_path('views/vendor/backpack/base/inc/topbar_left_content.blade.php'),
             __DIR__.'/resources/views/base/inc/topbar_right_content.blade.php' => resource_path('views/vendor/backpack/base/inc/topbar_right_content.blade.php'),
         ];
-        $backpack_custom_routes_file = [__DIR__.$this->customRoutesFilePath => base_path($this->customRoutesFilePath)];
 
         // calculate the path from current directory to get the vendor path
         $vendorPath = dirname(__DIR__, 3);
@@ -127,7 +123,6 @@ class BackpackServiceProvider extends ServiceProvider
             $backpack_public_assets,
             $backpack_config_files,
             $backpack_menu_contents_view,
-            $backpack_custom_routes_file,
             $gravatar_assets
         );
 
@@ -138,28 +133,8 @@ class BackpackServiceProvider extends ServiceProvider
         $this->publishes($backpack_menu_contents_view, 'menu_contents');
         $this->publishes($error_views, 'errors');
         $this->publishes($backpack_public_assets, 'public');
-        $this->publishes($backpack_custom_routes_file, 'custom_routes');
         $this->publishes($gravatar_assets, 'gravatar');
         $this->publishes($minimum, 'minimum');
-    }
-
-    /**
-     * Define the routes for the application.
-     *
-     * @param  \Illuminate\Routing\Router  $router
-     * @return void
-     */
-    public function setupRoutes(Router $router)
-    {
-        // by default, use the routes file provided in vendor
-        $routeFilePathInUse = __DIR__.$this->routeFilePath;
-
-        // but if there's a file with the same name in routes/backpack, use that one
-        if (file_exists(base_path().$this->routeFilePath)) {
-            $routeFilePathInUse = base_path().$this->routeFilePath;
-        }
-
-        $this->loadRoutesFrom($routeFilePathInUse);
     }
 
     /**
@@ -170,10 +145,7 @@ class BackpackServiceProvider extends ServiceProvider
      */
     public function setupCustomRoutes(Router $router)
     {
-        // if the custom routes file is published, register its routes
-        if (file_exists(base_path().$this->customRoutesFilePath)) {
-            $this->loadRoutesFrom(base_path().$this->customRoutesFilePath);
-        }
+        $this->loadRoutesFrom(base_path().$this->customRoutesFilePath);
     }
 
     /**

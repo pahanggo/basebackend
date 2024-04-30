@@ -40,7 +40,7 @@ class AddCustomRouteContent extends Command
      */
     public function handle()
     {
-        $path = 'routes/backpack/custom.php';
+        $path = 'routes/crud.php';
         $disk_name = config('backpack.base.root_disk_name');
         $disk = Storage::disk($disk_name);
         $code = $this->argument('code');

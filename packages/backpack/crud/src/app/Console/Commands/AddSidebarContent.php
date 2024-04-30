@@ -39,7 +39,7 @@ class AddSidebarContent extends Command
      */
     public function handle()
     {
-        $path = 'resources/views/vendor/backpack/base/inc/sidebar_content.blade.php';
+        $path = 'resources/views/base/inc/sidebar_content.blade.php';
         $disk_name = config('backpack.base.root_disk_name');
         $disk = Storage::disk($disk_name);
         $code = $this->argument('code');
