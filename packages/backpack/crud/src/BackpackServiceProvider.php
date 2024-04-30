@@ -219,19 +219,10 @@ class BackpackServiceProvider extends ServiceProvider
 
     public function loadViewsWithFallbacks()
     {
-        $customBaseFolder = resource_path('views/vendor/backpack/base');
-        $customCrudFolder = resource_path('views/vendor/backpack/crud');
-
-        // - first the published/overwritten views (in case they have any changes)
-        if (file_exists($customBaseFolder)) {
-            $this->loadViewsFrom($customBaseFolder, 'backpack');
-        }
-        if (file_exists($customCrudFolder)) {
-            $this->loadViewsFrom($customCrudFolder, 'crud');
-        }
-        // - then the stock views that come with the package, in case a published view might be missing
-        $this->loadViewsFrom(realpath(__DIR__.'/resources/views/base'), 'backpack');
-        $this->loadViewsFrom(realpath(__DIR__.'/resources/views/crud'), 'crud');
+        $customBaseFolder = resource_path('views/base');
+        $customCrudFolder = resource_path('views/crud');
+        $this->loadViewsFrom($customBaseFolder, 'backpack');
+        $this->loadViewsFrom($customCrudFolder, 'crud');
     }
 
     public function loadConfigs()
