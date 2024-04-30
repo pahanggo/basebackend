@@ -146,7 +146,10 @@ class CrudControllerBackpackCommand extends GeneratorCommand
             $columnType = Schema::getColumnType($instance->getTable(), $field);
             $label = Str::of($field)->replace('_', ' ')->title();
 
-            if($columnType == 'bigint' && strstr($field, '_id')) {
+            if(strstr($field, '_id') && in_array($columnType, [
+                'bigint',
+                'integer',
+            ])) {
                 $baseName = Str::of($field)
                     ->before('_id');
                 $modelName = $baseName->studly();
@@ -159,7 +162,7 @@ class CrudControllerBackpackCommand extends GeneratorCommand
                 $fields[] = "[
                 'label'     => __('$label'),
                 'name'      => '$field',
-                'type'      => 'select',
+                'type'      => 'select2',
                 'entity'    => '$entity',
                 'attribute' => 'name',
                 'model'     => $modelName::class,
@@ -170,9 +173,13 @@ class CrudControllerBackpackCommand extends GeneratorCommand
                     case 'bigint':
                         $type = 'number';
                         break;
+                    case 'date':
+                        $type = 'date';
+                        break;
                     case 'datetime':
                         $type = 'datetime';
                         break;
+                    case 'tinyint':
                     case 'boolean':
                         $type = 'boolean';
                         break;

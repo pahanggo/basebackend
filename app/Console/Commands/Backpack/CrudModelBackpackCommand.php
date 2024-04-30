@@ -194,7 +194,10 @@ class CrudModelBackpackCommand extends GeneratorCommand
         foreach($columns as $field) {
             $columnType = DB::getSchemaBuilder()->getColumnType($table, $field);
 
-            if ($columnType == 'bigint' && strstr($field, '_id')) {
+            if (strstr($field, '_id') && in_array($columnType, [
+                'bigint',
+                'integer'
+            ])) {
                 $baseName = Str::of($field)
                     ->before('_id');
                 $modelName = $baseName->studly();
