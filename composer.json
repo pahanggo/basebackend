@@ -11,20 +11,15 @@
     "require": {
         "php": "^8.2",
         "doctrine/dbal": "^3.8",
-        "godruoyi/php-snowflake": "^2.2",
         "guzzlehttp/guzzle": "^7.0.1",
         "intervention/image": "^2.7",
-        "karyamedia/ipay88": "dev-master",
-        "kotchuprik/php-short-id": "^1.1",
         "laravel/framework": "^11.0",
-        "laravel/pulse": "@beta",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "*",
         "laravel/tinker": "^2.5",
         "laravolt/avatar": "^5.1",
         "maatwebsite/excel": "^3.1",
         "prologue/alerts": "^1.2",
-        "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-permission": "^6.0"
     },
     "require-dev": {
