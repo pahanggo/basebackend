@@ -197,6 +197,11 @@ class CrudModelBackpackCommand extends GeneratorCommand
             if (strstr($field, '_id') && in_array($columnType, [
                 'bigint',
                 'integer'
+            ]) && !in_array($field, [
+                'parent_id',
+                'lft',
+                'rgt',
+                'depth',
             ])) {
                 $baseName = Str::of($field)
                     ->before('_id');

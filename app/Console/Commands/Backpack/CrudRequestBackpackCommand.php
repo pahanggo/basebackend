@@ -82,7 +82,7 @@ class CrudRequestBackpackCommand extends GeneratorCommand
         $columns = DB::getSchemaBuilder()->getColumnListing($table);
         $fields = [];
         foreach ($columns as $field) {
-            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) continue;
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at', 'parent_id', 'lft', 'rgt', 'depth'])) continue;
             $fields[] = "            '$field' => 'required',";
         }
 
