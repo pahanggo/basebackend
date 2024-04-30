@@ -8,7 +8,7 @@
     $column['prefix']  = $column['prefix'] ?? '';
     $column['suffix']  = $column['suffix'] ?? '';
     $column['text']    = $column['prefix'].
-                         Str::limit($value, $column['limit'], "[...]").
+                         Str::limit($value ?? '', $column['limit'], "[...]").
                          $column['suffix'];
 @endphp
 

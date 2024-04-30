@@ -5,7 +5,7 @@
     $column['prefix'] = $column['prefix'] ?? '';
     $column['suffix'] = $column['suffix'] ?? '';
 	$column['text'] = 	$column['prefix'].
-						Str::limit(strip_tags($rowNumber), $column['limit'], "[...]").
+						Str::limit(strip_tags($rowNumber ?? ''), $column['limit'], "[...]").
 						$column['suffix'];
 @endphp
 

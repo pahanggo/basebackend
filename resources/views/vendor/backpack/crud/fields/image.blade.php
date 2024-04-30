@@ -238,7 +238,7 @@
                         const maxImageSize = {{ $max_image_size_in_bytes }};
                         if(maxImageSize > 0 && file.size > maxImageSize) {
 
-                            alert(`Please pick an image smaller than ${maxImageSize} bytes.`);
+                            alert('Please pick an image smaller than '+maxImageSize+'  bytes.');
                         } else if (/^image\/\w+$/.test(file.type)) {
 
                             fileReader.readAsDataURL(file);
@@ -283,22 +283,27 @@
                     if(crop) {
                         $rotateLeft.click(function() {
                             $mainImage.cropper("rotate", 90);
+                            $mainImage.trigger('cropend');
                         });
 
                         $rotateRight.click(function() {
                             $mainImage.cropper("rotate", -90);
+                            $mainImage.trigger('cropend');
                         });
 
                         $zoomIn.click(function() {
                             $mainImage.cropper("zoom", 0.1);
+                            $mainImage.trigger('cropend');
                         });
 
                         $zoomOut.click(function() {
                             $mainImage.cropper("zoom", -0.1);
+                            $mainImage.trigger('cropend');
                         });
 
                         $reset.click(function() {
                             $mainImage.cropper("reset");
+                            $mainImage.trigger('cropend');
                         });
                     }
             }

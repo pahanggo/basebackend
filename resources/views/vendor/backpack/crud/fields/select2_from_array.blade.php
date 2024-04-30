@@ -8,6 +8,7 @@
         name="{{ $field['name'] }}@if (isset($field['allows_multiple']) && $field['allows_multiple']==true)[]@endif"
         style="width: 100%"
         data-init-function="bpFieldInitSelect2FromArrayElement"
+        data-field-is-inline="{{var_export($inlineCreate ?? false)}}"
         data-language="{{ str_replace('_', '-', app()->getLocale()) }}"
         @include('crud::fields.inc.attributes', ['default_class' =>  'form-control select2_from_array'])
         @if (isset($field['allows_multiple']) && $field['allows_multiple']==true)multiple @endif
@@ -19,7 +20,7 @@
 
         @if (count($field['options']))
             @foreach ($field['options'] as $key => $value)
-                @if((old(square_brackets_to_dots($field['name'])) && (
+                @if((old(square_brackets_to_dots($field['name'])) !== null && (
                         $key == old(square_brackets_to_dots($field['name'])) ||
                         (is_array(old(square_brackets_to_dots($field['name']))) &&
                         in_array($key, old(square_brackets_to_dots($field['name'])))))) ||
@@ -78,8 +79,11 @@
         function bpFieldInitSelect2FromArrayElement(element) {
             if (!element.hasClass("select2-hidden-accessible"))
                 {
+                    let $isFieldInline = element.data('field-is-inline');
+
                     element.select2({
-                        theme: "bootstrap"
+                        theme: "bootstrap",
+                        dropdownParent: $isFieldInline ? $('#inline-create-dialog .modal-content') : document.body
                     }).on('select2:unselect', function(e) {
                         if ($(this).attr('multiple') && $(this).val().length == 0) {
                             $(this).val(null).trigger('change');

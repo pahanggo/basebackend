@@ -10,7 +10,7 @@
     $column['text'] = '';
 
     if(!empty($value)) {
-        $column['text'] = $column['prefix'].Str::limit(strip_tags($value), $column['limit'], "[...]").$column['suffix'];
+        $column['text'] = $column['prefix'].Str::limit(strip_tags($value ?? ''), $column['limit'], "[...]").$column['suffix'];
     }
 @endphp
 
