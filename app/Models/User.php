@@ -62,8 +62,7 @@ class User extends Authenticatable
         if($this->avatar_url) {
             return $this->avatar_url;
         }
-        $firstLetter = $this->getAttribute('name') ? mb_substr($this->name, 0, 1, 'UTF-8') : 'A';
-        return Gravatar::fallback('https://placehold.it/160x160/00a65a/ffffff/&text=' . $firstLetter)->get($this->email);
+        return \Avatar::create($this->name)->toBase64();
     }
 
     public function socialAccounts()

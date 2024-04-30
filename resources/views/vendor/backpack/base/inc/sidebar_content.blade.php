@@ -20,15 +20,6 @@
         <li class="nav-item"><a class="nav-link" href="{{ backpack_url('role') }}"><i class="nav-icon la la-id-badge"></i> <span>{{__('Roles')}}</span></a></li>
         <li class="nav-item"><a class="nav-link" href="{{ backpack_url('permission') }}"><i class="nav-icon la la-key"></i> <span>{{__('Permissions')}}</span></a></li>
         @endcan
-        @can('Manage Settings')
-        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('setting') }}'><i class='nav-icon la la-cog'></i> <span>{{__('Settings')}}</span></a></li>
-        @endcan
-        @can('View System Logs')
-        <li class='nav-item'><a class='nav-link' href='{{ backpack_url('log') }}'><i class='nav-icon la la-terminal'></i> {{__('Logs')}}</a></li>
-        @endcan
     </ul>
 </li>
 @endcanany
-@can('View API Docs')
-<li class='nav-item'><a target="_blank" class='nav-link' href='{{ backpack_url('api-docs') }}'><i class='nav-icon la la-book'></i> {{__('API Documentation')}}</a></li>
-@endcan

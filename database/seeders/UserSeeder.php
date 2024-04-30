@@ -23,12 +23,9 @@ class UserSeeder extends Seeder
         $roles = [
             'Administrator' => [
                 'Manage Users',
-                'Manage Settings',
-                'View System Logs',
                 'Manage Roles and Permissions',
                 'Access Reports',
                 'Assume Users',
-                'View API Docs',
                 // more permissions
             ],
             'User' => []

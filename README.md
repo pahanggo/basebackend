@@ -2,19 +2,15 @@
 
 Supercharged starter kit featuring:
 
-- Laravel 8
+- Laravel 11
 - [Laravel Backpack 4.1](https://backpackforlaravel.com/docs/4.1/introduction)
 - [Backstrap Frontend](https://backstrap.net/index.html)
-- [Roles & Permissions](https://spatie.be/docs/laravel-permission/v3/introduction)
-- [System Settings](https://github.com/Laravel-Backpack/Settings)
-- [Log Viewer](https://github.com/Laravel-Backpack/LogManager)
-- [Laravel Sanctum for Token Auth](https://laravel.com/docs/8.x/sanctum#mobile-application-authentication)
-- [Scribe for API Documentation](https://scribe.readthedocs.io/en/latest/guide-getting-started.html)
-- [Social Logins](https://laravel.com/docs/8.x/socialite)
+- [Roles & Permissions](https://spatie.be/docs/laravel-permission/v6/introduction)
+- [Laravel Sanctum for Token Auth](https://laravel.com/docs/11.x/sanctum#mobile-application-authentication)
+- [Social Logins](https://laravel.com/docs/11.x/socialite)
 - User editable dashboard widgets
 - Painless reporting boilerplate
 - Customizable SCSS
-- BM Translation
 
 ### Installation
 
@@ -42,12 +38,6 @@ Supercharged starter kit featuring:
 1. Run `php artisan make:report Plot`
 2. Edit the `app/Http/Controllers/Reports/Plot.php` controller
 3. Edit the `resources/views/reports/plot.blade.php` view file
-
-### API Documentation
-
-API documentation can be accessed from [`/app/api-docs`](/app/api-docs) (Needs to be authenticated). API Authentication is via Laravel Sanctum.
-
-To regenerate the api documentation run `php artisan scribe:generate`
 
 ### Customizing Generator Templates
 

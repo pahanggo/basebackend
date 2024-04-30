@@ -2,6 +2,9 @@
 
 use App\Providers\DashboardServiceProvider;
 use App\Services\WidgetService;
+use Backpack\CRUD\BackpackServiceProvider;
+use Backpack\Generators\GeneratorsServiceProvider;
+use Backpack\PermissionManager\PermissionManagerServiceProvider;
 
 return [
 
@@ -164,6 +167,9 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+        BackpackServiceProvider::class,
+        GeneratorsServiceProvider::class,
+        PermissionManagerServiceProvider::class,
 
         /*
          * Package Service Providers...
@@ -173,7 +179,7 @@ return [
          * Application Service Providers...
          */
         App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
+        // App\Providers\AuthServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
@@ -232,7 +238,7 @@ return [
         'View'         => Illuminate\Support\Facades\View::class,
         'Markdown'     => Illuminate\Mail\Markdown::class,
         'Widgets'      => WidgetService::class,
-
+        'Avatar'       => Laravolt\Avatar\Facade::class,
     ],
 
 ];
