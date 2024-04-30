@@ -1,4 +1,4 @@
-@if($stack == $crud->get('stack-buttons'))
+@if($stack == $crud->get('stack-action-buttons'))
 <div class="dropdown">
 	<button class="btn btn-outline dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 	  ...
