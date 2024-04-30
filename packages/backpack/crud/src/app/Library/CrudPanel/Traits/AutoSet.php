@@ -134,7 +134,7 @@ trait AutoSet
                 return 'boolean';
 
             case 'tinyint':
-                return 'active';
+                return 'checkbox';
 
             case 'text':
             case 'mediumtext':
