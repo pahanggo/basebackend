@@ -81,6 +81,8 @@ class UserCrudController extends CrudController
         );
 
         $this->crud->addButtonFromView('line', 'assume-user', 'assume-user', 'beginning');
+
+        $this->crud->set('stack-action-buttons', true);
     }
 
     public function setupCreateOperation()
