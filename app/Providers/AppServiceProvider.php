@@ -25,5 +25,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Paginator::useBootstrap();
+
+        // uncomment to change language
+        // app()->setLocale('ms_MY');
     }
 }
