@@ -26,41 +26,48 @@
 
 @section('content')
 <?php
-function tree_element($entry, $key, $all_entries, $crud)
-{
-    if (! isset($entry->tree_element_shown)) {
-        // mark the element as shown
-        $all_entries[$key]->tree_element_shown = true;
-        $entry->tree_element_shown = true;
+if(!function_exists('tree_element')) {
+  function tree_element($entry, $key, $all_entries, $crud)
+  {
+      if (! isset($entry->tree_element_shown)) {
+          // mark the element as shown
+          $all_entries[$key]->tree_element_shown = true;
+          $entry->tree_element_shown = true;
 
-        // show the tree element
-        echo '<li id="list_'.$entry->getKey().'">';
-        echo '<div><span class="disclose"><span></span></span>'.object_get($entry, $crud->get('reorder.label')).'</div>';
+          $original = object_get($entry, $crud->get('reorder.label')) ?? '';
+          $text = $original;
+          if(strlen($original) > 120) {
+            $text = substr($original, 0, 120) . '...';
+          }
 
-        // see if this element has any children
-        $children = [];
-        foreach ($all_entries as $key => $subentry) {
-            if ($subentry->parent_id == $entry->getKey()) {
-                $children[] = $subentry;
-            }
-        }
+          // show the tree element
+          echo '<li id="list_'.$entry->getKey().'">';
+          echo '<div><span class="disclose"><span></span></span>'. $text .'</div>';
 
-        $children = collect($children)->sortBy('lft');
+          // see if this element has any children
+          $children = [];
+          foreach ($all_entries as $key => $subentry) {
+              if ($subentry->parent_id == $entry->getKey()) {
+                  $children[] = $subentry;
+              }
+          }
 
-        // if it does have children, show them
-        if (count($children)) {
-            echo '<ol>';
-            foreach ($children as $key => $child) {
-                $children[$key] = tree_element($child, $child->getKey(), $all_entries, $crud);
-            }
-            echo '</ol>';
-        }
-        echo '</li>';
-    }
+          $children = collect($children)->sortBy('lft');
 
-    return $entry;
+          // if it does have children, show them
+          if (count($children)) {
+              echo '<ol>';
+              foreach ($children as $key => $child) {
+                  $children[$key] = tree_element($child, $child->getKey(), $all_entries, $crud);
+              }
+              echo '</ol>';
+          }
+          echo '</li>';
+      }
+
+      return $entry;
+  }
 }
-
 ?>
 
 <div class="row mt-4">
