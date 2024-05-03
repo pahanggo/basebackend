@@ -41,7 +41,7 @@ Supercharged starter kit featuring:
 
 ### Customizing Generator Templates
 
-Generator templates can be editted inside the `stubs` directory
+Generator templates can be editted inside the `stubs` directory.
 
 ### Customizing SCSS
 
