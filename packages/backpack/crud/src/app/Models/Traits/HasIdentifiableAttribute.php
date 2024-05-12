@@ -37,8 +37,8 @@ trait HasIdentifiableAttribute
         $table = $instance->getTableWithPrefix();
         $columns = Schema::getColumns($table);
         $indexes = Schema::getIndexes($table);
-        $columnsNames = array_map(function($column) {
-            return $column['name'];
+        $columnsNames = array_map(function($item) {
+            return $item['name'];
         }, $columns);
 
         // these column names are sensible defaults for lots of use cases
@@ -64,9 +64,8 @@ trait HasIdentifiableAttribute
         // if none of the sensible defaults exists
         // we get the first column from database
         // that is NOT indexed (usually primary, foreign keys)
-        foreach ($columns as $index => $columnProperties) {
+        foreach ($columns as $columnProperties) {
             $columnName = $columnProperties['name'];
-
             if (! in_array($columnName, $indexedColumns)) {
 
                 //check for convention "field<_id>" in case developer didn't add foreign key constraints.
