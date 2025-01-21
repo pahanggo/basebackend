@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\LoadWidgetOnDashboardMiddleware;
+use App\Services\SettingsRenderer;
 use App\Services\WidgetService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -89,5 +90,27 @@ class AdminController extends Controller
     {
         // The '/admin' route is not to be used as a page, because it breaks the menu's active state.
         return redirect(backpack_url('dashboard'));
+    }
+
+    public function settings()
+    {
+        return view('base.settings', [
+            'settings' => new SettingsRenderer([
+                'User Management' => [
+                    'Users' => [
+                        'path' => 'user',
+                        'permissions' => ['Manage Users']
+                    ],
+                    'Roles' => [
+                        'path' => 'role',
+                        'permissions' => ['Manage Roles and Permissions']
+                    ],
+                    'Permissions' => [
+                        'path' => 'permission',
+                        'permissions' => ['Manage Roles and Permissions']
+                    ],
+                ],
+            ]),
+        ]);
     }
 }

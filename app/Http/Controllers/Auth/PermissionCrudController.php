@@ -52,6 +52,13 @@ class PermissionCrudController extends CrudController
                 'type'  => 'text',
             ]);
         }
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.list') => false,
+        ];
     }
 
     public function setupCreateOperation()
@@ -61,6 +68,13 @@ class PermissionCrudController extends CrudController
 
         //otherwise, changes won't have effect
         Cache::forget('spatie.permission.cache');
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.add') => false,
+        ];
     }
 
     public function setupUpdateOperation()
@@ -70,6 +84,13 @@ class PermissionCrudController extends CrudController
 
         //otherwise, changes won't have effect
         Cache::forget('spatie.permission.cache');
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.edit') => false,
+        ];
     }
 
     private function addFields()

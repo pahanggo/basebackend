@@ -66,35 +66,57 @@ class UserCrudController extends CrudController
         );
 
         // Extra Permission Filter
-        $this->crud->addFilter(
-            [
-                'name'  => 'permissions',
-                'type'  => 'select2',
-                'label' => trans('backpack::permissionmanager.extra_permissions'),
-            ],
-            config('permission.models.permission')::all()->pluck('name', 'id')->toArray(),
-            function ($value) { // if the filter is active
-                $this->crud->addClause('whereHas', 'permissions', function ($query) use ($value) {
-                    $query->where('permission_id', '=', $value);
-                });
-            }
-        );
+        // $this->crud->addFilter(
+        //     [
+        //         'name'  => 'permissions',
+        //         'type'  => 'select2',
+        //         'label' => trans('backpack::permissionmanager.extra_permissions'),
+        //     ],
+        //     config('permission.models.permission')::all()->pluck('name', 'id')->toArray(),
+        //     function ($value) { // if the filter is active
+        //         $this->crud->addClause('whereHas', 'permissions', function ($query) use ($value) {
+        //             $query->where('permission_id', '=', $value);
+        //         });
+        //     }
+        // );
 
         $this->crud->addButtonFromView('line', 'assume-user', 'assume-user', 'beginning');
 
-        $this->crud->set('stack-action-buttons', true);
+        // to make button dropdown
+        // $this->crud->set('stack-action-buttons', true);
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.list') => false,
+        ];
     }
 
     public function setupCreateOperation()
     {
         $this->addUserFields();
         $this->crud->setValidation(StoreRequest::class);
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.add') => false,
+        ];
     }
 
     public function setupUpdateOperation()
     {
         $this->addUserFields();
         $this->crud->setValidation(UpdateRequest::class);
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.edit') => false,
+        ];
     }
 
     /**

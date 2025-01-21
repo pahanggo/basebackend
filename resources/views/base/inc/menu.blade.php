@@ -17,6 +17,13 @@
 <!-- ========= Top menu right items (ordered right) ========== -->
 <!-- ========================================================= -->
 <ul class="nav navbar-nav ml-auto @if(config('backpack.base.html_direction') == 'rtl') mr-0 @endif">
+    @can('Manage Settings')
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('settings') }}">
+            <i class="la la-wrench"></i>
+        </a>
+    </li>
+    @endcan
     @if (backpack_auth()->guest())
         <li class="nav-item"><a class="nav-link" href="{{ route('backpack.auth.login') }}">{{ trans('backpack::base.login') }}</a>
         </li>
