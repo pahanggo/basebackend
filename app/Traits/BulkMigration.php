@@ -47,6 +47,8 @@ trait BulkMigration
                     return 'money';
                 case 'ui':
                     return 'uInteger';
+                case 't':
+                    return 'text';
             }
         }
 
@@ -88,6 +90,9 @@ trait BulkMigration
                 break;
             case 'uInteger':
                 $table->unsignedInteger($columnName)->nullable();
+                break;
+            case 'text':
+                $table->text($columnName)->nullable();
                 break;
             case 'string':
             default:
