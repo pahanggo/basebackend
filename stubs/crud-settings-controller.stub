@@ -2,10 +2,10 @@
 
 namespace DummyNamespace;
 
-use App\Http\Requests\DummyClassCreateRequest;
-use App\Http\Requests\DummyClassUpdateRequest;
+use App\Http\Requests\Settings\DummyClassCreateRequest;
+use App\Http\Requests\Settings\DummyClassUpdateRequest;
 use App\Http\Controllers\CrudController;
-use App\Models\DummyClass::class;
+use App\Models\Settings\DummyClass;
 // class imports
 
 /**
@@ -29,7 +29,7 @@ class DummyClassCrudController extends CrudController
     public function setup()
     {
         $this->crud->setModel(DummyClass::class);
-        $this->crud->setRoute(config('backpack.base.route_prefix') . '/dummy-class');
+        $this->crud->setRoute(config('backpack.base.route_prefix') . '/settings/dummy-class');
         $this->crud->setEntityNameStrings(__('dummy singular'), __('dummy plural'));
     }
 
@@ -42,6 +42,13 @@ class DummyClassCrudController extends CrudController
     protected function setupListOperation()
     {
         $this->crud->addColumns($this->columnConfigs());
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.list') => false,
+        ];
     }
 
     /**
@@ -55,6 +62,13 @@ class DummyClassCrudController extends CrudController
         $this->crud->setValidation(DummyClassCreateRequest::class);
 
         $this->crud->addFields($this->fieldConfigs());
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.add') => false,
+        ];
     }
 
     /**
@@ -68,6 +82,13 @@ class DummyClassCrudController extends CrudController
         $this->crud->setValidation(DummyClassUpdateRequest::class);
 
         $this->crud->addFields($this->fieldConfigs());
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.edit') => false,
+        ];
     }
 
     /**
@@ -80,6 +101,13 @@ class DummyClassCrudController extends CrudController
     {
         $this->crud->set('show.setFromDb', false);
         $this->crud->addColumns($this->showConfigs());
+
+        $this->data['breadcrumbs'] = [
+            trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
+            'Settings' => backpack_url('settings'),
+            $this->crud->entity_name_plural => url($this->crud->route),
+            trans('backpack::crud.preview') => false,
+        ];
     }
 
     protected function columnConfigs()

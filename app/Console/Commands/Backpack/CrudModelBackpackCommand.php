@@ -21,7 +21,7 @@ class CrudModelBackpackCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'backpack:crud-model {name}';
+    protected $signature = 'backpack:crud-model {name} {--settings}';
 
     /**
      * The console command description.
@@ -56,6 +56,9 @@ class CrudModelBackpackCommand extends GeneratorCommand
         $name = $this->getNameInput();
         $namespaceApp = $this->qualifyClass($this->getNameInput());
         $namespaceModels = $this->qualifyClass('/Models/'.$this->getNameInput());
+        if($this->option('settings')) {
+            $namespaceModels = $this->qualifyClass('/Models/Settings/'.$this->getNameInput());
+        }
 
         // Check if exists on app or models
         $existsOnApp = $this->alreadyExists($namespaceApp);
@@ -143,6 +146,9 @@ class CrudModelBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
+        if($this->option('settings')) {
+            return base_path('stubs/crud-model-settings.stub');
+        }
         return base_path('stubs/crud-model.stub');
     }
 

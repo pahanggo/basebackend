@@ -20,7 +20,7 @@ class CrudRequestBackpackCommand extends GeneratorCommand
      *
      * @var string
      */
-    protected $signature = 'backpack:crud-request {name}';
+    protected $signature = 'backpack:crud-request {name} {--settings}';
 
     /**
      * The console command description.
@@ -46,7 +46,6 @@ class CrudRequestBackpackCommand extends GeneratorCommand
     protected function getPath($name)
     {
         $name = str_replace($this->laravel->getNamespace(), '', $name);
-
         return $this->laravel['path'].'/'.str_replace('\\', '/', $name).'Request.php';
     }
 
@@ -57,6 +56,9 @@ class CrudRequestBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
+        if($this->option('settings')) {
+            return base_path('stubs/crud-request-settings.stub');
+        }
         return base_path('stubs/crud-request.stub');
     }
 
@@ -69,6 +71,9 @@ class CrudRequestBackpackCommand extends GeneratorCommand
      */
     protected function getDefaultNamespace($rootNamespace)
     {
+        if($this->option('settings')) {
+            return $rootNamespace.'\Http\Requests\Settings';
+        }
         return $rootNamespace.'\Http\Requests';
     }
 

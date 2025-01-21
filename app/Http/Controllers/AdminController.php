@@ -110,6 +110,9 @@ class AdminController extends Controller
                         'permissions' => ['Manage Roles and Permissions']
                     ],
                 ],
+                'Ungrouped' => [
+                    // New settings will be added here. Do not delete this line.
+                ],
             ]),
         ]);
     }

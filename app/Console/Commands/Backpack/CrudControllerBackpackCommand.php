@@ -10,18 +10,11 @@ use Illuminate\Support\Str;
 class CrudControllerBackpackCommand extends GeneratorCommand
 {
     /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'backpack:crud-controller';
-
-    /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'backpack:crud-controller {name}';
+    protected $signature = 'backpack:crud-controller {name} {--settings}';
 
     /**
      * The console command description.
@@ -54,7 +47,6 @@ class CrudControllerBackpackCommand extends GeneratorCommand
     protected function getPath($name)
     {
         $name = str_replace($this->laravel->getNamespace(), '', $name);
-
         return $this->laravel['path'].'/'.str_replace('\\', '/', $name).'CrudController.php';
     }
 
@@ -65,6 +57,9 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
+        if($this->option('settings')) {
+            return base_path('stubs/crud-settings-controller.stub');
+        }
         return base_path('stubs/crud-controller.stub');
     }
 
@@ -77,6 +72,9 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      */
     protected function getDefaultNamespace($rootNamespace)
     {
+        if($this->option('settings')) {
+            return $rootNamespace.'\Http\Controllers\Admin\Settings';
+        }
         return $rootNamespace.'\Http\Controllers\Admin';
     }
 
@@ -131,6 +129,9 @@ class CrudControllerBackpackCommand extends GeneratorCommand
     {
         $class = Str::afterLast($name, '\\');
         $model = "App\\Models\\$class";
+        if($this->option('settings')) {
+            $model = "App\\Models\\Settings\\$class";
+        }
 
         if (! class_exists($model)) {
             return $this;
