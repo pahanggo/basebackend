@@ -20,10 +20,10 @@ class WidgetService
 
     public static function setup()
     {
-        foreach(scandir(app_path('Http/Controllers/Widgets')) as $file) {
-            if(is_dir(app_path('Http/Controllers/Widgets') . '/' . $file)) continue;
+        foreach(scandir(app_path('Livewire/Widgets')) as $file) {
+            if(is_dir(app_path('Livewire/Widgets') . '/' . $file)) continue;
             $className = substr($file, 0, strlen($file) - 4);
-            $fqcn = "App\Http\Controllers\Widgets\\" . $className;
+            $fqcn = "App\Livewire\Widgets\\" . $className;
             $instance = new $fqcn;
             if($instance->isEnabled()) {
                 $instance->setup();

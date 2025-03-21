@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Middleware\LoadWidgetOnDashboardMiddleware;
 use App\Services\SettingsRenderer;
-use App\Services\WidgetService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
@@ -32,53 +30,7 @@ class AdminController extends Controller
             trans('backpack::crud.admin')     => backpack_url('dashboard'),
             trans('backpack::base.dashboard') => false,
         ];
-        $this->data['availableWidgets'] = WidgetService::all();
         return view(backpack_view('dashboard'), $this->data);
-    }
-
-    public function widgets()
-    {
-        return user()->widgets;
-    }
-
-    public function addWidgetRow()
-    {
-        $user = user();
-        $widgets = $user->widgets;
-        $widgets[] = [];
-        $user->widgets = $widgets;
-        $user->save();
-        return $user->widgets;
-    }
-
-    public function removeWidgetRow(Request $request)
-    {
-        $user = user();
-        $widgets = $user->widgets;
-        array_splice($widgets, $request->index, 1);
-        $user->widgets = $widgets;
-        $user->save();
-        return $user->widgets;
-    }
-
-    public function addWidget(Request $request)
-    {
-        $user = user();
-        $widgets = $user->widgets;
-        $widgets[$request->index][] = $request->widget;
-        $user->widgets = $widgets;
-        $user->save();
-        return $user->widgets;
-    }
-
-    public function removeWidget(Request $request)
-    {
-        $user = user();
-        $widgets = $user->widgets;
-        array_splice($widgets[$request->index], $request->widget, 1);
-        $user->widgets = $widgets;
-        $user->save();
-        return $user->widgets;
     }
 
     /**

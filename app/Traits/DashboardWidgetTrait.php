@@ -24,6 +24,9 @@ trait DashboardWidgetTrait {
 
     public function getWidgetName() : string
     {
+        if(property_exists($this, 'name')) {
+            return $this->name;
+        }
         return class_basename($this);
     }
 

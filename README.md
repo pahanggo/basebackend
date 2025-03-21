@@ -2,7 +2,7 @@
 
 Supercharged starter kit featuring:
 
-- Laravel 11
+- Laravel 12
 - [Laravel Backpack 4.1](https://backpackforlaravel.com/docs/4.1/introduction)
 - [Backstrap Frontend](https://backstrap.net/index.html)
 - [Roles & Permissions](https://spatie.be/docs/laravel-permission/v6/introduction)
@@ -27,9 +27,9 @@ Supercharged starter kit featuring:
 
 ### Creating New Dashboard Widgets
 
-1. Run `php artisan make:widget Plot`
-2. Edit the `app/Http/Controllers/Widgets/Plot.php` controller
-3. Edit the `resources/views/widgets/plot.blade.php` view file
+1. Run `php artisan make:livewire widgets.plot`
+2. Edit the `app/Livewire/Widgets/Plot.php` file
+3. Edit the `resources/views/livewire/widgets/plot.blade.php` view file
 
 > Sample widgets that is supported by the theme can be [viewed here](https://backstrap.net/index.html).
 

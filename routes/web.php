@@ -62,11 +62,6 @@ function () {
     // if not otherwise configured, setup the dashboard routes
     if (config('backpack.base.setup_dashboard_routes')) {
         Route::get('dashboard', 'AdminController@dashboard')->name('backpack.dashboard');
-        Route::get('dashboard/widget', 'AdminController@widgets')->name('dashboard.widget');
-        Route::get('dashboard/widget/add-row', 'AdminController@addWidgetRow')->name('dashboard.widget.add-row');
-        Route::get('dashboard/widget/remove-row', 'AdminController@removeWidgetRow')->name('dashboard.widget.remove-row');
-        Route::get('dashboard/widget/add', 'AdminController@addWidget')->name('dashboard.widget.add');
-        Route::get('dashboard/widget/remove', 'AdminController@removeWidget')->name('dashboard.widget.remove');
         Route::get('settings', 'AdminController@settings')->name('settings')->can('Manage Settings');
         Route::get('/', 'AdminController@redirect')->name('backpack');
     }
