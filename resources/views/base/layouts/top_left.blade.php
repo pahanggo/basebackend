@@ -27,6 +27,7 @@
         {{-- @include(backpack_view('inc.footer')) --}}
     </footer>
 
+    <livewire:scripts />
     @yield('before_scripts')
     @stack('before_scripts')
 
