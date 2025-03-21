@@ -12,13 +12,13 @@
         "php": "^8.3",
         "doctrine/dbal": "^3.8",
         "guzzlehttp/guzzle": "^7.0.1",
-        "intervention/image": "^2.7",
-        "laravel/framework": "^11.0",
+        "intervention/image": "^3.0",
+        "laravel/framework": "^12.0",
         "laravel/octane": "^2.3",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "*",
         "laravel/tinker": "^2.5",
-        "laravolt/avatar": "^5.1",
+        "laravolt/avatar": "^6.0",
         "maatwebsite/excel": "^3.1",
         "prologue/alerts": "^1.2",
         "spatie/laravel-permission": "^6.0"
@@ -29,12 +29,16 @@
         "fakerphp/faker": "^1.9.1",
         "mockery/mockery": "^1.4.2",
         "nunomaduro/collision": "^8.1",
-        "phpunit/phpunit": "^10.0.0"
+        "phpunit/phpunit": "^11.0.0",
+        "pestphp/pest": "^3.0"
     },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     },
     "extra": {
         "laravel": {

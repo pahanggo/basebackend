@@ -30,4 +30,8 @@
     $('.nav-tabs a').on('shown.bs.tab', function (e) {
         location.hash = e.target.hash.replace("#tab_", "#");
     });
+
+    $(document).ready(function(){
+        Pace.stop();
+    });
 </script>
