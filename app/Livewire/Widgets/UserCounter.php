@@ -14,7 +14,7 @@ class UserCounter extends Component
 
     public $count = 0;
 
-    public function mount()
+    public function loadCount()
     {
         $this->count = User::count();
     }
