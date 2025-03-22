@@ -45,12 +45,12 @@ class SettingsRenderer
                     }
 
                     if($canAccess) {
-                        $setting[$title] = backpack_url($config['path']);
+                        $setting[__($title)] = backpack_url($config['path']);
                     }
                 }
 
                 if($setting) {
-                    $settings[$group] = $setting;
+                    $settings[__($group)] = $setting;
                 }
             }
         }
