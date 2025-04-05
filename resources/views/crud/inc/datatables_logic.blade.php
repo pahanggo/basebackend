@@ -304,15 +304,16 @@
             const url = crud.table.ajax.url();
             const params = crud.table.ajax.params();
             params['skip-truncate'] = true;
-            params.length = 10;
+            params.length = 100;
             params.start = 0;
+            params.draw = 1000;
+            params.is_export = true;
             let hasMore = true;
             let results = [];
-            params.draw = 1000;
             let filtered = 10;
             while (params.start < filtered) {
                 const postResult = await Promise.resolve($.post(url, params));
-                params.start = params.start + 10;
+                params.start = params.start + params.length;
                 params.draw = params.draw + 1;
                 if (!postResult.data || postResult.data.length < 1) {
                     hasMore = false;
