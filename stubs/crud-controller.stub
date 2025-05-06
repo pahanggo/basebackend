@@ -31,6 +31,9 @@ class DummyClassCrudController extends CrudController
         $this->crud->setModel(DummyClass::class);
         $this->crud->setRoute(config('backpack.base.route_prefix') . '/dummy-class');
         $this->crud->setEntityNameStrings(__('dummy singular'), __('dummy plural'));
+
+        // enable export
+        $this->crud->enableExportButtons();
     }
 
     /**
@@ -41,6 +44,13 @@ class DummyClassCrudController extends CrudController
      */
     protected function setupListOperation()
     {
+        $this->crud->addColumn([
+            'name'      => 'row_number',
+            'type'      => 'row_number',
+            'label'     => '#',
+            'orderable' => false,
+        ]);
+
         $this->crud->addColumns($this->columnConfigs());
     }
 
@@ -84,16 +94,16 @@ class DummyClassCrudController extends CrudController
 
     protected function columnConfigs()
     {
-        return []; // fields and columns
+        return []; // columns
     }
 
     protected function fieldConfigs()
     {
-        return []; // fields and columns
+        return []; // fields
     }
 
     protected function showConfigs()
     {
-        return []; // fields and columns
+        return []; // columns
     }
 }

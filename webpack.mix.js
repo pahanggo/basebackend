@@ -11,7 +11,11 @@ const mix = require('laravel-mix');
  |
  */
 
-mix.sass('resources/scss/style.scss', 'public/css')
+mix.sass('resources/scss/style.scss', 'public/css', {
+        sassOptions: {
+            quietDeps: true,
+        }
+    })
     .combine([
         'resources/css/list/datatables.net-bs4.min.css',
         'resources/css/list/datatables.net-fixed-header-bs4.min.css',

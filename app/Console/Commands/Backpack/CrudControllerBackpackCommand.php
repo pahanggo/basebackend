@@ -203,8 +203,14 @@ class CrudControllerBackpackCommand extends GeneratorCommand
             }
         }
 
+        $fields = 'return [' . PHP_EOL . '            ' . implode(PHP_EOL.'            ', $fields). PHP_EOL .'        ];';
+
+        $columns = str_replace('select2', 'select', $fields);
+
         // replace setFromDb with actual fields and columns
-        $stub = str_replace('return []; // fields and columns', 'return [' . PHP_EOL . '            ' . implode(PHP_EOL.'            ', $fields). PHP_EOL .'        ];', $stub);
+        $stub = str_replace('return []; // fields', $fields, $stub);
+
+        $stub = str_replace('return []; // columns', $columns, $stub);
 
         $stub = str_replace('// class imports', implode(PHP_EOL, $this->imports), $stub);
 

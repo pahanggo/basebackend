@@ -6,7 +6,12 @@
 @endphp
 
 {{-- DATA TABLES SCRIPT --}}
-<script type="text/javascript" src="{{ asset('js/list.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net/js/jquery.dataTables.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net-responsive/js/dataTables.responsive.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('packages/datatables.net-fixedheader-bs4/js/fixedHeader.bootstrap4.min.js') }}"></script>
 
 <script>
     // here we will check if the cached dataTables paginator length is conformable with current paginator settings.
@@ -304,16 +309,15 @@
             const url = crud.table.ajax.url();
             const params = crud.table.ajax.params();
             params['skip-truncate'] = true;
-            params.length = 100;
+            params.length = 10;
             params.start = 0;
-            params.draw = 1000;
-            params.is_export = true;
             let hasMore = true;
             let results = [];
+            params.draw = 1000;
             let filtered = 10;
             while (params.start < filtered) {
                 const postResult = await Promise.resolve($.post(url, params));
-                params.start = params.start + params.length;
+                params.start = params.start + 10;
                 params.draw = params.draw + 1;
                 if (!postResult.data || postResult.data.length < 1) {
                     hasMore = false;
@@ -402,7 +406,7 @@
         $.fn.dataTable.ext.errMode = 'none';
         $('#crudTable').on('error.dt', function(e, settings, techNote, message) {
             if (settings && settings.jqXHR && settings.jqXHR.status && settings.jqXHR.status == 419) {
-                window.location.reload(true);
+                // window.location.reload(true);
             } else {
                 new Noty({
                     type: "error",
