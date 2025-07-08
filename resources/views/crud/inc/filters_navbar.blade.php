@@ -21,6 +21,7 @@
 </nav>
 
 @push('crud_list_scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/URI.js/1.19.11/URI.min.js" integrity="sha512-HBrZaiSIpZkFPGkutbgouEKsfM+HCrfyioscGYbNPPWb7kvMQcfKzMo35yXb+X+eaOOzpu6UkppcJXfKKO/UqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         function addOrUpdateUriParameter(uri, parameter, value) {
             var new_url = normalizeAmpersand(uri);
