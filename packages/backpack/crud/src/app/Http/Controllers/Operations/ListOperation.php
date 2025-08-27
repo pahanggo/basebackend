@@ -73,6 +73,15 @@ trait ListOperation
     {
         $this->crud->hasAccessOrFail('list');
 
+        if (request()->input('skip-truncate')) {
+            $columns = $this->crud->columns();
+            foreach($columns as $index => $column) {
+                $column['limit'] = 1024 * 1024;
+                $columns[$index] = $column;
+            }
+            $this->crud->setColumns($columns);
+        }
+
         $this->crud->applyUnappliedFilters();
 
         // $totalRows = $this->crud->model->count();
