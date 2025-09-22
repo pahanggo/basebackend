@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 use Ramsey\Uuid\Uuid;
-use Intervention\Image\ImageManagerStatic as Image;
 
 /**
  * API User Endpoints
@@ -97,12 +97,12 @@ class UserController extends BaseController
      */
     public function updateAvatar(UpdateProfilePictureRequest $request)
     {
-        $image = Image::make($request->file('photo'))->orientate();
+        $image = Image::read($request->file('photo'));
 
-        $image->fit(256, 256, function($constraint){
+        $image->resize(256, 256, function($constraint){
             $constraint->upsize();
         });
-        $image->encode('png', 90);
+        $image = $image->toPng();
 
         $filename = Uuid::uuid4()->__toString() . '.png';
         $existingFile = str_replace('/storage', '', $request->user()->getAvatarUrl());
