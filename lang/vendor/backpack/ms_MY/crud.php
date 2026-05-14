@@ -15,19 +15,19 @@ return [
 
     // Forms
     'save_action_save_and_new'         => 'Simpan dan cipta baru',
-    'save_action_save_and_edit'        => 'Simpan dan kemaskini',
+    'save_action_save_and_edit'        => 'Simpan dan kemas kini',
     'save_action_save_and_back'        => 'Simpan dan kembali',
     'save_action_save_and_preview'     => 'Simpan dan previu',
-    'save_action_changed_notification' => 'Tetapan simpan telah dikemaskini.',
+    'save_action_changed_notification' => 'Tetapan simpan telah dikemas kini.',
 
     // Create form
-    'add'                 => 'Tambah',
+    'add'                 => 'Tambah Rekod',
     'back_to_all'         => 'Kembali kepada senarai ',
     'cancel'              => 'Batal',
     'add_a_new'           => 'Tambah rekod ',
 
     // Edit form
-    'edit'                 => 'Kemaskini',
+    'edit'                 => 'Kemas kini',
     'save'                 => 'Simpan',
 
     // Translatable models
@@ -87,7 +87,7 @@ return [
     'infoFiltered'   => '(filtered from _MAX_ total entries)',
     'infoPostFix'    => '.',
     'thousands'      => ',',
-    'lengthMenu'     => '_MENU_ rekod per halaman',
+    'lengthMenu'     => '_MENU_',
     'loadingRecords' => 'Loading...',
     'processing'     => 'Processing...',
     'search'         => 'Carian',
@@ -103,13 +103,13 @@ return [
         'sortDescending' => ': activate to sort column descending',
     ],
     'export' => [
-        'export'            => 'Export',
+        'export'            => 'Muat Turun',
         'copy'              => 'Copy',
         'excel'             => 'Excel',
         'csv'               => 'CSV',
         'pdf'               => 'PDF',
         'print'             => 'Print',
-        'column_visibility' => 'Column visibility',
+        'column_visibility' => 'Lajur',
     ],
 
     // global crud - errors
@@ -117,8 +117,8 @@ return [
     'please_fix'          => 'Sila perbetulkan maklumat ini:',
 
     // global crud - success / error notification bubbles
-    'insert_success' => 'Data tercipta.',
-    'update_success' => 'Data terkemaskini.',
+    'insert_success' => 'Data dicipta.',
+    'update_success' => 'Data dikemas kini.',
 
     // CRUD reorder view
     'reorder'                      => 'Reorder',
@@ -133,9 +133,9 @@ return [
     'no'  => 'Tidak',
 
     // CRUD filters navbar view
-    'filters'        => 'Saringan',
-    'toggle_filters' => 'Ubah saringan',
-    'remove_filters' => 'Buang saringan',
+    'filters'        => 'Tapis',
+    'toggle_filters' => 'Ubah Tapisan',
+    'remove_filters' => 'Reset',
     'apply' => 'Papar',
 
     //filters language strings

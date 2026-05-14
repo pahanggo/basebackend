@@ -36,7 +36,7 @@ return [
     'handcrafted_by'         => 'Handcrafted by',
     'powered_by'             => 'Powered by',
     'my_account'             => 'Akaun Saya',
-    'update_account_info'    => 'Kemaskini Data Akaun',
+    'update_account_info'    => 'Kemas Kini Data Akaun',
     'save'                   => 'Simpan',
     'cancel'                 => 'Batal',
     'error'                  => 'Error',

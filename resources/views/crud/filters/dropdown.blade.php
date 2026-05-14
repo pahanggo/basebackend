@@ -1,9 +1,28 @@
 {{-- Dropdown Backpack CRUD filter --}}
+@php
+$currentLabel = '';
+if((is_array($filter->values) && count($filter->values))) {
+	foreach($filter->values as $key => $value) {
+		if($filter->currentValue == $key) {
+			$currentLabel = $value;
+		}
+	}
+}
+@endphp
 <li filter-name="{{ $filter->name }}"
     filter-type="{{ $filter->type }}"
     filter-key="{{ $filter->key }}"
 	class="nav-item dropdown {{ Request::get($filter->name)?'active':'' }}">
-    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ $filter->label }} <span class="caret"></span></a>
+    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+		<div class="d-inline-block" id="dropdown-filter-label-{{ $filter->key }}">
+			@if($currentLabel)
+			{{ $filter->label }}: {{$currentLabel}}
+			@else
+			{{ $filter->label }}
+			@endif
+		</div>
+		<span class="caret"></span>
+	</a>
     <ul class="dropdown-menu">
 		<a class="dropdown-item" parameter="{{ $filter->name }}" dropdownkey="" href="">-</a>
 		<div role="separator" class="dropdown-divider"></div>
@@ -47,6 +66,8 @@
 				var value = $(this).attr('dropdownkey');
 				var parameter = $(this).attr('parameter');
 
+                $('#dropdown-filter-label-{{ $filter->key }}').text('{{ $filter->label }}: ' + $(this).text().trim());
+
 		    	// behaviour for ajax table
 				var ajax_table = $("#crudTable").DataTable();
 				var current_url = ajax_table.ajax.url();
@@ -75,6 +96,7 @@
 			// clear filter event (used here and by the Remove all filters button)
 			$("li[filter-key={{ $filter->key }}]").on('filter:clear', function(e) {
 				// console.log('dropdown filter cleared');
+                $('#dropdown-filter-label-{{ $filter->key }}').text('{{ $filter->label }}');
 				$("li[filter-key={{ $filter->key }}]").removeClass('active');
 				$("li[filter-key={{ $filter->key }}] .dropdown-menu a").removeClass('active');
 			});

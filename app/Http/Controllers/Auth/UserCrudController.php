@@ -50,6 +50,30 @@ class UserCrudController extends CrudController
             ],
         ]);
 
+        $this->crud->addFilter(
+            [
+                'name'  => 'name',
+                'type'  => 'text',
+                'label' => 'Nama',
+            ],
+            null,
+            function ($value) { // if the filter is active
+                $this->crud->addClause('where', 'name', 'like', "%$value%");
+            }
+        );
+
+        $this->crud->addFilter(
+            [
+                'name'  => 'email',
+                'type'  => 'text',
+                'label' => 'Emel',
+            ],
+            null,
+            function ($value) { // if the filter is active
+                $this->crud->addClause('where', 'email', 'like', "%$value%");
+            }
+        );
+
         // Role Filter
         $this->crud->addFilter(
             [
@@ -174,35 +198,31 @@ class UserCrudController extends CrudController
                 'name'  => 'name',
                 'label' => trans('backpack::permissionmanager.name'),
                 'type'  => 'text',
-                'tab'   => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
             [
                 'name'    => 'username',
                 'label'   => 'Username',
                 'type'    => 'text',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-                'tab'     => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
             [
                 'name'    => 'email',
                 'label'   => trans('backpack::permissionmanager.email'),
                 'type'    => 'email',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-                'tab'     => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
             [
                 'name'    => 'password',
                 'label'   => trans('backpack::permissionmanager.password'),
                 'type'    => 'password',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-                'tab'     => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
             [
                 'name'    => 'password_confirmation',
                 'label'   => trans('backpack::permissionmanager.password_confirmation'),
                 'type'    => 'password',
-                'wrapper' => ['class' => 'form-group col-md-6'],
-                'tab'     => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
             [
                 'label'     => trans('backpack::permissionmanager.roles'),
@@ -212,7 +232,7 @@ class UserCrudController extends CrudController
                 'model'     => config('permission.models.role'),
                 'pivot'     => true,
                 'type'      => 'select2_multiple',
-                'tab'       => __('Account'),
+                'wrapper' => ['col' => 4],
             ],
         ]);
     }

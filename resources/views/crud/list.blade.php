@@ -16,6 +16,14 @@ $breadcrumbs = $breadcrumbs ?? $defaultBreadcrumbs;
     <h2>
         <span class="text-capitalize">{!! $crud->getHeading() ?? $crud->entity_name_plural !!}</span>
         <small id="datatable_info_stack">{!! $crud->getSubheading() ?? '' !!}</small>
+
+        <div class="float-right">
+            @if ($crud->buttons()->where('stack', 'top')->count() || $crud->exportButtons())
+            <div class="d-print-none {{ $crud->hasAccess('create') ? 'with-border' : '' }}">
+                @include('crud::inc.button_stack', ['stack' => 'top'])
+            </div>
+            @endif
+        </div>
     </h2>
 </div>
 @endsection
@@ -28,16 +36,7 @@ $breadcrumbs = $breadcrumbs ?? $defaultBreadcrumbs;
     <div class="{{ $crud->getListContentClass() }}">
 
         <div class="row mb-0">
-            <div class="col-sm-6">
-                @if ($crud->buttons()->where('stack', 'top')->count() || $crud->exportButtons())
-                <div class="d-print-none {{ $crud->hasAccess('create') ? 'with-border' : '' }}">
-
-                    @include('crud::inc.button_stack', ['stack' => 'top'])
-
-                </div>
-                @endif
-            </div>
-            <div class="col-sm-6">
+            <div class="col-sm-12">
                 <div id="datatable_search_stack" class="mt-sm-0 mt-2 d-print-none"></div>
             </div>
         </div>

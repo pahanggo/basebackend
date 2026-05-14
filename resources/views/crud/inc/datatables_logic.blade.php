@@ -253,13 +253,12 @@
                 "url": "{!! url($crud->route . '/search') . '?' . Request::getQueryString() !!}",
                 "type": "POST"
             },
-            dom: "<'row hidden'<'col-sm-4'i><'col-sm-4 d-print-none'f><'col-sm-12 mb-2'B>>" +
+            dom: "<'row hidden'<'col-sm-12 mt-2'i>>" +
                 "<'row'<'col-sm-12'tr>>" +
-                "<'row mt-2 d-print-none '<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 'p>>",
-            //   dom:
-            //     "<'row hidden'<'col-sm-6'i><'col-sm-6 d-print-none'f>>" +
+                "<'row mt-2 d-print-none'<'col-6 d-inline-block'lB><'col-6 'p>>",
+            // dom: "<'row hidden'<'col-sm-4'i><'col-sm-4 d-print-none'f><'col-sm-12 mb-2'B>>" +
             //     "<'row'<'col-sm-12'tr>>" +
-            //     "<'row mt-2 d-print-none '<'col-sm-12 col-md-4'l><'col-sm-0 col-md-4 text-center'B><'col-sm-12 col-md-4 'p>>",
+            //     "<'row mt-2 d-print-none '<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 'p>>",
         }
     }
 </script>
@@ -363,23 +362,23 @@
         }
 
         // move search bar
-        $("#crudTable_filter").appendTo($('#datatable_search_stack'));
-        $("#crudTable_filter input").removeClass('form-control-sm');
+        // $("#crudTable_filter").appendTo($('#datatable_search_stack'));
+        // $("#crudTable_filter input").removeClass('form-control-sm');
 
         // move "showing x out of y" info to header
         @if ($crud->getSubheading())
             $('#crudTable_info').hide();
         @else
-            $("#datatable_info_stack").html($('#crudTable_info')).css('display', 'inline-flex').addClass(
-                'animated fadeIn');
+            $("#datatable_info_stack").html($('#crudTable_info')).css('display', 'inline-flex').addClass('animated fadeIn');
         @endif
+        $('#crudTable_info').hide();
 
         @if ($crud->getOperationSetting('resetButton') ?? true)
             // create the reset button
             var crudTableResetButton =
                 '<a href="{{ url($crud->route) }}" class="ml-1" id="crudTable_reset_button">{{ trans('backpack::crud.reset') }}</a>';
 
-            $('#datatable_info_stack').append(crudTableResetButton);
+            // $('#bp-filters-navbar').append(crudTableResetButton);
 
             // when clicking in reset button we clear the localStorage for datatables.
             $('#crudTable_reset_button').on('click', function() {
@@ -477,8 +476,8 @@
             });
         @endif
 
-        $('.dt-buttons').detach().appendTo($('#crudTable_filter')).addClass('ml-2');
-        $('.top-buttons').detach().appendTo($('#bulk-filters')).addClass('ml-2');
+        // $('.dt-buttons').detach().appendTo($('#crudTable_filter')).addClass('ml-2');
+        // $('.top-buttons').detach().appendTo($('#bulk-filters')).addClass('ml-2');
 
     });
 </script>

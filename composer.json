@@ -26,13 +26,14 @@
         "spatie/laravel-permission": "^6.0"
     },
     "require-dev": {
-        "fruitcake/laravel-debugbar": "^4.0",
-        "spatie/laravel-ignition": "^2.0",
         "fakerphp/faker": "^1.9.1",
+        "fruitcake/laravel-debugbar": "^4.0",
+        "kitloong/laravel-migrations-generator": "^7.4",
         "mockery/mockery": "^1.4.2",
         "nunomaduro/collision": "^8.1",
+        "pestphp/pest": "^4.0",
         "phpunit/phpunit": "^12.0.0",
-        "pestphp/pest": "^4.0"
+        "spatie/laravel-ignition": "^2.0"
     },
     "config": {
         "optimize-autoloader": true,

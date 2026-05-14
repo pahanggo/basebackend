@@ -18,7 +18,7 @@
 	    font: normal normal normal 14px/1 "Line Awesome Free";
 	    font-weight: 900;
 	}
-	
+
 	/* Removes the horizontal scroll (if the width allows it) */
 	.box-body.table-responsive {
 	    padding-left: 15px;
@@ -88,11 +88,15 @@
 		/*display: none;*/
 	}
 
+	div.dataTables_wrapper div.dataTables_length {
+		display: inline-block;
+		margin-left: 4px;
+	}
+
 	div.dataTables_wrapper div.dataTables_length select {
 		min-width: 3.6rem;
 		margin-right: 0.4rem;
 	}
-
 
 	/* backpack filters */
 
@@ -106,7 +110,7 @@
       min-height: 25px;
       border-radius: 0;
       margin-bottom: 6px;
-      margin-top: 0px;
+      margin-top: 1em;
       background: transparent;
       border-color: #f4f4f4;
       border: none;
@@ -213,7 +217,7 @@
 		#datatable_search_stack label {
 			width: 100%;
 		}
-	
+
 		#datatable_search_stack input[type="search"] {
 			width: 100%;
 		}

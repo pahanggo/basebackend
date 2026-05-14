@@ -87,7 +87,7 @@ return [
     'infoFiltered'   => '(filtered from _MAX_ total entries)',
     'infoPostFix'    => '.',
     'thousands'      => ',',
-    'lengthMenu'     => '_MENU_ entries per page',
+    'lengthMenu'     => '_MENU_',
     'loadingRecords' => 'Loading...',
     'processing'     => 'Processing...',
     'search'         => 'Search',

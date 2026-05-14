@@ -1,6 +1,6 @@
-<nav class="navbar navbar-expand-lg navbar-filters mb-0 pb-0 pt-0">
+<nav class="navbar navbar-expand-lg navbar-filters mb-0 p-0">
     <!-- Brand and toggle get grouped for better mobile display -->
-    <a class="nav-item d-none d-lg-block"><span class="la la-filter"></span></a>
+    {{-- <a class="nav-item d-none d-lg-block"><span class="la la-filter"></span></a> --}}
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bp-filters-navbar"
         aria-controls="bp-filters-navbar" aria-expanded="false" aria-label="{{ trans('backpack::crud.toggle_filters') }}">
         <span class="la la-filter"></span> {{ trans('backpack::crud.filters') }}
@@ -21,7 +21,7 @@
 </nav>
 
 @push('crud_list_scripts')
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/URI.js/1.19.11/URI.min.js" integrity="sha512-HBrZaiSIpZkFPGkutbgouEKsfM+HCrfyioscGYbNPPWb7kvMQcfKzMo35yXb+X+eaOOzpu6UkppcJXfKKO/UqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/js/uri-1.18.2.min.js"></script>
     <script>
         function addOrUpdateUriParameter(uri, parameter, value) {
             var new_url = normalizeAmpersand(uri);

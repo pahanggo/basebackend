@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'reset' => 'Kata laluan anda telah dikemaskini!',
+    'reset' => 'Kata laluan anda telah dikemas kini!',
     'sent' => 'Emel tukar kata laluan telah dihantar kepada anda',
     'throttled' => 'Sila tunggu sebelum mencuba lagi.',
     'token' => 'Token ubah kata laluan tidak sah.',
