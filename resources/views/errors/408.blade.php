@@ -10,8 +10,12 @@
 
 @section('description')
   @php
-    $default_error_message = "Please <a href='javascript:history.back()''>go back</a>, refresh the page and tru again.";
+    $default_error_message = "Please <a href='javascript:history.back()'>go back</a>, refresh the page and try again.";
 
   @endphp
-  {!! isset($exception)? ($exception->getMessage()?$exception->getMessage():$default_error_message): $default_error_message !!}
+  @if(isset($exception) && $exception->getMessage())
+    {{ $exception->getMessage() }}
+  @else
+    {!! $default_error_message !!}
+  @endif
 @endsection
