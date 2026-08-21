@@ -99,7 +99,7 @@ $breadcrumbs = $breadcrumbs ?? $defaultBreadcrumbs;
         </thead>
         <tbody>
         </tbody>
-        <tfoot>
+        <tfoot class="d-none">
             <tr>
                 {{-- Table columns --}}
                 @foreach ($crud->columns() as $column)
