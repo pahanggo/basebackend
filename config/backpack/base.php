@@ -60,9 +60,9 @@ return [
         // 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.min.css',
     ],
 
-    // CSS files that are loaded in all pages, using Laravel's mix() helper
-    'mix_styles' => [ // file_path => manifest_directory_path
-        'css/style.css' => '',
+    // CSS/JS entrypoints (compiled via Vite) that are loaded in all pages, using the @vite() Blade directive
+    'vite_entrypoints' => [
+        'resources/scss/style.scss',
     ],
 
     // ------
@@ -119,7 +119,14 @@ return [
 
     // JS files that are loaded in all pages, using Laravel's asset() helper
     'scripts' => [
-        '/js/bundle.min.js',
+        // Vendor bundle (order matters): jQuery, Popper, Bootstrap, CoreUI, Pace, SweetAlert, Noty
+        'build/vendor/bundle/jquery-3.7.1.min.js',
+        'build/vendor/bundle/popper-1.16.1.min.js',
+        'build/vendor/bundle/bootstrap-4.6.2.min.js',
+        'build/vendor/bundle/coreui-2.1.16.min.js',
+        'build/vendor/bundle/pace-1.2.4.min.js',
+        'build/vendor/bundle/sweetalert-2.1.2.min.js',
+        'build/vendor/bundle/noty-3.1.4.min.js',
         // Backstrap includes jQuery, Bootstrap, CoreUI, PNotify, Popper
         // 'packages/backpack/base/js/bundle.js',
         // 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js',
@@ -137,11 +144,6 @@ return [
         // 'https://unpkg.com/vue@2.4.4/dist/vue.min.js',
         // 'https://unpkg.com/react@16/umd/react.production.min.js',
         // 'https://unpkg.com/react-dom@16/umd/react-dom.production.min.js',
-    ],
-
-    // JS files that are loaded in all pages, using Laravel's mix() helper
-    'mix_scripts' => [// file_path => manifest_directory_path
-        // 'js/app.js' => '',
     ],
 
     // -------------

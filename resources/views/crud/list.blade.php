@@ -128,7 +128,7 @@ $breadcrumbs = $breadcrumbs ?? $defaultBreadcrumbs;
 
 @section('after_styles')
 <!-- DATA TABLES -->
-<link rel="stylesheet" href="/css/list.min.css">
+@vite(['resources/css/list-bundle.css'])
 
 <link rel="stylesheet"
 href="{{ asset('packages/backpack/crud/css/crud.css') . '?v=' . config('backpack.base.cachebusting_string') }}">

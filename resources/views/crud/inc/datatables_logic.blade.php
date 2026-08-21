@@ -12,6 +12,14 @@
 <script type="text/javascript" src="{{ asset('packages/datatables.net-responsive-bs4/js/responsive.bootstrap4.min.js') }}"></script>
 <script type="text/javascript" src="{{ asset('packages/datatables.net-fixedheader/js/dataTables.fixedHeader.min.js') }}"></script>
 <script type="text/javascript" src="{{ asset('packages/datatables.net-fixedheader-bs4/js/fixedHeader.bootstrap4.min.js') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/dataTables.buttons.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/buttons.bootstrap4.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/jszip.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/pdfmake.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/vfs_fonts.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/buttons.html5.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/buttons.print.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
+<script type="text/javascript" src="{{ asset('build/vendor/list/buttons.colVis.min.js').'?v='.config('backpack.base.cachebusting_string') }}"></script>
 
 <script>
     // here we will check if the cached dataTables paginator length is conformable with current paginator settings.

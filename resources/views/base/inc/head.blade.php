@@ -16,10 +16,8 @@
         @endforeach
     @endif
 
-    @if (config('backpack.base.mix_styles') && count(config('backpack.base.mix_styles')))
-        @foreach (config('backpack.base.mix_styles') as $path => $manifest)
-        <link rel="stylesheet" type="text/css" href="{{ mix($path, $manifest) }}">
-        @endforeach
+    @if (config('backpack.base.vite_entrypoints') && count(config('backpack.base.vite_entrypoints')))
+        @vite(config('backpack.base.vite_entrypoints'))
     @endif
 
     @yield('after_styles')
