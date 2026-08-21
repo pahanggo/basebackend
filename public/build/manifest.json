@@ -1,0 +1,20 @@
+{
+  "resources/css/list-bundle.css": {
+    "file": "assets/list-bundle-Dw3DfdWY.css",
+    "name": "list-bundle",
+    "names": [
+      "list-bundle.css"
+    ],
+    "src": "resources/css/list-bundle.css",
+    "isEntry": true
+  },
+  "resources/scss/style.scss": {
+    "file": "assets/style-qE9Gx_hd.css",
+    "name": "style",
+    "names": [
+      "style.css"
+    ],
+    "src": "resources/scss/style.scss",
+    "isEntry": true
+  }
+}
