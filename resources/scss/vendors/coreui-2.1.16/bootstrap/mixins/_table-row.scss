@@ -1,3 +1,7 @@
+@use "hover";
+
+@use "sass:color";
+
 // Tables
 
 @mixin table-row-variant($state, $background, $border: null) {
@@ -23,10 +27,10 @@
   // Hover states for `.table-hover`
   // Note: this is not available for cells or rows within `thead` or `tfoot`.
   .table-hover {
-    $hover-background: darken($background, 5%);
+    $hover-background: color.adjust($background, $lightness: -5%, $space: hsl);
 
     .table-#{$state} {
-      @include hover {
+      @include hover.hover {
         background-color: $hover-background;
 
         > td,

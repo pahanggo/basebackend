@@ -1,11 +1,17 @@
+@use "../../variables" as variables2;
+@use "bootstrap/mixins/border-radius";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "mixins/switches";
+@use "variables";
+
 //
 // Base styles
 //
 
 .switch {
   display: inline-block;
-  width: $switch-width;
-  height: $switch-height;
+  width: variables.$switch-width;
+  height: variables.$switch-height;
 }
 
 .switch-input {
@@ -18,28 +24,28 @@
   height: inherit;
   cursor: pointer;
   background-color: #fff;
-  border: $border-width solid $border-color;
+  border: bootstrap-variables.$border-width solid bootstrap-variables.$border-color;
   transition: .15s ease-out;
-  @include border-radius($border-radius);
+  @include border-radius.border-radius(bootstrap-variables.$border-radius);
 
   &::before {
     position: absolute;
-    top: $switch-handle-margin;
-    left: $switch-handle-margin;
+    top: variables.$switch-handle-margin;
+    left: variables.$switch-handle-margin;
     box-sizing: border-box;
-    width: $switch-height - ($switch-handle-margin * 2) - ($border-width * 2);
-    height: $switch-height - ($switch-handle-margin * 2) - ($border-width * 2);
+    width: variables.$switch-height - (variables.$switch-handle-margin * 2) - (bootstrap-variables.$border-width * 2);
+    height: variables.$switch-height - (variables.$switch-handle-margin * 2) - (bootstrap-variables.$border-width * 2);
     content: "";
     background-color: #fff;
-    border: 1px solid $border-color;
+    border: 1px solid bootstrap-variables.$border-color;
     transition: .15s ease-out;
-    @include border-radius($border-radius * 0.5);
+    @include border-radius.border-radius(bootstrap-variables.$border-radius * 0.5);
   }
 }
 
 .switch-input:checked ~ .switch-slider {
   &::before {
-    transform: translateX($switch-width - $switch-height);
+    transform: translateX(variables.$switch-width - variables.$switch-height);
   }
 }
 
@@ -53,18 +59,18 @@
 //
 
 .switch-lg {
-  @include switch-size($switch-lg-width, $switch-lg-height, $switch-lg-font-size, $switch-handle-margin);
+  @include switches.switch-size(variables.$switch-lg-width, variables.$switch-lg-height, variables.$switch-lg-font-size, variables.$switch-handle-margin);
 }
 
 .switch-sm {
-  @include switch-size($switch-sm-width, $switch-sm-height, $switch-sm-font-size, $switch-handle-margin);
+  @include switches.switch-size(variables.$switch-sm-width, variables.$switch-sm-height, variables.$switch-sm-font-size, variables.$switch-handle-margin);
 }
 
 //
 // Switch with label
 //
 .switch-label {
-  width: $switch-label-width;
+  width: variables.$switch-label-width;
 
   .switch-slider {
     &::before {
@@ -77,10 +83,10 @@
       z-index: 1;
       width: 50%;
       margin-top: -.5em;
-      font-size: $switch-font-size;
+      font-size: variables.$switch-font-size;
       font-weight: 600;
       line-height: 1;
-      color: $gray-300;
+      color: bootstrap-variables.$gray-300;
       text-align: center;
       text-transform: uppercase;
       content: attr(data-unchecked);
@@ -90,7 +96,7 @@
 
   .switch-input:checked ~ .switch-slider {
     &::before {
-      transform: translateX($switch-label-width - $switch-height);
+      transform: translateX(variables.$switch-label-width - variables.$switch-height);
     }
     &::after {
       left: 1px;
@@ -101,11 +107,11 @@
 
   // Sizes
   &.switch-lg {
-    @include switch-size($switch-label-lg-width, $switch-lg-height, $switch-lg-font-size, $switch-handle-margin);
+    @include switches.switch-size(variables.$switch-label-lg-width, variables.$switch-lg-height, variables.$switch-lg-font-size, variables.$switch-handle-margin);
   }
 
   &.switch-sm {
-    @include switch-size($switch-label-sm-width, $switch-sm-height, $switch-sm-font-size, $switch-handle-margin);
+    @include switches.switch-size(variables.$switch-label-sm-width, variables.$switch-sm-height, variables.$switch-sm-font-size, variables.$switch-handle-margin);
   }
 }
 
@@ -115,14 +121,14 @@
 
 .switch-3d {
   .switch-slider {
-    background-color: $gray-100;
+    background-color: bootstrap-variables.$gray-100;
     border-radius: 50em;
 
     &::before {
       top: -1px;
       left: -1px;
-      width: $switch-height;
-      height: $switch-height;
+      width: variables.$switch-height;
+      height: variables.$switch-height;
       border: 0;
       border-radius: 50em;
       box-shadow: 0 2px 5px rgba(0, 0, 0, .3);
@@ -131,11 +137,11 @@
 
   // Sizes
   &.switch-lg {
-    @include switch-3d-size($switch-lg-width, $switch-lg-height);
+    @include switches.switch-3d-size(variables.$switch-lg-width, variables.$switch-lg-height);
   }
 
   &.switch-sm {
-    @include switch-3d-size($switch-sm-width, $switch-sm-height);
+    @include switches.switch-3d-size(variables.$switch-sm-width, variables.$switch-sm-height);
   }
 }
 
@@ -143,18 +149,18 @@
 // Switch Variants
 //
 
-@each $color, $value in $theme-colors {
+@each $color, $value in variables2.$theme-colors {
   //normal style
   .switch-#{$color} {
-    @include switch-variant($value);
+    @include switches.switch-variant($value);
   }
   //outline style
   .switch-outline-#{$color} {
-    @include switch-outline-variant($value);
+    @include switches.switch-outline-variant($value);
   }
   //outline alternative style
   .switch-outline-#{$color}-alt {
-    @include switch-outline-variant-alt($value);
+    @include switches.switch-outline-variant-alt($value);
   }
 }
 

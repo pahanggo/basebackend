@@ -1,3 +1,5 @@
+@use "bootstrap/variables";
+
 .breadcrumb-menu {
   margin-left: auto;
 
@@ -10,28 +12,28 @@
   }
 
   .btn {
-    padding: 0 $input-btn-padding-x;
-    color: $text-muted;
+    padding: 0 variables.$input-btn-padding-x;
+    color: variables.$text-muted;
     vertical-align: top;
     border: 0;
 
     &:hover,
     &.active {
-      color: $body-color;
+      color: variables.$body-color;
       background: transparent;
     }
   }
 
   .open {
     .btn {
-      color: $body-color;
+      color: variables.$body-color;
       background: transparent;
     }
   }
 
   .dropdown-menu {
     min-width: 180px;
-    line-height: $line-height-base;
+    line-height: variables.$line-height-base;
   }
 }
 

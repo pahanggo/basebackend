@@ -1,3 +1,6 @@
+@use "bootstrap/mixins/border-radius";
+@use "bootstrap/variables";
+
 //
 // Base styles
 //
@@ -7,12 +10,12 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  margin-bottom: ($spacer * 1.5);
+  margin-bottom: (variables.$spacer * 1.5);
   word-wrap: break-word;
-  background-color: $card-bg;
+  background-color: variables.$card-bg;
   background-clip: border-box;
-  border: $card-border-width solid $card-border-color;
-  @include border-radius($card-border-radius);
+  border: variables.$card-border-width solid variables.$card-border-color;
+  @include border-radius.border-radius(variables.$card-border-radius);
 }
 
 .brand-card-header {
@@ -21,7 +24,7 @@
   align-items: center;
   justify-content: center;
   height: 6rem;
-  @include border-radius($card-border-radius $card-border-radius 0 0);
+  @include border-radius.border-radius(variables.$card-border-radius variables.$card-border-radius 0 0);
 
   i {
     font-size: 2rem;
@@ -40,16 +43,16 @@
 .brand-card-body {
   display: flex;
   flex-direction: row;
-  padding: $card-spacer-y 0;
+  padding: variables.$card-spacer-y 0;
   text-align: center;
 
   > * {
     flex: 1;
-    padding: ($card-spacer-y * .25) 0;
+    padding: (variables.$card-spacer-y * .25) 0;
   }
 
   > *:not(:last-child) {
-    border-right: 1px solid $border-color;
+    border-right: 1px solid variables.$border-color;
   }
 }
 
@@ -59,7 +62,7 @@
   .brand-card-body {
     > *:not(:last-child) {
       border-right: 0;
-      border-left: 1px solid $border-color;
+      border-left: 1px solid variables.$border-color;
     }
   }
 }

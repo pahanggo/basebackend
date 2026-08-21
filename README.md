@@ -47,5 +47,14 @@ Generator templates can be editted inside the `stubs` directory.
 
 ### Customizing SCSS
 
-Source SCSS is in `resources/scss/style.css`. To customize it run `npm install` and then `npm run dev`. Production builds uses `npm run prod`.
+Source SCSS is in `resources/scss/style.scss`, which pulls in variables (`_variables.scss`), the vendored Bootstrap 4 / CoreUI 2 theme (`vendors/coreui-2.1.16`), and app-level overrides (`_custom.scss`, `_vendor.scss`) in that order — put your own styles in `_custom.scss` so they load after (and can override) the vendored theme.
+
+Run `npm install` once, then `npm run dev` to start the Vite dev server with hot-reloading while you work. Run `npm run build` to produce the production build in `public/build` (this is what ships — run it before deploying any SCSS change).
+
+### Customizing Theme Colors
+
+The theme's colors (`primary`, `secondary`, `success`, `info`, `warning`, `danger`) can be changed two ways:
+
+1. **Without a rebuild** — set a `BACKPACK_COLOR_*` env var (e.g. `BACKPACK_COLOR_PRIMARY=#5f0461`) and reload the page. See `config/backpack/base.php`'s `theme_colors` array for the full list. Every themed component (buttons, badges, alerts, tables, sidebar links, links, etc.) reads a CSS custom property (`--primary`, `--success`, ...) instead of a compiled-in color, so this takes effect immediately — no `npm run build` needed. This is the quickest way to try a color or make it admin/environment-configurable, and it's what those components fall back to if you don't set anything.
+2. **Permanently, at the source** — edit the color variables (`$primary`, `$secondary`, `$success`, `$info`, `$warning`, `$danger`) in `resources/scss/_variables.scss` and rebuild. This changes what actually ships in the compiled CSS (and the `theme_colors` config defaults, if you keep them in sync), rather than overriding it at runtime.
 

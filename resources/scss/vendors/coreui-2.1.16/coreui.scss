@@ -7,62 +7,62 @@
  */
 
 // Override Boostrap variables
-@import "variables";
+@use "variables";
 
 // Import Bootstrap source files
-@import "bootstrap/bootstrap"; // from bootstrap node_modules
+@use "bootstrap/bootstrap"; // from bootstrap node_modules
 
 // Mixins
-@import "mixins";
+@use "mixins";
 
 // Animations
-@import "animate";
+@use "animate";
 
 // Vendors
-@import "vendors";
+@use "vendors";
 
 // Components
-@import "aside";
-@import "avatars";
-@import "badge";
-@import "breadcrumb-menu";
-@import "breadcrumb";
-@import "brand-card";
-@import "brand-buttons";
-@import "button-group";
-@import "buttons";
-@import "callout";
-@import "card";
-@import "charts";
-@import "dropdown";
-@import "footer";
-@import "grid";
-@import "header";
-@import "input-group";
-@import "images";
-@import "list-group";
-@import "modal";
-@import "nav";
-@import "progress";
-@import "progress-group";
-@import "sidebar";
-@import "switches";
-@import "tables";
-@import "widgets";
+@use "aside";
+@use "avatars";
+@use "badge";
+@use "breadcrumb-menu";
+@use "breadcrumb";
+@use "brand-card";
+@use "brand-buttons";
+@use "button-group";
+@use "buttons";
+@use "callout";
+@use "card";
+@use "charts";
+@use "dropdown";
+@use "footer";
+@use "grid";
+@use "header";
+@use "input-group";
+@use "images";
+@use "list-group";
+@use "modal";
+@use "nav";
+@use "progress";
+@use "progress-group";
+@use "sidebar";
+@use "switches";
+@use "tables";
+@use "widgets";
 
 // Layout Options
-@import "layout";
+@use "layout";
 
-@import "others";
+@use "others";
 
 // Utility classes
-@import "utilities";
+@use "utilities";
 
 // Right-to-left
-@import "rtl";
+@use "rtl";
 
 // Custom Properties support for Internet Explorer
-@import "ie-custom-properties";
+@use "ie-custom-properties";
 
 // temp fixes
-@import "fixes";
+@use "fixes";

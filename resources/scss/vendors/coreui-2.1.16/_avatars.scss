@@ -1,5 +1,10 @@
+@use "mixins/avatars";
+@use "variables";
+@use "images";
+@use "header";
+
 .avatar {
-  @include avatar($avatar-width,$avatar-status-width);
+  @include avatars.avatar(variables.$avatar-width,variables.$avatar-status-width);
 
   > img {
     @extend .img-avatar;
@@ -8,22 +13,22 @@
 }
 
 .avatar-lg {
-  @include avatar($avatar-lg-width,$avatar-lg-status-width);
+  @include avatars.avatar(variables.$avatar-lg-width,variables.$avatar-lg-status-width);
 }
 
 .avatar-sm {
-  @include avatar($avatar-sm-width,$avatar-sm-status-width);
+  @include avatars.avatar(variables.$avatar-sm-width,variables.$avatar-sm-status-width);
 }
 
 .avatar-xs {
-  @include avatar($avatar-xs-width,$avatar-xs-status-width);
+  @include avatars.avatar(variables.$avatar-xs-width,variables.$avatar-xs-status-width);
 }
 
 .avatars-stack {
 
   .avatar {
-    margin-right: - ($avatar-width * 0.5);
-    transition: margin-right $layout-transition-speed;
+    margin-right: - (variables.$avatar-width * 0.5);
+    transition: margin-right variables.$layout-transition-speed;
 
     &:hover {
       margin-right: 0;
@@ -31,14 +36,14 @@
   }
 
   .avatar-lg {
-    margin-right: - ($avatar-lg-width * 0.5);
+    margin-right: - (variables.$avatar-lg-width * 0.5);
   }
 
   .avatar-sm {
-    margin-right: - ($avatar-sm-width * 0.5);
+    margin-right: - (variables.$avatar-sm-width * 0.5);
   }
 
   .avatar-xs {
-    margin-right: - ($avatar-xs-width * 0.5);
+    margin-right: - (variables.$avatar-xs-width * 0.5);
   }
 }

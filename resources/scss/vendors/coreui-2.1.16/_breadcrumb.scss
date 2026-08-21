@@ -1,16 +1,21 @@
+@use "bootstrap/mixins/border-radius";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "mixins/borders";
+@use "variables";
+
 .breadcrumb {
   position: relative;
-  @include border-radius($breadcrumb-border-radius);
-  @include borders($breadcrumb-borders);
+  @include border-radius.border-radius(bootstrap-variables.$breadcrumb-border-radius);
+  @include borders.borders(variables.$breadcrumb-borders);
 }
 
 *[dir="rtl"] {
   .breadcrumb-item::before {
     padding-right: 0;
-    padding-left: $breadcrumb-item-padding;
+    padding-left: bootstrap-variables.$breadcrumb-item-padding;
   }
   .breadcrumb-item {
-    padding-right: $breadcrumb-item-padding;
+    padding-right: bootstrap-variables.$breadcrumb-item-padding;
     padding-left: 0;
   }
 }

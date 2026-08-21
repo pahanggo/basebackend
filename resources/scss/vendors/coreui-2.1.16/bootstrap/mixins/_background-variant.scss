@@ -1,3 +1,8 @@
+@use "../variables";
+@use "hover";
+
+@use "sass:color";
+
 // stylelint-disable declaration-no-important
 
 // Contextual backgrounds
@@ -8,14 +13,14 @@
   }
   a#{$parent},
   button#{$parent} {
-    @include hover-focus {
-      background-color: darken($color, 10%) !important;
+    @include hover.hover-focus {
+      background-color: color.adjust($color, $lightness: -10%, $space: hsl) !important;
     }
   }
 }
 
 @mixin bg-gradient-variant($parent, $color) {
   #{$parent} {
-    background: $color linear-gradient(180deg, mix($body-bg, $color, 15%), $color) repeat-x !important;
+    background: $color linear-gradient(180deg, color.mix(variables.$body-bg, $color, 15%), $color) repeat-x !important;
   }
 }

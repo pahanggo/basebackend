@@ -1,8 +1,10 @@
+@use "bootstrap/variables";
+
 // Links, buttons, and more within the dropdown menu
 .dropdown-item {
   position: relative;
   padding: 10px 20px;
-  border-bottom: 1px solid $dropdown-border-color;
+  border-bottom: 1px solid variables.$dropdown-border-color;
 
   &:last-child {
     border-bottom: 0;
@@ -13,7 +15,7 @@
     width: 20px;
     margin-right: 10px;
     margin-left: -10px;
-    color: $dropdown-border-color;
+    color: variables.$dropdown-border-color;
     text-align: center;
   }
 
@@ -27,15 +29,15 @@
 // Dropdown section headers
 .dropdown-header {
   padding: 8px 20px;
-  background: $dropdown-divider-bg;
-  border-bottom: 1px solid $dropdown-border-color;
+  background: variables.$dropdown-divider-bg;
+  border-bottom: 1px solid variables.$dropdown-border-color;
 
   .btn {
     margin-top: -7px;
-    color: $dropdown-header-color;
+    color: variables.$dropdown-header-color;
 
     &:hover {
-      color: $body-color;
+      color: variables.$body-color;
     }
 
     &.pull-right {
@@ -72,11 +74,11 @@
   .dropdown-toggle {
     &::before {
       margin-right: 0;
-      margin-left: $caret-spacing;
+      margin-left: variables.$caret-spacing;
     }
 
     &::after {
-      margin-right: $caret-spacing;
+      margin-right: variables.$caret-spacing;
       margin-left: 0;
     }
   }

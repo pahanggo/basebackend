@@ -20,6 +20,20 @@
         @vite(config('backpack.base.vite_entrypoints'))
     @endif
 
+    @php $themeColors = array_filter((array) config('backpack.base.theme_colors', [])); @endphp
+    @if (count($themeColors))
+        {{-- Overrides the theme's CSS custom properties (see resources/scss/_custom.scss)
+             with the colors set in config('backpack.base.theme_colors'), so admins can
+             recolor the theme via config/env without a recompile. --}}
+        <style>
+            :root {
+                @foreach ($themeColors as $name => $color)
+                --{{ $name }}: {{ $color }};
+                @endforeach
+            }
+        </style>
+    @endif
+
     @yield('after_styles')
     @stack('after_styles')
 

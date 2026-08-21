@@ -1,15 +1,18 @@
+@use "../../variables" as variables2;
+@use "bootstrap/variables";
+
 //
 // Base styles
 //
 
 .callout {
   position: relative;
-  padding: 0 $spacer;
-  margin: $spacer 0;
-  border-left: 4px solid $border-color;
+  padding: 0 variables.$spacer;
+  margin: variables.$spacer 0;
+  border-left: 4px solid variables.$border-color;
 
-  @if $enable-rounded {
-    border-radius: $border-radius;
+  @if variables.$enable-rounded {
+    border-radius: variables.$border-radius;
   }
 
   .chart-wrapper {
@@ -22,11 +25,11 @@
 }
 
 .callout-bordered {
-  border: 1px solid $border-color;
+  border: 1px solid variables.$border-color;
   border-left-width: 4px;
 }
 .callout code {
-  border-radius: $border-radius;
+  border-radius: variables.$border-radius;
 }
 .callout h4 {
   margin-top: 0;
@@ -43,7 +46,7 @@
 // Variants
 //
 
-@each $color, $value in $theme-colors {
+@each $color, $value in variables2.$theme-colors {
   .callout-#{$color} {
     border-left-color: $value;
 
@@ -56,10 +59,10 @@
 // Right-to-Left Support
 *[dir="rtl"] {
   .callout {
-    border-right: 4px solid $border-color;
+    border-right: 4px solid variables.$border-color;
     border-left: 0;
 
-    @each $color, $value in $theme-colors {
+    @each $color, $value in variables2.$theme-colors {
       &.callout-#{$color} {
         border-right-color: $value;
       }

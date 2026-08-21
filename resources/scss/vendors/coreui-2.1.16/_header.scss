@@ -1,22 +1,28 @@
+@use "bootstrap/mixins/breakpoints";
+@use "bootstrap/mixins/hover";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "mixins/borders";
+@use "variables";
+
 .app-header {
   position: relative;
   flex-direction: row;
-  height: $navbar-height;
+  height: variables.$navbar-height;
   padding: 0;
   margin: 0;
-  background-color: $navbar-bg;
-  @include borders($navbar-border);
+  background-color: variables.$navbar-bg;
+  @include borders.borders(variables.$navbar-border);
 
   .navbar-brand {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: $navbar-brand-width;
-    height: $navbar-height;
+    width: variables.$navbar-brand-width;
+    height: variables.$navbar-height;
     padding: 0;
     margin-right: 0;
-    background-color: $navbar-brand-bg;
-    @include borders($navbar-brand-border);
+    background-color: variables.$navbar-brand-bg;
+    @include borders.borders(variables.$navbar-brand-border);
 
     .navbar-brand-minimized {
       display: none;
@@ -25,16 +31,16 @@
 
   .navbar-toggler {
     min-width: 50px;
-    padding: $navbar-toggler-padding-y 0;
+    padding: bootstrap-variables.$navbar-toggler-padding-y 0;
 
     &:hover .navbar-toggler-icon {
-      background-image: $navbar-toggler-icon-hover;
+      background-image: variables.$navbar-toggler-icon-hover;
     }
   }
 
   .navbar-toggler-icon {
     height: 23px;
-    background-image: $navbar-toggler-icon;
+    background-image: variables.$navbar-toggler-icon;
   }
 
   .navbar-nav {
@@ -67,7 +73,7 @@
       }
 
       > .img-avatar {
-        height: $navbar-height - 20px;
+        height: variables.$navbar-height - 20px;
         margin: 0 10px;
       }
     }
@@ -75,7 +81,7 @@
 
   .dropdown-menu {
     padding-bottom: 0;
-    line-height: $line-height-base;
+    line-height: bootstrap-variables.$line-height-base;
   }
 
   .dropdown-item {
@@ -93,10 +99,10 @@
 
 .navbar-nav {
   .nav-link {
-    color: $navbar-color;
+    color: variables.$navbar-color;
 
-    @include hover-focus {
-      color: $navbar-hover-color;
+    @include hover.hover-focus {
+      color: variables.$navbar-hover-color;
     }
   }
 
@@ -104,8 +110,8 @@
   .active > .nav-link,
   .nav-link.open,
   .nav-link.active {
-    @include plain-hover-focus {
-      color: $navbar-active-color;
+    @include hover.plain-hover-focus {
+      color: variables.$navbar-active-color;
     }
   }
 }
@@ -114,13 +120,13 @@
   background-color: rgba(0, 0, 0, .075);
 }
 
-@include media-breakpoint-up($breakpoint-mobile-up) {
+@include breakpoints.media-breakpoint-up(variables.$breakpoint-mobile-up) {
   .brand-minimized {
     .app-header {
       .navbar-brand {
-        width: $navbar-brand-minimized-width;
-        background-color: $navbar-brand-minimized-bg;
-        @include borders($navbar-brand-minimized-border);
+        width: variables.$navbar-brand-minimized-width;
+        background-color: variables.$navbar-brand-minimized-bg;
+        @include borders.borders(variables.$navbar-brand-minimized-border);
 
         .navbar-brand-full {
           display: none;

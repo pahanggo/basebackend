@@ -1,30 +1,32 @@
+@use "sass:list";
+@use "sass:map";
 @mixin borders($borders) {
   @each $border in $borders {
-    $direction: nth($border, 1);
+    $direction: list.nth($border, 1);
     @if $direction == "all" {
-      $size: map-get(map-get($borders, $direction), size);
-      $style: map-get(map-get($borders, $direction), style);
-      $color: map-get(map-get($borders, $direction), color);
+      $size: map.get(map.get($borders, $direction), size);
+      $style: map.get(map.get($borders, $direction), style);
+      $color: map.get(map.get($borders, $direction), color);
       border: $size $style $color;
     } @else if $direction == "top" {
-      $size: map-get(map-get($borders, $direction), size);
-      $style: map-get(map-get($borders, $direction), style);
-      $color: map-get(map-get($borders, $direction), color);
+      $size: map.get(map.get($borders, $direction), size);
+      $style: map.get(map.get($borders, $direction), style);
+      $color: map.get(map.get($borders, $direction), color);
       border-top: $size $style $color;
     } @else if $direction == "right" {
-      $size: map-get(map-get($borders, $direction), size);
-      $style: map-get(map-get($borders, $direction), style);
-      $color: map-get(map-get($borders, $direction), color);
+      $size: map.get(map.get($borders, $direction), size);
+      $style: map.get(map.get($borders, $direction), style);
+      $color: map.get(map.get($borders, $direction), color);
       border-right: $size $style $color;
     } @else if $direction == "bottom" {
-      $size: map-get(map-get($borders, $direction), size);
-      $style: map-get(map-get($borders, $direction), style);
-      $color: map-get(map-get($borders, $direction), color);
+      $size: map.get(map.get($borders, $direction), size);
+      $style: map.get(map.get($borders, $direction), style);
+      $color: map.get(map.get($borders, $direction), color);
       border-bottom: $size $style $color;
     } @else if $direction == "left" {
-      $size: map-get(map-get($borders, $direction), size);
-      $style: map-get(map-get($borders, $direction), style);
-      $color: map-get(map-get($borders, $direction), color);
+      $size: map.get(map.get($borders, $direction), size);
+      $style: map.get(map.get($borders, $direction), style);
+      $color: map.get(map.get($borders, $direction), color);
       border-left: $size $style $color;
     }
   }

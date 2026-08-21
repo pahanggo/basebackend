@@ -1,3 +1,4 @@
+@use "sass:map";
 // -------------------
 // Backstrap Variables
 // -------------------
@@ -17,7 +18,7 @@ $gray-900: #1B2A4E !default;
 $black: #161C2D !default;
 
 $grays: () !default;
-$grays: map-merge(
+$grays: map.merge(
   (
     "100": $gray-100,
     "200": $gray-200,
@@ -46,7 +47,7 @@ $cyan:       #17a2b8 !default;
 $light-blue: #69d2f1 !default;
 
 $colors: () !default;
-$colors: map-merge(
+$colors: map.merge(
   (
     "blue":       $blue,
     "indigo":     $indigo,
@@ -66,7 +67,7 @@ $colors: map-merge(
   $colors
 );
 
-$primary:       $dark-red !default;
+$primary:       $blue !default;
 $secondary:     $gray-300 !default;
 $success:       $green !default;
 $info:          $blue !default;
@@ -80,7 +81,7 @@ $border-color: rgba(0, 40, 100, 0.12);
 $muted-bg-color: rgba(0, 0, 0, 0.02);
 
 $theme-colors: () !default;
-$theme-colors: map-merge(
+$theme-colors: map.merge(
   (
     "primary":    $primary,
     "default":    $secondary,
@@ -132,8 +133,6 @@ $font-weight-bolder:          bolder !default;
 $font-weight-base:            $font-weight-normal !default;
 $line-height-base:            1.5 !default;
 
-
 // Modals
-
 $modal-content-border-color:        rgba($black, .1) !default;
 $modal-header-border-color:         $modal-content-border-color !default;

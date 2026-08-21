@@ -1,22 +1,31 @@
+@use "../../variables" as variables2;
+@use "bootstrap/mixins/breakpoints";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "mixins/borders";
+@use "mixins/sidebar-width";
+@use "variables";
+
+@use "sass:color";
+
 // stylelint-disable selector-max-class, declaration-no-important, selector-max-compound-selectors, function-url-quotes, selector-max-combinators
 .sidebar {
   display: flex;
   flex-direction: column;
-  padding: $sidebar-padding;
-  color: $sidebar-color;
-  background: $sidebar-bg;
+  padding: variables.$sidebar-padding;
+  color: variables.$sidebar-color;
+  background: variables.$sidebar-bg;
   background-color: transparent;
-  @include borders($sidebar-borders);
+  @include borders.borders(variables.$sidebar-borders);
 
   .sidebar-close {
     position: absolute;
     right: 0;
     display: none;
-    padding: 0 $spacer;
+    padding: 0 bootstrap-variables.$spacer;
     font-size: 24px;
     font-weight: 800;
-    line-height: $navbar-height;
-    color: $sidebar-color;
+    line-height: variables.$navbar-height;
+    color: variables.$sidebar-color;
     background: 0;
     border: 0;
     opacity: .8;
@@ -30,19 +39,19 @@
   // .sidebar-brand { }
 
   .sidebar-header {
-    flex: 0 0 $sidebar-header-height;
-    padding: $sidebar-header-padding-y $sidebar-header-padding-x;
+    flex: 0 0 variables.$sidebar-header-height;
+    padding: variables.$sidebar-header-padding-y variables.$sidebar-header-padding-x;
     text-align: center;
-    background: $sidebar-header-bg;
+    background: variables.$sidebar-header-bg;
   }
 
   .sidebar-form .form-control {
-    color: $sidebar-form-color;
-    background: $sidebar-form-bg;
-    border: $sidebar-form-border;
+    color: variables.$sidebar-form-color;
+    background: variables.$sidebar-form-bg;
+    border: variables.$sidebar-form-border;
 
     &::placeholder {
-      color: $sidebar-form-placeholder-color;
+      color: variables.$sidebar-form-placeholder-color;
     }
   }
 
@@ -51,13 +60,13 @@
     flex: 1;
     overflow-x: hidden;
     overflow-y: auto;
-    @include sidebar-width($sidebar-borders, $sidebar-width);
+    @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-width);
   }
 
   .sidebar-nav {
     position: relative;
     flex: 1;
-    @include sidebar-width($sidebar-borders, $sidebar-width);
+    @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-width);
   }
 
   > .sidebar-nav {
@@ -66,17 +75,17 @@
   }
 
   .nav {
-    @include sidebar-width($sidebar-borders, $sidebar-width);
+    @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-width);
     flex-direction: column;
     min-height: 100%;
     padding: 0;
   }
 
   .nav-title {
-    padding: $sidebar-nav-title-padding-y $sidebar-nav-title-padding-x;
+    padding: variables.$sidebar-nav-title-padding-y variables.$sidebar-nav-title-padding-x;
     font-size: 80%;
     font-weight: 700;
-    color: $sidebar-nav-title-color;
+    color: variables.$sidebar-nav-title-color;
     text-transform: uppercase;
   }
 
@@ -105,21 +114,21 @@
 
   .nav-link {
     display: block;
-    padding: $sidebar-nav-link-padding-y $sidebar-nav-link-padding-x;
-    color: $sidebar-nav-link-color;
+    padding: variables.$sidebar-nav-link-padding-y variables.$sidebar-nav-link-padding-x;
+    color: variables.$sidebar-nav-link-color;
     text-decoration: none;
-    background: $sidebar-nav-link-bg;
-    @include borders($sidebar-nav-link-borders);
-    @if $enable-sidebar-nav-rounded {
-      border-radius: $border-radius;
+    background: variables.$sidebar-nav-link-bg;
+    @include borders.borders(variables.$sidebar-nav-link-borders);
+    @if variables.$enable-sidebar-nav-rounded {
+      border-radius: bootstrap-variables.$border-radius;
     }
 
     .nav-icon {
       display: inline-block;
-      width: ($font-size-base * 1.25);
-      margin: 0 ($sidebar-nav-link-padding-x * 0.5) 0 0;
-      font-size: $font-size-base;
-      color: $sidebar-nav-link-icon-color;
+      width: (bootstrap-variables.$font-size-base * 1.25);
+      margin: 0 (variables.$sidebar-nav-link-padding-x * 0.5) 0 0;
+      font-size: bootstrap-variables.$font-size-base;
+      color: variables.$sidebar-nav-link-icon-color;
       text-align: center;
     }
 
@@ -129,61 +138,61 @@
     }
 
     &.active {
-      color: $sidebar-nav-link-active-color;
-      background: $sidebar-nav-link-active-bg;
-      @include borders($sidebar-nav-link-active-borders);
+      color: variables.$sidebar-nav-link-active-color;
+      background: variables.$sidebar-nav-link-active-bg;
+      @include borders.borders(variables.$sidebar-nav-link-active-borders);
 
       .nav-icon {
-        color: $sidebar-nav-link-active-icon-color;
+        color: variables.$sidebar-nav-link-active-icon-color;
       }
     }
 
     &:hover {
-      color: $sidebar-nav-link-hover-color;
-      background: $sidebar-nav-link-hover-bg;
-      @include borders($sidebar-nav-link-hover-borders);
+      color: variables.$sidebar-nav-link-hover-color;
+      background: variables.$sidebar-nav-link-hover-bg;
+      @include borders.borders(variables.$sidebar-nav-link-hover-borders);
 
       .nav-icon {
-        color: $sidebar-nav-link-hover-icon-color;
+        color: variables.$sidebar-nav-link-hover-icon-color;
       }
 
       &.nav-dropdown-toggle::before {
-        background-image: $sidebar-nav-dropdown-indicator-hover;
+        background-image: variables.$sidebar-nav-dropdown-indicator-hover;
       }
     }
 
     &.disabled {
-      color: $sidebar-nav-link-disabled-color;
-      cursor: $cursor-disabled;
+      color: variables.$sidebar-nav-link-disabled-color;
+      cursor: variables.$cursor-disabled;
       background: transparent;
-      @include borders($sidebar-nav-link-disabled-borders);
+      @include borders.borders(variables.$sidebar-nav-link-disabled-borders);
 
       .nav-icon {
-        color: $sidebar-nav-link-disabled-icon-color;
+        color: variables.$sidebar-nav-link-disabled-icon-color;
       }
 
       &:hover {
-        color: $sidebar-nav-link-disabled-color;
-        @include borders($sidebar-nav-link-hover-borders);
+        color: variables.$sidebar-nav-link-disabled-color;
+        @include borders.borders(variables.$sidebar-nav-link-hover-borders);
 
         .nav-icon {
-          color: $sidebar-nav-link-disabled-icon-color;
+          color: variables.$sidebar-nav-link-disabled-icon-color;
         }
 
         &.nav-dropdown-toggle::before {
-          background-image: $sidebar-nav-dropdown-indicator-hover;
+          background-image: variables.$sidebar-nav-dropdown-indicator-hover;
         }
       }
     }
 
-    @each $color, $value in $theme-colors {
+    @each $color, $value in variables2.$theme-colors {
       &.nav-link-#{$color} {
         background: $value;
         .nav-icon {
           color: rgba(255, 255, 255, .7);
         }
         &:hover {
-          background: darken($value, 5%);
+          background: color.adjust($value, $lightness: -5%, $space: hsl);
           i {
             color: #fff;
           }
@@ -198,14 +207,14 @@
     &::before {
       position: absolute;
       top: 50%;
-      right: $sidebar-nav-link-padding-x;
+      right: variables.$sidebar-nav-link-padding-x;
       display: block;
       width: 8px;
       height: 8px;
       padding: 0;
       margin-top: -4px;
       content: "";
-      background-image: $sidebar-nav-dropdown-indicator;
+      background-image: variables.$sidebar-nav-dropdown-indicator;
       background-repeat: no-repeat;
       background-position: center;
       transition: transform .3s;
@@ -217,28 +226,28 @@
   }
 
   .nav-dropdown.open {
-    background: $sidebar-nav-dropdown-bg;
-    @include borders($sidebar-nav-dropdown-borders);
-    @if $enable-sidebar-nav-rounded {
-      border-radius: $border-radius;
+    background: variables.$sidebar-nav-dropdown-bg;
+    @include borders.borders(variables.$sidebar-nav-dropdown-borders);
+    @if variables.$enable-sidebar-nav-rounded {
+      border-radius: bootstrap-variables.$border-radius;
     }
     > .nav-dropdown-items {
       max-height: 1500px;
     }
 
     .nav-link {
-      color: $sidebar-nav-dropdown-color;
+      color: variables.$sidebar-nav-dropdown-color;
       border-left: 0;
 
       &.disabled {
-        color: $sidebar-nav-link-disabled-color;
+        color: variables.$sidebar-nav-link-disabled-color;
         background: transparent;
 
         &:hover {
-          color: $sidebar-nav-link-disabled-color;
+          color: variables.$sidebar-nav-link-disabled-color;
 
           .nav-icon {
-            color: $sidebar-nav-link-disabled-icon-color;
+            color: variables.$sidebar-nav-link-disabled-icon-color;
           }
         }
       }
@@ -255,56 +264,56 @@
 
   .nav-label {
     display: block;
-    padding: ($sidebar-nav-link-padding-y * 0.125) $sidebar-nav-link-padding-x;
-    color: $sidebar-nav-title-color;
+    padding: (variables.$sidebar-nav-link-padding-y * 0.125) variables.$sidebar-nav-link-padding-x;
+    color: variables.$sidebar-nav-title-color;
 
     &:hover {
-      color: $sidebar-color;
+      color: variables.$sidebar-color;
       text-decoration: none;
     }
 
     .nav-icon {
       width: 20px;
-      margin: -3px ($sidebar-nav-link-padding-x * 0.5) 0 0;
+      margin: -3px (variables.$sidebar-nav-link-padding-x * 0.5) 0 0;
       font-size: 10px;
-      color: $sidebar-nav-link-icon-color;
+      color: variables.$sidebar-nav-link-icon-color;
       text-align: center;
       vertical-align: middle;
     }
   }
 
-  @if (lightness( $sidebar-bg ) < 40) {
+  @if (color.channel( variables.$sidebar-bg, 'lightness', $space: hsl ) < 40) {
     .progress {
-      background-color: lighten($sidebar-bg, 15%) !important;
+      background-color: color.adjust(variables.$sidebar-bg, $lightness: 15%, $space: hsl) !important;
     }
   }
 
   .sidebar-footer {
-    flex: 0 0 $sidebar-footer-height;
-    padding: $sidebar-footer-padding-y $sidebar-footer-padding-x;
-    background: $sidebar-footer-bg;
-    @include borders($sidebar-footer-borders);
+    flex: 0 0 variables.$sidebar-footer-height;
+    padding: variables.$sidebar-footer-padding-y variables.$sidebar-footer-padding-x;
+    background: variables.$sidebar-footer-bg;
+    @include borders.borders(variables.$sidebar-footer-borders);
   }
 
   .sidebar-minimizer {
     position: relative;
-    flex: 0 0 $sidebar-minimizer-height;
+    flex: 0 0 variables.$sidebar-minimizer-height;
     cursor: pointer;
-    background-color: $sidebar-minimizer-bg;
+    background-color: variables.$sidebar-minimizer-bg;
     border: 0;
-    @include borders($sidebar-minimizer-borders);
+    @include borders.borders(variables.$sidebar-minimizer-borders);
 
     &::before {
       position: absolute;
       top: 0;
       right: 0;
-      width: $sidebar-minimizer-height;
-      height: $sidebar-minimizer-height;
+      width: variables.$sidebar-minimizer-height;
+      height: variables.$sidebar-minimizer-height;
       content: "";
-      background-image: $sidebar-minimizer-indicator;
+      background-image: variables.$sidebar-minimizer-indicator;
       background-repeat: no-repeat;
       background-position: center;
-      background-size: $sidebar-minimizer-height * 0.25;
+      background-size: variables.$sidebar-minimizer-height * 0.25;
       transition: .3s;
     }
 
@@ -314,23 +323,23 @@
     }
 
     &:hover {
-      background-color: $sidebar-minimizer-hover-bg;
+      background-color: variables.$sidebar-minimizer-hover-bg;
       &::before {
-        background-image: $sidebar-minimizer-hover-indicator;
+        background-image: variables.$sidebar-minimizer-hover-indicator;
       }
     }
   }
 }
 
-@include media-breakpoint-up($breakpoint-mobile-up) {
+@include breakpoints.media-breakpoint-up(variables.$breakpoint-mobile-up) {
   .sidebar-compact {
     .sidebar {
       .sidebar-nav {
-        @include sidebar-width($sidebar-borders, $sidebar-compact-width);
+        @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-compact-width);
       }
 
       .nav {
-        @include sidebar-width($sidebar-borders, $sidebar-compact-width);
+        @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-compact-width);
       }
 
       .d-compact-none {
@@ -342,7 +351,7 @@
       }
 
       .nav-item {
-        width: $sidebar-compact-width;
+        width: variables.$sidebar-compact-width;
         border-left: 0;
       }
 
@@ -352,7 +361,7 @@
         .nav-icon {
           display: block;
           width: 100%;
-          margin: $spacer * 0.25 0;
+          margin: bootstrap-variables.$spacer * 0.25 0;
           font-size: 24px;
         }
 
@@ -375,20 +384,20 @@
   // Minimized Sidebar
   .sidebar-minimized {
     .sidebar {
-      z-index: $zindex-sticky - 1;
+      z-index: bootstrap-variables.$zindex-sticky - 1;
 
       .sidebar-scroll {
         overflow: visible;
-        @include sidebar-width($sidebar-borders, $sidebar-minimized-width);
+        @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-minimized-width);
       }
 
       .sidebar-nav {
         overflow: visible;
-        @include sidebar-width($sidebar-borders, $sidebar-minimized-width);
+        @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-minimized-width);
       }
 
       .nav {
-        @include sidebar-width($sidebar-borders, $sidebar-minimized-width);
+        @include sidebar-width.sidebar-width(variables.$sidebar-borders, variables.$sidebar-minimized-width);
       }
 
       .d-minimized-none,
@@ -406,13 +415,13 @@
       .sidebar-minimizer {
         position: fixed;
         bottom: 0;
-        width: $sidebar-minimized-width;
-        height: $sidebar-minimizer-height;
-        background-color: darken($sidebar-bg, 5%);
+        width: variables.$sidebar-minimized-width;
+        height: variables.$sidebar-minimizer-height;
+        background-color: color.adjust(variables.$sidebar-bg, $lightness: -5%, $space: hsl);
       }
       // stylelint-disable no-duplicate-selectors
       .sidebar-nav {
-        padding-bottom: $sidebar-minimizer-height;
+        padding-bottom: variables.$sidebar-minimizer-height;
       }
       // Temporary fix end
 
@@ -422,28 +431,28 @@
       }
 
       .nav-item {
-        width: $sidebar-minimized-width;
+        width: variables.$sidebar-minimized-width;
         overflow: hidden;
 
         &:hover {
-          width: $sidebar-width + $sidebar-minimized-width;
+          width: variables.$sidebar-width + variables.$sidebar-minimized-width;
           overflow: visible;
 
           > .nav-link {
-            background: $sidebar-nav-link-hover-bg;
+            background: variables.$sidebar-nav-link-hover-bg;
 
             .nav-icon {
-              color: $sidebar-nav-link-hover-color;
+              color: variables.$sidebar-nav-link-hover-color;
             }
           }
           .nav-link {
 
             &.disabled,
             :disabled {
-              background: $sidebar-nav-link-disabled-bg;
+              background: variables.$sidebar-nav-link-disabled-bg;
 
               .nav-icon {
-                color: $sidebar-nav-link-disabled-icon-color;
+                color: variables.$sidebar-nav-link-disabled-icon-color;
               }
             }
           }
@@ -454,7 +463,7 @@
         :not(.nav-dropdown-items) > {
           .nav-item:last-child::after {
             display: block;
-            margin-bottom: $sidebar-minimizer-height;
+            margin-bottom: variables.$sidebar-minimizer-height;
             content: "";
           }
         }
@@ -471,7 +480,7 @@
         .nav-icon {
           display: block;
           float: left;
-          width: $sidebar-minimized-height;
+          width: variables.$sidebar-minimized-height;
           font-size: 18px;
         }
 
@@ -482,8 +491,8 @@
         }
 
         &:hover {
-          width: $sidebar-width + $sidebar-minimized-width;
-          background: $sidebar-nav-link-hover-bg;
+          width: variables.$sidebar-width + variables.$sidebar-minimized-width;
+          background: variables.$sidebar-nav-link-hover-bg;
 
           .badge {
             display: inline;
@@ -497,10 +506,10 @@
 
       .nav-dropdown-items {
         .nav-item {
-          width: $sidebar-width;
+          width: variables.$sidebar-width;
 
           .nav-link {
-            width: $sidebar-width;
+            width: variables.$sidebar-width;
           }
         }
       }
@@ -509,14 +518,14 @@
         > .nav-dropdown-items {
           display: none;
           max-height: 1000px;
-          background: $sidebar-bg;
+          background: variables.$sidebar-bg;
         }
 
         &:hover {
-          background: $sidebar-nav-link-hover-bg;
+          background: variables.$sidebar-nav-link-hover-bg;
           > .nav-dropdown-items {
             position: absolute;
-            left: $sidebar-minimized-width;
+            left: variables.$sidebar-minimized-width;
             display: inline;
           }
         }
@@ -572,11 +581,11 @@
           > .nav-dropdown-items {
             display: none;
             max-height: 1000px;
-            background: $sidebar-bg;
+            background: variables.$sidebar-bg;
           }
 
           &:hover {
-            background: $sidebar-nav-link-hover-bg;
+            background: variables.$sidebar-nav-link-hover-bg;
             > .nav-dropdown-items {
               position: absolute;
               left: 0;
@@ -594,7 +603,7 @@
     .nav-dropdown-toggle::before {
       position: absolute;
       right: auto;
-      left: $sidebar-nav-link-padding-x;
+      left: variables.$sidebar-nav-link-padding-x;
       transform: rotate(180deg);
     }
 
@@ -606,7 +615,7 @@
 
     .nav-link {
       .nav-icon {
-        margin: 0 0 0 ($sidebar-nav-link-padding-x * 0.5);
+        margin: 0 0 0 (variables.$sidebar-nav-link-padding-x * 0.5);
       }
 
       .badge {

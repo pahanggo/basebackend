@@ -1,11 +1,15 @@
+@use "mixins/grid";
+@use "mixins/grid-framework";
+@use "variables";
+
 // Container widths
 //
 // Set the container width, and override it for fixed navbars in media queries.
 
-@if $enable-grid-classes {
+@if variables.$enable-grid-classes {
   .container {
-    @include make-container();
-    @include make-container-max-widths();
+    @include grid.make-container();
+    @include grid.make-container-max-widths();
   }
 }
 
@@ -14,9 +18,9 @@
 // Utilizes the mixin meant for fixed width containers, but with 100% width for
 // fluid, full width layouts.
 
-@if $enable-grid-classes {
+@if variables.$enable-grid-classes {
   .container-fluid {
-    @include make-container();
+    @include grid.make-container();
   }
 }
 
@@ -24,9 +28,9 @@
 //
 // Rows contain and clear the floats of your columns.
 
-@if $enable-grid-classes {
+@if variables.$enable-grid-classes {
   .row {
-    @include make-row();
+    @include grid.make-row();
   }
 
   // Remove the negative margin from default .row, then the horizontal padding
@@ -47,6 +51,6 @@
 //
 // Common styles for small and large grid columns
 
-@if $enable-grid-classes {
-  @include make-grid-columns();
+@if variables.$enable-grid-classes {
+  @include grid-framework.make-grid-columns();
 }

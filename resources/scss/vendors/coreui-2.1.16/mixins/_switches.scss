@@ -1,3 +1,7 @@
+@use "../bootstrap/variables";
+
+@use "sass:color";
+
 @mixin switch-size($width, $height, $font-size, $handle-margin) {
   width: $width;
   height: $height;
@@ -6,8 +10,8 @@
     font-size: $font-size;
 
     &::before {
-      width: $height - ($handle-margin * 2) - ($border-width * 2);
-      height: $height - ($handle-margin * 2) - ($border-width * 2);
+      width: $height - ($handle-margin * 2) - (variables.$border-width * 2);
+      height: $height - ($handle-margin * 2) - (variables.$border-width * 2);
     }
     &::after {
       font-size: $font-size;
@@ -40,10 +44,10 @@
 @mixin switch-variant($color) {
   .switch-input:checked + .switch-slider {
     background-color: $color;
-    border-color: darken($color, 10%);
+    border-color: color.adjust($color, $lightness: -10%, $space: hsl);
 
     &::before {
-      border-color: darken($color, 10%);
+      border-color: color.adjust($color, $lightness: -10%, $space: hsl);
     }
   }
 }

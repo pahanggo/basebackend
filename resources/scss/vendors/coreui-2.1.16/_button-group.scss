@@ -1,3 +1,6 @@
+@use "bootstrap/mixins/border-radius";
+@use "bootstrap/variables";
+
 // stylelint-disable selector-no-qualifying-type
 
 *[dir="rtl"] {
@@ -5,25 +8,25 @@
     // Prevent double borders when buttons are next to each other
     > .btn:not(:first-child),
     > .btn-group:not(:first-child) {
-      margin-right: -$btn-border-width;
+      margin-right: -(variables.$btn-border-width);
     }
 
     // Reset rounded corners
     > .btn:not(:last-child):not(.dropdown-toggle),
     > .btn-group:not(:last-child) > .btn {
-      @include border-radius($border-radius, 0);
-      @include border-left-radius(0);
+      @include border-radius.border-radius(variables.$border-radius, 0);
+      @include border-radius.border-left-radius(0);
     }
 
     > .btn:not(:first-child),
     > .btn-group:not(:first-child) > .btn {
-      @include border-radius($border-radius, 0);
-      @include border-right-radius(0);
+      @include border-radius.border-radius(variables.$border-radius, 0);
+      @include border-radius.border-right-radius(0);
     }
 
     > .btn:not(:first-child):not(:last-child):not(.dropdown-toggle) {
-      @include border-left-radius(0);
-      @include border-right-radius(0);
+      @include border-radius.border-left-radius(0);
+      @include border-radius.border-right-radius(0);
     }
   }
 }

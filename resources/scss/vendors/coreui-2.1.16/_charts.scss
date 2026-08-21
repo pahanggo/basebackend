@@ -1,3 +1,7 @@
+@use "bootstrap/mixins/border-radius";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "variables";
+
 .chart-wrapper canvas {
   width: 100%;
 }
@@ -12,44 +16,44 @@ canvas {
 
 .chartjs-tooltip {
   position: absolute;
-  z-index: $zindex-sticky + 1;
+  z-index: bootstrap-variables.$zindex-sticky + 1;
   display: flex;
   flex-direction: column;
-  padding: ($spacer * .25) ($spacer * .5);
+  padding: (bootstrap-variables.$spacer * .25) (bootstrap-variables.$spacer * .5);
   color: #fff;
   pointer-events: none;
   background: rgba(0, 0, 0, .7);
   opacity: 0;
-  transition: all $layout-transition-speed ease;
+  transition: all variables.$layout-transition-speed ease;
   transform: translate(-50%, 0);
-  @include border-radius($border-radius);
+  @include border-radius.border-radius(bootstrap-variables.$border-radius);
 
   .tooltip-header {
-    margin-bottom: ($spacer * .5);
+    margin-bottom: (bootstrap-variables.$spacer * .5);
   }
 
   .tooltip-header-item {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-bold;
+    font-size: bootstrap-variables.$font-size-sm;
+    font-weight: bootstrap-variables.$font-weight-bold;
   }
 
   .tooltip-body-item {
     display: flex;
     align-items: center;
-    font-size: $font-size-sm;
+    font-size: bootstrap-variables.$font-size-sm;
     white-space: nowrap;
   }
 
   .tooltip-body-item-color {
     display: inline-block;
-    width: $font-size-base;
-    height: $font-size-base;
-    margin-right: $font-size-base;
+    width: bootstrap-variables.$font-size-base;
+    height: bootstrap-variables.$font-size-base;
+    margin-right: bootstrap-variables.$font-size-base;
   }
 
   .tooltip-body-item-value {
-    padding-left: $spacer;
+    padding-left: bootstrap-variables.$spacer;
     margin-left: auto;
-    font-weight: $font-weight-bold;
+    font-weight: bootstrap-variables.$font-weight-bold;
   }
 }

@@ -65,6 +65,22 @@ return [
         'resources/scss/style.scss',
     ],
 
+    // Override the theme's colors without a recompile. Each of these maps to
+    // a CSS custom property (--primary, --success, ...) that every themed
+    // component (buttons, badges, alerts, tables, sidebar links, etc. — see
+    // resources/scss/_custom.scss) reads instead of a build-time color, so
+    // setting a BACKPACK_COLOR_* env var takes effect on next page load, no
+    // `npm run build` needed. The defaults below match the colors currently
+    // compiled into resources/scss/_variables.scss.
+    'theme_colors' => [
+        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#5f0461'),
+        'secondary' => env('BACKPACK_COLOR_SECONDARY', '#D9E2EF'),
+        'success'   => env('BACKPACK_COLOR_SUCCESS', '#269740'),
+        'info'      => env('BACKPACK_COLOR_INFO', '#467FD0'),
+        'warning'   => env('BACKPACK_COLOR_WARNING', '#FFC107'),
+        'danger'    => env('BACKPACK_COLOR_DANGER', '#DF4759'),
+    ],
+
     // ------
     // HEADER
     // ------

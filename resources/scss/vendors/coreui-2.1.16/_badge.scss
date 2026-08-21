@@ -1,3 +1,5 @@
+@use "bootstrap/variables";
+
 .badge-pill {
-  border-radius: $badge-pill-border-radius;
+  border-radius: variables.$badge-pill-border-radius;
 }

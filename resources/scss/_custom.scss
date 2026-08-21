@@ -1,18 +1,73 @@
+@use "variables";
+@use "vendors/coreui-2.1.16/bootstrap/variables" as bootstrap-variables;
+@use "vendors/coreui-2.1.16/bootstrap/functions" as functions;
+
+@use "sass:color";
+
 // --------------------
 // Backstrap Custom CSS
 // --------------------
 // Styles applied after Bootstrap and CoreUI
 
+// Runtime-configurable primary color: the solid primary color and its
+// derived shades below are exposed as CSS custom properties so the theme
+// can be recolored at runtime (e.g.
+// `document.documentElement.style.setProperty('--primary', '#123456')`)
+// without a recompile. Needs Chrome 111+ / Safari 16.4+ / Firefox 113+.
+//
+// Every Bootstrap/CoreUI component that renders a "primary" variant is
+// re-declared further down this file to consume these vars instead of a
+// baked-in hex, so the whole UI reacts to a runtime change of --primary.
+//
+// Shade naming: `-tint-*` mixes toward white, `-shade-*` mixes toward
+// black, using the same weights as the Sass call each shade replaces.
+// Where that call was `theme-color-level($color, $level)` (RGB-space
+// color.mix(), used by alerts/tables/list-group) the CSS color-mix()
+// below uses the identical weight and matches almost exactly. Where it
+// was `color.adjust($color, $lightness: X%, $space: hsl)` (badges,
+// switches, hovers) color-mix() can't reproduce HSL lightness exactly,
+// so the weight is a reasonable approximation (roughly 2x the HSL
+// percentage, mixed toward black/white in sRGB instead).
+:root {
+  --primary: #{bootstrap-variables.$primary};
+
+  // ~ color.adjust($primary, $lightness: -5%, hsl) — button/link hover
+  --primary-dark: color-mix(in srgb, var(--primary) 90%, black);
+  // ~ color.adjust($primary, $lightness: -10%, hsl) — badge/switch/noty hover-or-border
+  --primary-dark-10: color-mix(in srgb, var(--primary) 80%, black);
+  // ~ color.adjust($primary, $lightness: 5%, hsl) — form focus border
+  --primary-light-5: color-mix(in srgb, var(--primary) 90%, white);
+  // ~ color.adjust($primary, $lightness: 25%, hsl) — form focus box-shadow
+  --primary-light-25: color-mix(in srgb, var(--primary) 55%, white);
+  // ~ color.adjust($primary, $lightness: -15%, hsl) — $link-hover-color
+  --primary-dark-15: color-mix(in srgb, var(--primary) 70%, black);
+  // rgba($primary, .5) / rgba($primary, .25) equivalents
+  --primary-focus-ring: color-mix(in srgb, color-mix(in srgb, white 15%, var(--primary)) 50%, transparent);
+  --primary-alpha-50: color-mix(in srgb, var(--primary) 50%, transparent);
+  --primary-alpha-25: color-mix(in srgb, var(--primary) 25%, transparent);
+
+  // = theme-color-level($primary, -9) — table/list-group light background
+  --primary-tint-28: color-mix(in srgb, white 72%, var(--primary));
+  // = theme-color-level($primary, -6) — table border
+  --primary-tint-52: color-mix(in srgb, white 48%, var(--primary));
+  // = theme-color-level($primary, -12) — app's $alert-color-level, alert text
+  --primary-tint-4: color-mix(in srgb, white 96%, var(--primary));
+  // = theme-color-level($primary, +1) — app's $alert-border-level, alert border
+  --primary-shade-8: color-mix(in srgb, black 8%, var(--primary));
+  // = theme-color-level($primary, +6) — list-group-item-primary active text/border
+  --primary-shade-48: color-mix(in srgb, black 48%, var(--primary));
+}
+
 body {
-  background-color: $gray-200;
+  background-color: bootstrap-variables.$gray-200;
 }
 
 .card.bg-success {
-  border-color: darken($success, 1%);
+  border-color: color.adjust(bootstrap-variables.$success, $lightness: -1%, $space: hsl);
 }
 
 .btn-info {
-  color: $white!important;
+  color: bootstrap-variables.$white!important;
 }
 
 .btn-primary:hover, .btn-ghost-primary:hover, .btn-outline-primary:hover,
@@ -20,7 +75,7 @@ body {
 .btn-danger:hover, .btn-ghost-danger:hover, .btn-outline-danger:hover,
 .btn-info:hover, .btn-ghost-info:hover, .btn-outline-info:hover,
 .btn-dark:hover, .btn-ghost-dark:hover, .btn-outline-dark:hover {
-  color: $white!important;
+  color: bootstrap-variables.$white!important;
 }
 
 .badge {
@@ -31,12 +86,12 @@ body {
 .modal-success .modal-content,
 .modal-warning .modal-content,
 .modal-danger .modal-content {
-  border-color: $border-color;
+  border-color: bootstrap-variables.$border-color;
   border-radius: 7px;
 }
 
 .breadcrumb {
-  background: $muted-bg-color;
+  background: variables.$muted-bg-color;
   border: none;
   font-size: 0.9em;
   margin: 10px 30px;
@@ -64,7 +119,7 @@ body {
 // navbar-color
 
 .navbar-color .navbar-brand:hover, .navbar-color .navbar-brand:focus {
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .navbar-color .navbar-nav .nav-link {
@@ -83,7 +138,7 @@ body {
 .navbar-color .navbar-nav .active > .nav-link,
 .navbar-color .navbar-nav .nav-link.show,
 .navbar-color .navbar-nav .nav-link.active {
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .navbar-color .navbar-toggler {
@@ -100,15 +155,15 @@ body {
 }
 
 .navbar-color .navbar-text a {
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .navbar-color .navbar-text a:hover, .navbar-color .navbar-text a:focus {
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .navbar-color.app-header .navbar-brand {
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 // End of navbar-color
@@ -176,12 +231,12 @@ body {
 
 .sidebar.bg-white .nav-link.active {
     background: #f6f6f6;
-    color: $primary!important;
+    color: var(--primary)!important;
 }
 
 .sidebar.bg-white .nav-link.active .nav-icon,
 .sidebar.bg-white .nav-link.active:hover .nav-icon {
-    color: $primary!important;
+    color: var(--primary)!important;
 }
 
 // Cover use case: sidebar sidebar-pills
@@ -193,12 +248,12 @@ body {
 .sidebar-pills .nav-link.active,
 .sidebar-pills .nav-link:hover
 {
-  color: $primary!important;
+  color: var(--primary)!important;
   // background: rgba(0,0,0,.04)!important;
 }
 
 .sidebar-pills .nav-link:hover .nav-icon {
-  color: $primary!important;
+  color: var(--primary)!important;
 }
 
 .sidebar-pills a:not(:hover),
@@ -248,7 +303,7 @@ html:not([dir="rtl"]) .sidebar {
 }
 
 .sidebar.sidebar-pills .nav-dropdown.open {
-  background: $muted-bg-color;
+  background: variables.$muted-bg-color;
   border-radius: 3px;
 }
 
@@ -262,14 +317,14 @@ html:not([dir="rtl"]) .sidebar {
 
 .sidebar.sidebar-pills .nav-link.active,
 .sidebar.sidebar-pills .nav-link:hover {
-  color: $primary!important;
+  color: var(--primary)!important;
   /*font-weight: 500;*/
-  background-color: $muted-bg-color;
+  background-color: variables.$muted-bg-color;
 }
 
 .sidebar.sidebar-pills .nav-link.active .nav-icon,
 .sidebar.sidebar-pills .nav-link:hover .nav-icon {
-  color: $primary;
+  color: var(--primary);
 }
 
 .sidebar.sidebar-pills .nav-link .nav-icon {
@@ -292,7 +347,7 @@ h5 small {
 }
 
 .border-xs {
-    border: 1px solid $border-color;
+    border: 1px solid bootstrap-variables.$border-color;
 }
 
 .shadow-xs {
@@ -300,9 +355,9 @@ h5 small {
 }
 
 .card {
-    background-color: $white;
+    background-color: bootstrap-variables.$white;
     background-clip: border-box;
-    border: 1px solid $border-color;
+    border: 1px solid bootstrap-variables.$border-color;
     border-radius: 3px;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
@@ -314,7 +369,7 @@ h5 small {
 }
 
 .card-footer {
-  border-top: 1px solid $border-color;
+  border-top: 1px solid bootstrap-variables.$border-color;
   background: transparent;
 }
 
@@ -327,34 +382,34 @@ h5 small {
 }
 
 .brand-card {
-  background-color: $white;
+  background-color: bootstrap-variables.$white;
     background-clip: border-box;
-    border: 1px solid $border-color;
+    border: 1px solid bootstrap-variables.$border-color;
     border-radius: 3px;
 }
 
 .aside-menu {
-  border: 1px solid $border-color;
+  border: 1px solid bootstrap-variables.$border-color;
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
-  background-color: $white;
+  background-color: bootstrap-variables.$white;
 }
 
 .table-striped tbody tr:nth-of-type(even) {
-  background-color: $muted-bg-color;
+  background-color: variables.$muted-bg-color;
 }
 
 .table-bordered th, .table-bordered td {
-  border: 1px solid $border-color;
+  border: 1px solid bootstrap-variables.$border-color;
 }
 
 .table th, .table td {
-  border-top: 1px solid $border-color;
+  border-top: 1px solid bootstrap-variables.$border-color;
 }
 
 .table th {
-  background-color: $muted-bg-color;
+  background-color: variables.$muted-bg-color;
 }
 
 .table thead th, .table thead td {
@@ -365,7 +420,7 @@ h5 small {
 }
 
 .bg-white {
-  background-color: $white !important;
+  background-color: bootstrap-variables.$white !important;
 }
 
 .bg-transparent {
@@ -401,39 +456,39 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 }
 
 .btn-primary, .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-  color: $white;
-  background-color: $primary;
-  border-color: $primary;
+  color: bootstrap-variables.$white;
+  background-color: var(--primary);
+  border-color: var(--primary);
 }
 
 .btn-primary:hover, .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-  color: $white;
-  background-color: darken($primary, 5%);
-  border-color: darken($primary, 5%);
+  color: bootstrap-variables.$white;
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 .btn-primary:focus, .dataTables_wrapper .dataTables_paginate .paginate_button.current:focus, .btn-primary.focus, .dataTables_wrapper .dataTables_paginate .focus.paginate_button.current {
-  box-shadow: 0 0 0 2px rgba(98, 146, 214, 0.5);
+  box-shadow: 0 0 0 2px var(--primary-focus-ring);
 }
 
 .btn-primary.disabled, .dataTables_wrapper .dataTables_paginate .disabled.paginate_button.current, .btn-primary:disabled, .dataTables_wrapper .dataTables_paginate .paginate_button.current:disabled {
-  color: $white;
-  background-color: $primary;
-  border-color: $primary;
+  color: bootstrap-variables.$white;
+  background-color: var(--primary);
+  border-color: var(--primary);
 }
 
 .btn-primary:not(:disabled):not(.disabled):active, .dataTables_wrapper .dataTables_paginate .paginate_button.current:not(:disabled):not(.disabled):active, .btn-primary:not(:disabled):not(.disabled).active, .dataTables_wrapper .dataTables_paginate .paginate_button.current:not(:disabled):not(.disabled).active,
 .show > .btn-primary.dropdown-toggle,
 .dataTables_wrapper .dataTables_paginate .show > .dropdown-toggle.paginate_button.current {
-  color: $white;
-  background-color: darken($primary, 5%);
-  border-color: darken($primary, 5%);
+  color: bootstrap-variables.$white;
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 .btn-primary:not(:disabled):not(.disabled):active:focus, .dataTables_wrapper .dataTables_paginate .paginate_button.current:not(:disabled):not(.disabled):active:focus, .btn-primary:not(:disabled):not(.disabled).active:focus, .dataTables_wrapper .dataTables_paginate .paginate_button.current:not(:disabled):not(.disabled).active:focus,
 .show > .btn-primary.dropdown-toggle:focus,
 .dataTables_wrapper .dataTables_paginate .show > .dropdown-toggle.paginate_button.current:focus {
-  box-shadow: 0 0 0 2px rgba(98, 146, 214, 0.5);
+  box-shadow: 0 0 0 2px var(--primary-focus-ring);
 }
 
 /*  DROPDOWN  */
@@ -471,9 +526,9 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   color: #495057;
   text-align: left;
   list-style: none;
-  background-color: $white;
+  background-color: bootstrap-variables.$white;
   background-clip: padding-box;
-  border: 1px solid $border-color;
+  border: 1px solid bootstrap-variables.$border-color;
   border-radius: 3px;
 }
 
@@ -626,7 +681,7 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   height: 0;
   margin: 0.5rem 0;
   overflow: hidden;
-  border-top: 1px solid $gray-200;
+  border-top: 1px solid bootstrap-variables.$gray-200;
 }
 
 .dropdown-item {
@@ -643,15 +698,15 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 }
 
 .dropdown-item:hover, .dropdown-item:focus {
-  color: $black;
+  color: bootstrap-variables.$black;
   text-decoration: none;
-  background-color: $gray-100;
+  background-color: bootstrap-variables.$gray-100;
 }
 
 .dropdown-item.active, .dropdown-item:active {
-  color: $white;
+  color: bootstrap-variables.$white;
   text-decoration: none;
-  background-color: $primary;
+  background-color: var(--primary);
 }
 
 .dropdown-menu.show {
@@ -660,7 +715,7 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 
 .dropdown-header {
   background: transparent;
-  color: $gray-700;
+  color: bootstrap-variables.$gray-700;
   border: none;
   padding: 0.3rem 1rem;
   display: block;
@@ -672,7 +727,7 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 .dropdown-item-text {
   display: block;
   padding: 0.25rem 1.5rem;
-  color: $black;
+  color: bootstrap-variables.$black;
 }
 
 /*  FORMS */
@@ -684,10 +739,10 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   font-size: 0.9375rem;
   font-weight: 400;
   line-height: 1.6;
-  color: $gray-700;
-  background-color: $white;
+  color: bootstrap-variables.$gray-700;
+  background-color: bootstrap-variables.$white;
   background-clip: padding-box;
-  border: 1px solid $border-color;
+  border: 1px solid bootstrap-variables.$border-color;
   border-radius: 3px;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
@@ -721,34 +776,34 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 
 .form-control:focus, .dataTables_wrapper .dataTables_length select:focus, .dataTables_wrapper .dataTables_filter input:focus {
   color: #495057;
-  background-color: $white;
-  border-color: lighten($primary, 5%);
+  background-color: bootstrap-variables.$white;
+  border-color: var(--primary-light-5);
   outline: 0;
-  box-shadow: 0 0 0 2px lighten($primary, 25%);
+  box-shadow: 0 0 0 2px var(--primary-light-25);
 }
 
 .form-control::-webkit-input-placeholder, .dataTables_wrapper .dataTables_length select::-webkit-input-placeholder, .dataTables_wrapper .dataTables_filter input::-webkit-input-placeholder {
-  color: $gray-300;
+  color: bootstrap-variables.$gray-300;
   opacity: 1;
 }
 
 .form-control::-moz-placeholder, .dataTables_wrapper .dataTables_length select::-moz-placeholder, .dataTables_wrapper .dataTables_filter input::-moz-placeholder {
-  color: $gray-300;
+  color: bootstrap-variables.$gray-300;
   opacity: 1;
 }
 
 .form-control::-ms-input-placeholder, .dataTables_wrapper .dataTables_length select::-ms-input-placeholder, .dataTables_wrapper .dataTables_filter input::-ms-input-placeholder {
-  color: $gray-300;
+  color: bootstrap-variables.$gray-300;
   opacity: 1;
 }
 
 .form-control:-ms-input-placeholder, .dataTables_wrapper .dataTables_length select:-ms-input-placeholder, .dataTables_wrapper .dataTables_filter input:-ms-input-placeholder {
-  color: $gray-300;
+  color: bootstrap-variables.$gray-300;
   opacity: 1;
 }
 
 .form-control::placeholder, .dataTables_wrapper .dataTables_length select::placeholder, .dataTables_wrapper .dataTables_filter input::placeholder {
-  color: $gray-300;
+  color: bootstrap-variables.$gray-300;
   opacity: 1;
 }
 
@@ -759,7 +814,7 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
 
 select.form-control:focus::-ms-value, .dataTables_wrapper .dataTables_length select:focus::-ms-value {
   color: #495057;
-  background-color: $white;
+  background-color: bootstrap-variables.$white;
 }
 
 .form-control-file,
@@ -774,22 +829,22 @@ select.form-control:focus::-ms-value, .dataTables_wrapper .dataTables_length sel
 
 /* TABS */
 .tab-content {
-  background-color: $white;
+  background-color: bootstrap-variables.$white;
   background-clip: border-box;
   border-radius: 3px;
-  border: 1px solid $border-color;
+  border: 1px solid bootstrap-variables.$border-color;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .nav-tabs .nav-item.show .nav-link,
 .nav-tabs .nav-link.active,
 .nav-tabs .nav-link.active:focus {
-  border-color: $border-color;
+  border-color: bootstrap-variables.$border-color;
   border-bottom: 1px solid white;
 }
 
 table.table-hover tbody tr:hover {
-  background-color: $hover-color;
+  background-color: variables.$hover-color;
 }
 
 /*  TAGS  */
@@ -863,118 +918,118 @@ a.tag-addon:hover {
 }
 
 .tag-blue {
-  background-color: $primary;
-  color: $white;
+  background-color: var(--primary);
+  color: bootstrap-variables.$white;
 }
 
 .tag-indigo {
-  background-color: $indigo;
-  color: $white;
+  background-color: bootstrap-variables.$indigo;
+  color: bootstrap-variables.$white;
 }
 
 .tag-purple {
-  background-color: $purple;
-  color: $white;
+  background-color: bootstrap-variables.$purple;
+  color: bootstrap-variables.$white;
 }
 
 .tag-pink {
-  background-color: $pink;
-  color: $white;
+  background-color: bootstrap-variables.$pink;
+  color: bootstrap-variables.$white;
 }
 
 .tag-red {
-  background-color: $red;
-  color: $white;
+  background-color: bootstrap-variables.$red;
+  color: bootstrap-variables.$white;
 }
 
 .tag-orange {
-  background-color: $orange;
-  color: $white;
+  background-color: bootstrap-variables.$orange;
+  color: bootstrap-variables.$white;
 }
 
 .tag-yellow {
-  background-color: $yellow;
-  color: $white;
+  background-color: bootstrap-variables.$yellow;
+  color: bootstrap-variables.$white;
 }
 
 .tag-green {
-  background-color: $green;
-  color: $white;
+  background-color: bootstrap-variables.$green;
+  color: bootstrap-variables.$white;
 }
 
 .tag-teal {
-  background-color: $teal;
-  color: $white;
+  background-color: bootstrap-variables.$teal;
+  color: bootstrap-variables.$white;
 }
 
 .tag-cyan {
-  background-color: $cyan;
-  color: $white;
+  background-color: bootstrap-variables.$cyan;
+  color: bootstrap-variables.$white;
 }
 
 .tag-white {
-  background-color: $white;
-  color: $white;
+  background-color: bootstrap-variables.$white;
+  color: bootstrap-variables.$white;
 }
 
 .tag-gray {
   background-color: #868e96;
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .tag-gray-dark {
   background-color: #343a40;
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .tag-azure {
   background-color: #45aaf2;
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .tag-lime {
   background-color: #7bd235;
-  color: $white;
+  color: bootstrap-variables.$white;
 }
 
 .tag-primary {
-  background-color: $primary;
-  color: $white;
+  background-color: var(--primary);
+  color: bootstrap-variables.$white;
 }
 
 .tag-secondary {
-  background-color: $secondary;
-  color: $white;
+  background-color: bootstrap-variables.$secondary;
+  color: bootstrap-variables.$white;
 }
 
 .tag-success {
-  background-color: $success;
-  color: $white;
+  background-color: bootstrap-variables.$success;
+  color: bootstrap-variables.$white;
 }
 
 .tag-info {
-  background-color: $light-blue;
-  color: $white;
+  background-color: variables.$light-blue;
+  color: bootstrap-variables.$white;
 }
 
 .tag-warning {
-  background-color: $warning;
-  color: $white;
+  background-color: bootstrap-variables.$warning;
+  color: bootstrap-variables.$white;
 }
 
 .tag-danger {
-  background-color: $danger;
-  color: $white;
+  background-color: bootstrap-variables.$danger;
+  color: bootstrap-variables.$white;
 }
 
 .tag-light {
-  background-color: $light;
-  color: $white;
+  background-color: bootstrap-variables.$light;
+  color: bootstrap-variables.$white;
 }
 
 .tag-dark {
-  background-color: $dark;
-  color: $white;
+  background-color: bootstrap-variables.$dark;
+  color: bootstrap-variables.$white;
 }
 
 .tag-rounded {
@@ -1001,7 +1056,7 @@ a.tag-addon:hover {
 /*  JUMBOTRON */
 
 .jumbotron {
-  background-color: $muted-bg-color;
+  background-color: variables.$muted-bg-color;
 }
 
 /* SELECT 2  */
@@ -1009,7 +1064,7 @@ a.tag-addon:hover {
 .select2-container--bootstrap .select2-selection {
     box-shadow: none!important;
     -webkit-box-shadow: none!important;
-    border: 1px solid $border-color!important;
+    border: 1px solid bootstrap-variables.$border-color!important;
 }
 
 .select2-container--bootstrap.select2-container--focus .select2-selection,
@@ -1019,7 +1074,7 @@ a.tag-addon:hover {
 }
 
 .select2-container--bootstrap .select2-dropdown {
-    border-color: $border-color!important;
+    border-color: bootstrap-variables.$border-color!important;
 }
 
 /*  PACE JS  */
@@ -1038,7 +1093,7 @@ a.tag-addon:hover {
 }
 
 .pace .pace-progress {
-  background: $primary;
+  background: var(--primary);
   position: fixed;
   z-index: 2000;
   top: 0;
@@ -1060,7 +1115,597 @@ a.tag-addon:hover {
 }
 
 .select2-container--bootstrap .select2-results__option--highlighted[aria-selected] {
-  background-color: $primary!important;
+  background-color: var(--primary)!important;
 }
 
-/*# sourceMappingURL=backstrap.css.map */
+// --------------------------------------------------------------
+// Runtime-reactive primary color — remaining components
+// --------------------------------------------------------------
+// See the --primary custom property block near the top of this file.
+// Everything below re-declares a Bootstrap/CoreUI "-primary" variant to
+// consume that var (and its derived shades) instead of the hex baked in
+// by the vendor tree's `@each $theme-colors` loops, so the whole UI
+// reacts to a runtime change of --primary, not just .btn-primary.
+
+// Outline / ghost buttons (mixins/_buttons.scss button-outline-variant)
+.btn-outline-primary,
+.btn-ghost-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+
+  &:hover {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  &:focus,
+  &.focus {
+    box-shadow: 0 0 0 bootstrap-variables.$btn-focus-width var(--primary-alpha-50);
+  }
+
+  &.disabled,
+  &:disabled {
+    color: var(--primary);
+  }
+
+  &:not(:disabled):not(.disabled):active,
+  &:not(:disabled):not(.disabled).active,
+  .show > &.dropdown-toggle {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+}
+
+// Badges (mixins/_badge.scss badge-variant)
+.badge-primary {
+  background-color: var(--primary);
+}
+
+a.badge-primary:hover,
+a.badge-primary:focus {
+  background-color: var(--primary-dark-10);
+}
+
+a.badge-primary:focus,
+a.badge-primary.focus {
+  box-shadow: 0 0 0 bootstrap-variables.$badge-focus-width var(--primary-alpha-50);
+}
+
+// Utilities (utilities/_background.scss, mixins/_text-emphasis.scss)
+.bg-primary {
+  background-color: var(--primary)!important;
+}
+
+a.bg-primary:hover,
+a.bg-primary:focus,
+button.bg-primary:hover,
+button.bg-primary:focus {
+  background-color: var(--primary-dark-10)!important;
+}
+
+.border-primary {
+  border-color: var(--primary)!important;
+}
+
+.text-primary {
+  color: var(--primary)!important;
+}
+
+a.text-primary:hover,
+a.text-primary:focus {
+  color: var(--primary-dark)!important;
+}
+
+// Alerts (mixins/_alert.scss alert-variant; app sets $alert-bg-level: 0,
+// $alert-border-level: +1, $alert-color-level: -12)
+.alert-primary {
+  color: var(--primary-tint-4);
+  background-color: var(--primary);
+  border-color: var(--primary-shade-8);
+
+  hr {
+    border-top-color: var(--primary-dark);
+  }
+
+  .alert-link {
+    color: color-mix(in srgb, black 20%, var(--primary-tint-4));
+  }
+}
+
+// Tables (mixins/_table-row.scss; $table-bg-level: -9, $table-border-level: -6)
+.table-primary,
+.table-primary > th,
+.table-primary > td {
+  background-color: var(--primary-tint-28);
+}
+
+.table-primary th,
+.table-primary td,
+.table-primary thead th,
+.table-primary tbody + tbody {
+  border-color: var(--primary-tint-52);
+}
+
+.table-hover .table-primary:hover,
+.table-hover .table-primary:hover > td,
+.table-hover .table-primary:hover > th {
+  background-color: var(--primary-tint-28);
+}
+
+// List groups (mixins/_list-group.scss; levels -9 / +6)
+.list-group-item-primary {
+  color: var(--primary-shade-48);
+  background-color: var(--primary-tint-28);
+}
+
+.list-group-item-primary.list-group-item-action:hover,
+.list-group-item-primary.list-group-item-action:focus {
+  color: var(--primary-shade-48);
+  background-color: var(--primary-tint-28);
+}
+
+.list-group-item-primary.list-group-item-action.active {
+  background-color: var(--primary-shade-48);
+  border-color: var(--primary-shade-48);
+}
+
+.list-group-item-accent-primary {
+  border-left: 4px solid var(--primary);
+}
+
+// Callouts (_callout.scss)
+.callout-primary {
+  border-left-color: var(--primary);
+
+  h4 {
+    color: var(--primary);
+  }
+}
+
+[dir="rtl"] .callout.callout-primary {
+  border-right-color: var(--primary);
+}
+
+// Card accent (mixins/_card-accent.scss)
+.card-accent-primary {
+  border-top-color: var(--primary);
+}
+
+// Modal (_modal.scss)
+.modal-primary .modal-content {
+  border-color: var(--primary);
+}
+
+.modal-primary .modal-header {
+  background-color: var(--primary);
+}
+
+// Switches (mixins/_switches.scss)
+.switch-primary .switch-input:checked + .switch-slider {
+  background-color: var(--primary);
+  border-color: var(--primary-dark-10);
+
+  &::before {
+    border-color: var(--primary-dark-10);
+  }
+}
+
+.switch-outline-primary .switch-input:checked + .switch-slider {
+  border-color: var(--primary);
+
+  &::before {
+    border-color: var(--primary);
+  }
+
+  &::after {
+    color: var(--primary);
+  }
+}
+
+.switch-outline-primary-alt .switch-input:checked + .switch-slider {
+  border-color: var(--primary);
+
+  &::before {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  &::after {
+    color: var(--primary);
+  }
+}
+
+// Sidebar nav-link-primary (_sidebar.scss)
+.nav-link-primary {
+  background: var(--primary);
+}
+
+.nav-link-primary:hover {
+  background: var(--primary-dark);
+}
+
+// noty theme (_vendor.scss .noty_theme__backstrap.noty_type__primary)
+.noty_theme__backstrap.noty_type__primary {
+  background-color: var(--primary);
+  border-color: var(--primary-dark-10);
+}
+
+// Links (_reboot.scss `a`, $link-color/$link-hover-color = theme-color("primary"))
+// and pagination (mixins/_pagination.scss, same $link-color)
+a {
+  color: var(--primary);
+}
+
+a:hover {
+  color: var(--primary-dark-15);
+}
+
+.btn-link {
+  color: var(--primary);
+}
+
+.btn-link:hover {
+  color: var(--primary-dark-15);
+}
+
+.page-link {
+  color: var(--primary);
+}
+
+.page-link:hover {
+  color: var(--primary-dark-15);
+}
+
+.page-link:focus {
+  box-shadow: 0 0 0 bootstrap-variables.$input-btn-focus-width var(--primary-alpha-25);
+}
+
+.page-item.active .page-link {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+// Nav-pills / nav-tabs / nav-fill active states (use theme-color("primary"))
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  background-color: var(--primary);
+}
+
+.aside-menu .nav-tabs .nav-link.active {
+  color: var(--primary);
+}
+
+.nav-fill .nav-link.active {
+  border-top-color: var(--primary);
+}
+
+// Sidebar (_sidebar.scss; $sidebar-nav-link-active-bg / -hover-bg = theme-color("primary")).
+// These selectors are more specific than the plain .nav-link-primary rule
+// above, so they must be re-declared here to actually win the cascade.
+.sidebar .nav-link.active {
+  background: var(--primary);
+}
+
+.sidebar .nav-link:hover {
+  background: var(--primary);
+}
+
+.sidebar .nav-link.nav-link-primary {
+  background: var(--primary);
+}
+
+.sidebar .nav-link.nav-link-primary:hover {
+  background: var(--primary-dark);
+}
+
+.sidebar-minimized .sidebar .nav-item:hover > .nav-link {
+  background: var(--primary);
+}
+
+.sidebar-minimized .sidebar .nav-link:hover {
+  background: var(--primary);
+}
+
+.sidebar-minimized .sidebar .nav > .nav-dropdown:hover {
+  background: var(--primary);
+}
+
+[dir="rtl"] .sidebar-minimized .sidebar .nav > .nav-dropdown:hover {
+  background: var(--primary);
+}
+
+// -----------------------------------------------------------------
+// Runtime-reactive theme colors: success, info, warning, danger, secondary
+// -----------------------------------------------------------------
+// Same treatment as --primary above (see its comments for how the
+// color-mix() weights were chosen), generalized into a loop since it's
+// the same ~20 components repeated per color. Not covered: the CoreUI
+// aliases default/notice/error (currently identical to secondary/info/
+// danger but independently configurable in $theme-colors) — same pattern,
+// ask if you want those reactive too.
+$reactive-colors: (
+  "success": bootstrap-variables.$success,
+  "info": bootstrap-variables.$info,
+  "warning": bootstrap-variables.$warning,
+  "danger": bootstrap-variables.$danger,
+  "secondary": bootstrap-variables.$secondary,
+);
+
+:root {
+  @each $name, $val in $reactive-colors {
+    --#{$name}: #{$val};
+    // ~ color.adjust($color, $lightness: -7.5%, hsl) — solid button hover
+    --#{$name}-hover: color-mix(in srgb, var(--#{$name}) 85%, black);
+    // ~ color.adjust($color, $lightness: -10%, hsl) — button active, badge/switch hover
+    --#{$name}-active: color-mix(in srgb, var(--#{$name}) 80%, black);
+    // ~ color.adjust($color, $lightness: -5%, hsl) — table/list-group/sidebar hover, alert hr
+    --#{$name}-dark-5: color-mix(in srgb, var(--#{$name}) 90%, black);
+    // ~ color.adjust($color, $lightness: -15%, hsl) — .text-#{$name} hover ($emphasized-link-hover-darken-percentage)
+    --#{$name}-dark-15: color-mix(in srgb, var(--#{$name}) 70%, black);
+    // rgba($color, .5) equivalent
+    --#{$name}-alpha-50: color-mix(in srgb, var(--#{$name}) 50%, transparent);
+    // button-variant()'s focus-ring formula: rgba(mix(yiq-text, border, 15%), .5)
+    --#{$name}-focus-ring: color-mix(in srgb, color-mix(in srgb, white 15%, var(--#{$name})) 50%, transparent);
+    // = theme-color-level($color, -9) — table/list-group light background
+    --#{$name}-tint-28: color-mix(in srgb, white 72%, var(--#{$name}));
+    // = theme-color-level($color, -6) — table border
+    --#{$name}-tint-52: color-mix(in srgb, white 48%, var(--#{$name}));
+    // = theme-color-level($color, -12) — app's $alert-color-level, alert text
+    --#{$name}-tint-4: color-mix(in srgb, white 96%, var(--#{$name}));
+    // = theme-color-level($color, +1) — app's $alert-border-level, alert border
+    --#{$name}-shade-8: color-mix(in srgb, black 8%, var(--#{$name}));
+    // = theme-color-level($color, +6) — list-group-item-#{$name} active text/border
+    --#{$name}-shade-48: color-mix(in srgb, black 48%, var(--#{$name}));
+  }
+}
+
+@each $name, $val in $reactive-colors {
+  $text: functions.color-yiq($val);
+
+  // Solid button (mixins/_buttons.scss button-variant)
+  .btn-#{$name} {
+    color: $text;
+    background-color: var(--#{$name});
+    border-color: var(--#{$name});
+
+    &:hover {
+      color: $text;
+      background-color: var(--#{$name}-hover);
+      border-color: var(--#{$name}-active);
+    }
+
+    &:focus,
+    &.focus {
+      box-shadow: 0 0 0 bootstrap-variables.$btn-focus-width var(--#{$name}-focus-ring);
+    }
+
+    &.disabled,
+    &:disabled {
+      color: $text;
+      background-color: var(--#{$name});
+      border-color: var(--#{$name});
+    }
+
+    &:not(:disabled):not(.disabled):active,
+    &:not(:disabled):not(.disabled).active,
+    .show > &.dropdown-toggle {
+      color: $text;
+      background-color: var(--#{$name}-active);
+      border-color: var(--#{$name}-active);
+
+      &:focus {
+        box-shadow: 0 0 0 bootstrap-variables.$btn-focus-width var(--#{$name}-focus-ring);
+      }
+    }
+  }
+
+  // Outline / ghost buttons (mixins/_buttons.scss button-outline-variant)
+  .btn-outline-#{$name},
+  .btn-ghost-#{$name} {
+    color: var(--#{$name});
+    border-color: var(--#{$name});
+
+    &:hover {
+      color: $text;
+      background-color: var(--#{$name});
+      border-color: var(--#{$name});
+    }
+
+    &:focus,
+    &.focus {
+      box-shadow: 0 0 0 bootstrap-variables.$btn-focus-width var(--#{$name}-alpha-50);
+    }
+
+    &.disabled,
+    &:disabled {
+      color: var(--#{$name});
+    }
+
+    &:not(:disabled):not(.disabled):active,
+    &:not(:disabled):not(.disabled).active,
+    .show > &.dropdown-toggle {
+      color: $text;
+      background-color: var(--#{$name});
+      border-color: var(--#{$name});
+    }
+  }
+
+  // Badges (mixins/_badge.scss badge-variant)
+  .badge-#{$name} {
+    color: $text;
+    background-color: var(--#{$name});
+  }
+
+  a.badge-#{$name}:hover,
+  a.badge-#{$name}:focus {
+    color: $text;
+    background-color: var(--#{$name}-active);
+  }
+
+  a.badge-#{$name}:focus,
+  a.badge-#{$name}.focus {
+    box-shadow: 0 0 0 bootstrap-variables.$badge-focus-width var(--#{$name}-alpha-50);
+  }
+
+  // Utilities (utilities/_background.scss, mixins/_text-emphasis.scss)
+  .bg-#{$name} {
+    background-color: var(--#{$name}) !important;
+  }
+
+  a.bg-#{$name}:hover,
+  a.bg-#{$name}:focus,
+  button.bg-#{$name}:hover,
+  button.bg-#{$name}:focus {
+    background-color: var(--#{$name}-active) !important;
+  }
+
+  .border-#{$name} {
+    border-color: var(--#{$name}) !important;
+  }
+
+  .text-#{$name} {
+    color: var(--#{$name}) !important;
+  }
+
+  a.text-#{$name}:hover,
+  a.text-#{$name}:focus {
+    color: var(--#{$name}-dark-15) !important;
+  }
+
+  // Alerts (mixins/_alert.scss; app sets $alert-bg-level: 0,
+  // $alert-border-level: +1, $alert-color-level: -12)
+  .alert-#{$name} {
+    color: var(--#{$name}-tint-4);
+    background-color: var(--#{$name});
+    border-color: var(--#{$name}-shade-8);
+
+    hr {
+      border-top-color: var(--#{$name}-dark-5);
+    }
+
+    .alert-link {
+      color: color-mix(in srgb, black 20%, var(--#{$name}-tint-4));
+    }
+  }
+
+  // Tables (mixins/_table-row.scss; $table-bg-level: -9, $table-border-level: -6)
+  .table-#{$name},
+  .table-#{$name} > th,
+  .table-#{$name} > td {
+    background-color: var(--#{$name}-tint-28);
+  }
+
+  .table-#{$name} th,
+  .table-#{$name} td,
+  .table-#{$name} thead th,
+  .table-#{$name} tbody + tbody {
+    border-color: var(--#{$name}-tint-52);
+  }
+
+  .table-hover .table-#{$name}:hover,
+  .table-hover .table-#{$name}:hover > td,
+  .table-hover .table-#{$name}:hover > th {
+    background-color: var(--#{$name}-tint-28);
+  }
+
+  // List groups (mixins/_list-group.scss; levels -9 / +6)
+  .list-group-item-#{$name} {
+    color: var(--#{$name}-shade-48);
+    background-color: var(--#{$name}-tint-28);
+  }
+
+  .list-group-item-#{$name}.list-group-item-action:hover,
+  .list-group-item-#{$name}.list-group-item-action:focus {
+    color: var(--#{$name}-shade-48);
+    background-color: var(--#{$name}-tint-28);
+  }
+
+  .list-group-item-#{$name}.list-group-item-action.active {
+    background-color: var(--#{$name}-shade-48);
+    border-color: var(--#{$name}-shade-48);
+  }
+
+  .list-group-item-accent-#{$name} {
+    border-left: 4px solid var(--#{$name});
+  }
+
+  // Callouts (_callout.scss)
+  .callout-#{$name} {
+    border-left-color: var(--#{$name});
+
+    h4 {
+      color: var(--#{$name});
+    }
+  }
+
+  [dir="rtl"] .callout.callout-#{$name} {
+    border-right-color: var(--#{$name});
+  }
+
+  // Card accent (mixins/_card-accent.scss)
+  .card-accent-#{$name} {
+    border-top-color: var(--#{$name});
+  }
+
+  // Modal (_modal.scss)
+  .modal-#{$name} .modal-content {
+    border-color: var(--#{$name});
+  }
+
+  .modal-#{$name} .modal-header {
+    color: $text;
+    background-color: var(--#{$name});
+  }
+
+  // Switches (mixins/_switches.scss)
+  .switch-#{$name} .switch-input:checked + .switch-slider {
+    background-color: var(--#{$name});
+    border-color: var(--#{$name}-active);
+
+    &::before {
+      border-color: var(--#{$name}-active);
+    }
+  }
+
+  .switch-outline-#{$name} .switch-input:checked + .switch-slider {
+    border-color: var(--#{$name});
+
+    &::before {
+      border-color: var(--#{$name});
+    }
+
+    &::after {
+      color: var(--#{$name});
+    }
+  }
+
+  .switch-outline-#{$name}-alt .switch-input:checked + .switch-slider {
+    border-color: var(--#{$name});
+
+    &::before {
+      background-color: var(--#{$name});
+      border-color: var(--#{$name});
+    }
+
+    &::after {
+      color: var(--#{$name});
+    }
+  }
+
+  // Sidebar nav-link-#{$name} (_sidebar.scss)
+  .sidebar .nav-link.nav-link-#{$name} {
+    background: var(--#{$name});
+  }
+
+  .sidebar .nav-link.nav-link-#{$name}:hover {
+    background: var(--#{$name}-dark-5);
+  }
+
+  // noty theme (_vendor.scss .noty_theme__backstrap.noty_type__#{$name});
+  // matches the app's original per-color text-contrast choice (not derived).
+  .noty_theme__backstrap.noty_type__#{$name} {
+    color: if($name == "secondary", bootstrap-variables.$black, bootstrap-variables.$gray-100);
+    background-color: var(--#{$name});
+    border-color: var(--#{$name}-active);
+  }
+}

@@ -1,3 +1,11 @@
+@use "bootstrap/mixins/breakpoints";
+@use "bootstrap/variables" as bootstrap-variables;
+@use "mixins/borders";
+@use "variables";
+
+@use "sass:map";
+@use "sass:color";
+
 // IE10&11 Flexbox fix
 @media all and (-ms-high-contrast: none) {
   html {
@@ -17,11 +25,11 @@ app-root {
 }
 
 .app-header {
-  flex: 0 0 $navbar-height;
+  flex: 0 0 variables.$navbar-height;
 }
 
 .app-footer {
-  flex: 0 0 $footer-height;
+  flex: 0 0 variables.$footer-height;
 }
 
 .app-body {
@@ -37,48 +45,48 @@ app-root {
 
   .sidebar {
     // $sidebar-width is the width of the columns
-    flex: 0 0 $sidebar-width;
+    flex: 0 0 variables.$sidebar-width;
     // put the nav on the left
     order: -1;
   }
 
   .aside-menu {
     // $aside-menu-width is the width of the columns
-    flex: 0 0 $aside-menu-width;
+    flex: 0 0 variables.$aside-menu-width;
   }
 }
 
 html:not([dir="rtl"]) {
   .sidebar {
-    margin-left: - $sidebar-width;
+    margin-left: - variables.$sidebar-width;
   }
   .aside-menu {
     right: 0;
-    margin-right: - $aside-menu-width;
+    margin-right: - variables.$aside-menu-width;
   }
 }
 html[dir="rtl"] {
   .sidebar {
-    margin-right: - $sidebar-width;
+    margin-right: - variables.$sidebar-width;
   }
   .aside-menu {
     left: 0;
-    margin-left: - $aside-menu-width;
+    margin-left: - variables.$aside-menu-width;
   }
 }
 
-@include media-breakpoint-up($breakpoint-mobile-up) {
+@include breakpoints.media-breakpoint-up(variables.$breakpoint-mobile-up) {
   //
   // Header
   //
   .header-fixed {
     .app-header {
       position: fixed;
-      z-index: $zindex-sticky;
+      z-index: bootstrap-variables.$zindex-sticky;
       width: 100%;
     }
     .app-body {
-      margin-top: $navbar-height;
+      margin-top: variables.$navbar-height;
     }
   }
   //
@@ -87,25 +95,25 @@ html[dir="rtl"] {
   .sidebar-fixed {
     .sidebar {
       position: fixed;
-      z-index: $zindex-sticky - 1;
-      width: $sidebar-width;
+      z-index: bootstrap-variables.$zindex-sticky - 1;
+      width: variables.$sidebar-width;
       height: 100vh;
     }
   }
   .sidebar-fixed {
     .app-header + .app-body .sidebar {
-      height: calc(100vh - #{$navbar-height});
+      height: calc(100vh - #{variables.$navbar-height});
     }
   }
 
   .sidebar-compact {
     .sidebar {
-      flex: 0 0 $sidebar-compact-width;
+      flex: 0 0 variables.$sidebar-compact-width;
     }
 
     &.sidebar-fixed {
       .sidebar {
-        width: $sidebar-compact-width;
+        width: variables.$sidebar-compact-width;
       }
     }
     .sidebar-minimizer {
@@ -115,12 +123,12 @@ html[dir="rtl"] {
 
   .sidebar-minimized {
     .sidebar {
-      flex: 0 0 $sidebar-minimized-width;
+      flex: 0 0 variables.$sidebar-minimized-width;
     }
 
     &.sidebar-fixed {
       .sidebar {
-        width: $sidebar-minimized-width;
+        width: variables.$sidebar-minimized-width;
       }
     }
   }
@@ -128,38 +136,38 @@ html[dir="rtl"] {
   .sidebar-off-canvas {
     .sidebar {
       position: fixed;
-      z-index: $zindex-sticky - 1;
+      z-index: bootstrap-variables.$zindex-sticky - 1;
       height: 100%;
     }
   }
 
   .sidebar-off-canvas {
     .app-header + .app-body .sidebar {
-      height: calc(100vh - #{$navbar-height});
+      height: calc(100vh - #{variables.$navbar-height});
     }
   }
 
   html:not([dir="rtl"]) {
     .sidebar-compact {
       .sidebar {
-        margin-left: - $sidebar-compact-width;
+        margin-left: - variables.$sidebar-compact-width;
       }
     }
     .sidebar-minimized {
       .sidebar {
-        margin-left: - $sidebar-minimized-width;
+        margin-left: - variables.$sidebar-minimized-width;
       }
     }
   }
   html[dir="rtl"] {
     .sidebar-compact {
       .sidebar {
-        margin-right: - $sidebar-compact-width;
+        margin-right: - variables.$sidebar-compact-width;
       }
     }
     .sidebar-minimized {
       .sidebar {
-        margin-right: - $sidebar-minimized-width;
+        margin-right: - variables.$sidebar-minimized-width;
       }
     }
   }
@@ -173,28 +181,28 @@ html[dir="rtl"] {
       height: 100%;
 
       .tab-content {
-        height: calc(100vh - #{$aside-menu-nav-padding-y * 2 + $font-size-base} - #{$navbar-height});
+        height: calc(100vh - #{variables.$aside-menu-nav-padding-y * 2 + bootstrap-variables.$font-size-base} - #{variables.$navbar-height});
       }
     }
   }
 
   .aside-menu-fixed {
     .app-header + .app-body .aside-menu {
-      height: calc(100vh - #{$navbar-height});
+      height: calc(100vh - #{variables.$navbar-height});
     }
   }
 
   .aside-menu-off-canvas {
     .aside-menu {
       position: fixed;
-      z-index: $zindex-sticky - 1;
+      z-index: bootstrap-variables.$zindex-sticky - 1;
       height: 100%;
     }
   }
 
   .aside-menu-off-canvas {
     .app-header + .app-body .aside-menu {
-      height: calc(100vh - #{$navbar-height});
+      height: calc(100vh - #{variables.$navbar-height});
     }
   }
 
@@ -221,22 +229,22 @@ html[dir="rtl"] {
 //
 .breadcrumb-fixed {
   .main {
-    $breadcrumb-height: 2 * $breadcrumb-padding-y + $font-size-base + 1.5 * $spacer;
+    $breadcrumb-height: 2 * bootstrap-variables.$breadcrumb-padding-y + bootstrap-variables.$font-size-base + 1.5 * bootstrap-variables.$spacer;
     padding-top: $breadcrumb-height;
   }
 
   .breadcrumb {
     position: fixed;
-    top: $navbar-height;
+    top: variables.$navbar-height;
     right: 0;
     left: 0;
-    z-index: $zindex-sticky - 3;
+    z-index: bootstrap-variables.$zindex-sticky - 3;
   }
 }
 
-@each $breakpoint in map-keys($grid-breakpoints) {
-  @include media-breakpoint-up($breakpoint) {
-    $infix: breakpoint-infix($breakpoint, $grid-breakpoints);
+@each $breakpoint in map.keys(bootstrap-variables.$grid-breakpoints) {
+  @include breakpoints.media-breakpoint-up($breakpoint) {
+    $infix: breakpoints.breakpoint-infix($breakpoint, bootstrap-variables.$grid-breakpoints);
     html:not([dir="rtl"]) {
       .sidebar#{$infix}-show,
       .sidebar-show {
@@ -247,41 +255,41 @@ html[dir="rtl"] {
           &.sidebar-fixed {
             .main,
             .app-footer {
-              margin-left: $sidebar-width;
+              margin-left: variables.$sidebar-width;
             }
             &.sidebar-compact {
               .main,
               .app-footer {
-                margin-left: $sidebar-compact-width;
+                margin-left: variables.$sidebar-compact-width;
               }
             }
             &.sidebar-minimized {
-              @include media-breakpoint-down($breakpoint-mobile-down) {
+              @include breakpoints.media-breakpoint-down(variables.$breakpoint-mobile-down) {
                 .main,
                 .app-footer {
-                  margin-left: $sidebar-width;
+                  margin-left: variables.$sidebar-width;
                 }
               }
-              @include media-breakpoint-up($breakpoint-mobile-up) {
+              @include breakpoints.media-breakpoint-up(variables.$breakpoint-mobile-up) {
                 .main,
                 .app-footer {
-                  margin-left: $sidebar-minimized-width;
+                  margin-left: variables.$sidebar-minimized-width;
                 }
               }
             }
           }
           &.breadcrumb-fixed {
             .breadcrumb {
-              left: $sidebar-width;
+              left: variables.$sidebar-width;
             }
             &.sidebar-compact {
               .breadcrumb {
-                left: $sidebar-compact-width;
+                left: variables.$sidebar-compact-width;
               }
             }
             &.sidebar-minimized {
               .breadcrumb {
-                left: $sidebar-minimized-width;
+                left: variables.$sidebar-minimized-width;
               }
             }
           }
@@ -297,12 +305,12 @@ html[dir="rtl"] {
           &.aside-menu-fixed {
             .main,
             .app-footer {
-              margin-right: $aside-menu-width;
+              margin-right: variables.$aside-menu-width;
             }
           }
           &.breadcrumb-fixed {
             .breadcrumb {
-              right: $aside-menu-width;
+              right: variables.$aside-menu-width;
             }
           }
         }
@@ -319,41 +327,41 @@ html[dir="rtl"] {
           &.sidebar-fixed {
             .main,
             .app-footer {
-              margin-right: $sidebar-width;
+              margin-right: variables.$sidebar-width;
             }
             &.sidebar-compact {
               .main,
               .app-footer {
-                margin-right: $sidebar-compact-width;
+                margin-right: variables.$sidebar-compact-width;
               }
             }
             &.sidebar-minimized {
-              @include media-breakpoint-down($breakpoint-mobile-down) {
+              @include breakpoints.media-breakpoint-down(variables.$breakpoint-mobile-down) {
                 .main,
                 .app-footer {
-                  margin-right: $sidebar-width;
+                  margin-right: variables.$sidebar-width;
                 }
               }
-              @include media-breakpoint-up($breakpoint-mobile-up) {
+              @include breakpoints.media-breakpoint-up(variables.$breakpoint-mobile-up) {
                 .main,
                 .app-footer {
-                  margin-right: $sidebar-minimized-width;
+                  margin-right: variables.$sidebar-minimized-width;
                 }
               }
             }
           }
           &.breadcrumb-fixed {
             .breadcrumb {
-              right: $sidebar-width;
+              right: variables.$sidebar-width;
             }
             &.sidebar-compact {
               .breadcrumb {
-                right: $sidebar-compact-width;
+                right: variables.$sidebar-compact-width;
               }
             }
             &.sidebar-minimized {
               .breadcrumb {
-                right: $sidebar-minimized-width;
+                right: variables.$sidebar-minimized-width;
               }
             }
           }
@@ -369,12 +377,12 @@ html[dir="rtl"] {
           &.aside-menu-fixed {
             .main,
             .app-footer {
-              margin-left: $aside-menu-width;
+              margin-left: variables.$aside-menu-width;
             }
           }
           &.breadcrumb-fixed {
             .breadcrumb {
-              left: $aside-menu-width;
+              left: variables.$aside-menu-width;
             }
           }
         }
@@ -389,19 +397,19 @@ html[dir="rtl"] {
       }
 
       @if $breakpoint == "xs" {
-        @include media-breakpoint-down(xs) {
+        @include breakpoints.media-breakpoint-down(xs) {
           .main {
             position: relative;
             &::before {
               position: absolute;
               top: 0;
               left: 0;
-              z-index: $zindex-sticky - 2;
+              z-index: bootstrap-variables.$zindex-sticky - 2;
               width: 100%;
               height: 100%;
               content: "";
               background: rgba(0, 0, 0, .7);
-              animation: opacity $layout-transition-speed;
+              animation: opacity variables.$layout-transition-speed;
             }
           }
         }
@@ -419,12 +427,12 @@ html[dir="rtl"] {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: $zindex-sticky;
-    height: $footer-height;
+    z-index: bootstrap-variables.$zindex-sticky;
+    height: variables.$footer-height;
   }
 
   .app-body {
-    margin-bottom: $footer-height;
+    margin-bottom: variables.$footer-height;
   }
 }
 
@@ -436,34 +444,34 @@ html[dir="rtl"] {
 .sidebar,
 .main,
 .aside-menu {
-  transition: margin-left $layout-transition-speed, margin-right $layout-transition-speed, width $layout-transition-speed, flex $layout-transition-speed;
+  transition: margin-left variables.$layout-transition-speed, margin-right variables.$layout-transition-speed, width variables.$layout-transition-speed, flex variables.$layout-transition-speed;
 }
 .sidebar-nav {
-  transition: width $layout-transition-speed;
+  transition: width variables.$layout-transition-speed;
 }
 .breadcrumb {
-  transition: left $layout-transition-speed, right $layout-transition-speed, width $layout-transition-speed;
+  transition: left variables.$layout-transition-speed, right variables.$layout-transition-speed, width variables.$layout-transition-speed;
 }
 
 //
 // Mobile layout
 //
-@include media-breakpoint-down($breakpoint-mobile-down) {
+@include breakpoints.media-breakpoint-down(variables.$breakpoint-mobile-down) {
   .app-header {
     position: fixed;
-    z-index: $zindex-sticky;
+    z-index: bootstrap-variables.$zindex-sticky;
     width: 100%;
     text-align: center;
-    @if $navbar-brand-bg == transparent {
-      background-color: $navbar-bg;
+    @if variables.$navbar-brand-bg == transparent {
+      background-color: variables.$navbar-bg;
     } @else {
-      background-color: $navbar-brand-bg;
+      background-color: variables.$navbar-brand-bg;
     }
-    @include borders($navbar-brand-border);
+    @include borders.borders(variables.$navbar-brand-border);
 
     .navbar-toggler {
-      @if (lightness( $navbar-brand-bg ) > 40) {
-        color: $navbar-color;
+      @if (color.channel( variables.$navbar-brand-bg, 'lightness', $space: hsl ) > 40) {
+        color: variables.$navbar-color;
       } @else {
         color: #fff;
       }
@@ -473,19 +481,19 @@ html[dir="rtl"] {
       position: absolute;
       top: 0;
       left: 50%;
-      margin-left: - ($navbar-brand-width * 0.5);
+      margin-left: - (variables.$navbar-brand-width * 0.5);
     }
   }
 
   .app-body {
-    margin-top: $navbar-height;
+    margin-top: variables.$navbar-height;
   }
 
   .sidebar {
     position: fixed;
-    z-index: $zindex-sticky - 1;
-    width: $sidebar-width;
-    height: calc(100vh - #{$navbar-height});
+    z-index: bootstrap-variables.$zindex-sticky - 1;
+    width: variables.$sidebar-width;
+    height: calc(100vh - #{variables.$navbar-height});
     background-color: white;
   }
 

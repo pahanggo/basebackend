@@ -1,17 +1,19 @@
+@use "bootstrap/variables";
+
 .nav-tabs {
   .nav-link {
-    color: $gray-600;
+    color: variables.$gray-600;
     &:hover {
       cursor: pointer;
     }
     &.active {
-      color: $gray-800;
+      color: variables.$gray-800;
       background: #fff;
-      border-color: $border-color;
+      border-color: variables.$border-color;
       border-bottom-color: #fff;
       &:focus {
         background: #fff;
-        border-color: $border-color;
+        border-color: variables.$border-color;
         border-bottom-color: #fff;
       }
     }
@@ -21,9 +23,9 @@
 .tab-content {
   margin-top: -1px;
   background: #fff;
-  border: 1px solid $border-color;
+  border: 1px solid variables.$border-color;
   .tab-pane {
-    padding: $spacer;
+    padding: variables.$spacer;
   }
 }
 
@@ -37,7 +39,7 @@
 .nav-fill {
   .nav-link {
     background-color: #fff;
-    border-color: $border-color;
+    border-color: variables.$border-color;
   }
   .nav-link + .nav-link {
     margin-left: -1px;
@@ -45,7 +47,7 @@
   .nav-link.active {
     margin-top: -1px;
     // margin-left: 0;
-    border-top: 2px solid $primary;
+    border-top: 2px solid variables.$primary;
   }
 }
 

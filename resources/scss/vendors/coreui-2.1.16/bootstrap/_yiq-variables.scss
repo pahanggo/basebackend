@@ -1,0 +1,16 @@
+// Split out of _variables.scss to break the circular dependency between
+// functions.scss (needs these) and variables.scss (needs functions.scss for
+// theme-color() etc). $gray-900/$white below resolve to the app's overrides
+// via _variables.scss's own `@use "../../../variables" as *;`, matching the
+// value these had under the old @import cascade.
+@use "../../../variables" as *;
+
+// Set a specific jump point for requesting color jumps
+$theme-color-interval: 8% !default;
+
+// The yiq lightness value that determines when the lightness of color changes from "dark" to "light". Acceptable values are between 0 and 255.
+$yiq-contrasted-threshold: 150 !default;
+
+// Customize the light and dark text colors for use in our YIQ color contrast function.
+$yiq-text-dark: $gray-900 !default;
+$yiq-text-light: $white !default;

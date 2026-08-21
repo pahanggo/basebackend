@@ -1,7 +1,9 @@
+@use "bootstrap/variables";
+
 .progress-group {
   display: flex;
   flex-flow: row wrap;
-  margin-bottom: $spacer;
+  margin-bottom: variables.$spacer;
 }
 
 .progress-group-prepend {
@@ -10,20 +12,20 @@
 }
 
 .progress-group-icon {
-  margin: 0 $spacer 0 ($spacer * .25);
-  font-size: $font-size-lg;
+  margin: 0 variables.$spacer 0 (variables.$spacer * .25);
+  font-size: variables.$font-size-lg;
 }
 
 .progress-group-text {
-  font-size: $font-size-sm;
-  color: $gray-600;
+  font-size: variables.$font-size-sm;
+  color: variables.$gray-600;
 }
 
 .progress-group-header {
   display: flex;
   flex-basis: 100%;
   align-items: flex-end;
-  margin-bottom: ($spacer * .25);
+  margin-bottom: (variables.$spacer * .25);
 }
 
 .progress-group-bars {

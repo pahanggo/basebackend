@@ -1,3 +1,8 @@
+@use "mixins/border-radius";
+@use "mixins/breakpoints";
+@use "mixins/hover";
+@use "variables";
+
 //
 // Base styles
 //
@@ -8,10 +13,10 @@
   flex-direction: column;
   min-width: 0; // See https://github.com/twbs/bootstrap/pull/22740#issuecomment-305868106
   word-wrap: break-word;
-  background-color: $card-bg;
+  background-color: variables.$card-bg;
   background-clip: border-box;
-  border: $card-border-width solid $card-border-color;
-  @include border-radius($card-border-radius);
+  border: variables.$card-border-width solid variables.$card-border-color;
+  @include border-radius.border-radius(variables.$card-border-radius);
 
   > hr {
     margin-right: 0;
@@ -20,13 +25,13 @@
 
   > .list-group:first-child {
     .list-group-item:first-child {
-      @include border-top-radius($card-border-radius);
+      @include border-radius.border-top-radius(variables.$card-border-radius);
     }
   }
 
   > .list-group:last-child {
     .list-group-item:last-child {
-      @include border-bottom-radius($card-border-radius);
+      @include border-radius.border-bottom-radius(variables.$card-border-radius);
     }
   }
 }
@@ -35,16 +40,16 @@
   // Enable `flex-grow: 1` for decks and groups so that card blocks take up
   // as much space as possible, ensuring footers are aligned to the bottom.
   flex: 1 1 auto;
-  padding: $card-spacer-x;
-  color: $card-color;
+  padding: variables.$card-spacer-x;
+  color: variables.$card-color;
 }
 
 .card-title {
-  margin-bottom: $card-spacer-y;
+  margin-bottom: variables.$card-spacer-y;
 }
 
 .card-subtitle {
-  margin-top: -$card-spacer-y * 0.5;
+  margin-top: -(variables.$card-spacer-y) * 0.5;
   margin-bottom: 0;
 }
 
@@ -53,12 +58,12 @@
 }
 
 .card-link {
-  @include hover {
+  @include hover.hover {
     text-decoration: none;
   }
 
   + .card-link {
-    margin-left: $card-spacer-x;
+    margin-left: variables.$card-spacer-x;
   }
 }
 
@@ -67,14 +72,14 @@
 //
 
 .card-header {
-  padding: $card-spacer-y $card-spacer-x;
+  padding: variables.$card-spacer-y variables.$card-spacer-x;
   margin-bottom: 0; // Removes the default margin-bottom of <hN>
-  color: $card-cap-color;
-  background-color: $card-cap-bg;
-  border-bottom: $card-border-width solid $card-border-color;
+  color: variables.$card-cap-color;
+  background-color: variables.$card-cap-bg;
+  border-bottom: variables.$card-border-width solid variables.$card-border-color;
 
   &:first-child {
-    @include border-radius($card-inner-border-radius $card-inner-border-radius 0 0);
+    @include border-radius.border-radius(variables.$card-inner-border-radius variables.$card-inner-border-radius 0 0);
   }
 
   + .list-group {
@@ -85,12 +90,12 @@
 }
 
 .card-footer {
-  padding: $card-spacer-y $card-spacer-x;
-  background-color: $card-cap-bg;
-  border-top: $card-border-width solid $card-border-color;
+  padding: variables.$card-spacer-y variables.$card-spacer-x;
+  background-color: variables.$card-cap-bg;
+  border-top: variables.$card-border-width solid variables.$card-border-color;
 
   &:last-child {
-    @include border-radius(0 0 $card-inner-border-radius $card-inner-border-radius);
+    @include border-radius.border-radius(0 0 variables.$card-inner-border-radius variables.$card-inner-border-radius);
   }
 }
 
@@ -100,15 +105,15 @@
 //
 
 .card-header-tabs {
-  margin-right: -$card-spacer-x * 0.5;
-  margin-bottom: -$card-spacer-y;
-  margin-left: -$card-spacer-x * 0.5;
+  margin-right: -(variables.$card-spacer-x) * 0.5;
+  margin-bottom: -(variables.$card-spacer-y);
+  margin-left: -(variables.$card-spacer-x) * 0.5;
   border-bottom: 0;
 }
 
 .card-header-pills {
-  margin-right: -$card-spacer-x * 0.5;
-  margin-left: -$card-spacer-x * 0.5;
+  margin-right: -(variables.$card-spacer-x) * 0.5;
+  margin-left: -(variables.$card-spacer-x) * 0.5;
 }
 
 // Card image
@@ -118,23 +123,23 @@
   right: 0;
   bottom: 0;
   left: 0;
-  padding: $card-img-overlay-padding;
+  padding: variables.$card-img-overlay-padding;
 }
 
 .card-img {
   width: 100%; // Required because we use flexbox and this inherently applies align-self: stretch
-  @include border-radius($card-inner-border-radius);
+  @include border-radius.border-radius(variables.$card-inner-border-radius);
 }
 
 // Card image caps
 .card-img-top {
   width: 100%; // Required because we use flexbox and this inherently applies align-self: stretch
-  @include border-top-radius($card-inner-border-radius);
+  @include border-radius.border-top-radius(variables.$card-inner-border-radius);
 }
 
 .card-img-bottom {
   width: 100%; // Required because we use flexbox and this inherently applies align-self: stretch
-  @include border-bottom-radius($card-inner-border-radius);
+  @include border-radius.border-bottom-radius(variables.$card-inner-border-radius);
 }
 
 
@@ -145,22 +150,22 @@
   flex-direction: column;
 
   .card {
-    margin-bottom: $card-deck-margin;
+    margin-bottom: variables.$card-deck-margin;
   }
 
-  @include media-breakpoint-up(sm) {
+  @include breakpoints.media-breakpoint-up(sm) {
     flex-flow: row wrap;
-    margin-right: -$card-deck-margin;
-    margin-left: -$card-deck-margin;
+    margin-right: -(variables.$card-deck-margin);
+    margin-left: -(variables.$card-deck-margin);
 
     .card {
       display: flex;
       // Flexbugs #4: https://github.com/philipwalton/flexbugs#flexbug-4
       flex: 1 0 0%;
       flex-direction: column;
-      margin-right: $card-deck-margin;
+      margin-right: variables.$card-deck-margin;
       margin-bottom: 0; // Override the default
-      margin-left: $card-deck-margin;
+      margin-left: variables.$card-deck-margin;
     }
   }
 }
@@ -177,10 +182,10 @@
   // The child selector allows nested `.card` within `.card-group`
   // to display properly.
   > .card {
-    margin-bottom: $card-group-margin;
+    margin-bottom: variables.$card-group-margin;
   }
 
-  @include media-breakpoint-up(sm) {
+  @include breakpoints.media-breakpoint-up(sm) {
     flex-flow: row wrap;
     // The child selector allows nested `.card` within `.card-group`
     // to display properly.
@@ -195,9 +200,9 @@
       }
 
       // Handle rounded corners
-      @if $enable-rounded {
+      @if variables.$enable-rounded {
         &:not(:last-child) {
-          @include border-right-radius(0);
+          @include border-radius.border-right-radius(0);
 
           .card-img-top,
           .card-header {
@@ -212,7 +217,7 @@
         }
 
         &:not(:first-child) {
-          @include border-left-radius(0);
+          @include border-radius.border-left-radius(0);
 
           .card-img-top,
           .card-header {
@@ -237,12 +242,12 @@
 
 .card-columns {
   .card {
-    margin-bottom: $card-columns-margin;
+    margin-bottom: variables.$card-columns-margin;
   }
 
-  @include media-breakpoint-up(sm) {
-    column-count: $card-columns-count;
-    column-gap: $card-columns-gap;
+  @include breakpoints.media-breakpoint-up(sm) {
+    column-count: variables.$card-columns-count;
+    column-gap: variables.$card-columns-gap;
     orphans: 1;
     widows: 1;
 
@@ -264,26 +269,26 @@
 
     &:not(:first-of-type) {
       .card-header:first-child {
-        @include border-radius(0);
+        @include border-radius.border-radius(0);
       }
 
       &:not(:last-of-type) {
         border-bottom: 0;
-        @include border-radius(0);
+        @include border-radius.border-radius(0);
       }
     }
 
     &:first-of-type {
       border-bottom: 0;
-      @include border-bottom-radius(0);
+      @include border-radius.border-bottom-radius(0);
     }
 
     &:last-of-type {
-      @include border-top-radius(0);
+      @include border-radius.border-top-radius(0);
     }
 
     .card-header {
-      margin-bottom: -$card-border-width;
+      margin-bottom: -(variables.$card-border-width);
     }
   }
 }

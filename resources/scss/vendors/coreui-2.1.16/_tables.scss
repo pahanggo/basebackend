@@ -1,5 +1,7 @@
+@use "bootstrap/variables";
+
 .table-outline {
-  border: 1px solid $table-border-color;
+  border: 1px solid variables.$table-border-color;
 
   td {
     vertical-align: middle;
