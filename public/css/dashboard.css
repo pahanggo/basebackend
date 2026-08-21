@@ -1,0 +1,355 @@
+/* ==========================================================================
+   GridStack layout
+   ========================================================================== */
+
+.grid-stack-item-content {
+    overflow-y: auto;
+}
+
+.grid-stack-item-content .dash-card,
+.grid-stack-item-content .dash-stat {
+    height: 100%;
+    margin-bottom: 0;
+}
+
+.widget-remove-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 5;
+    width: 22px;
+    height: 22px;
+    line-height: 20px;
+    text-align: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.widget-remove-btn:hover {
+    background-color: var(--danger, #df4759);
+}
+
+/* The remove button is always in the DOM (the grid container is wire:ignore'd)
+   but only shown while the grid carries the JS-toggled .is-editing class. */
+.grid-stack:not(.is-editing) .widget-remove-btn {
+    display: none;
+}
+
+.grid-stack-item > .ui-resizable-handle {
+    z-index: 6;
+}
+
+.grid-stack-item > .ui-resizable-se::after {
+    content: '';
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--warning, #ffc107);
+    border-bottom: 2px solid var(--warning, #ffc107);
+    opacity: 0.8;
+}
+
+.grid-stack-placeholder > .placeholder-content {
+    background-color: rgba(21, 14, 144, 0.06);
+    border: 2px dashed var(--primary, #150e90);
+    border-radius: 12px;
+}
+
+.ui-draggable-dragging > .grid-stack-item-content .dash-card,
+.ui-resizable-resizing > .grid-stack-item-content .dash-card {
+    box-shadow: 0 8px 20px rgba(21, 14, 144, 0.25);
+}
+
+/* ==========================================================================
+   Dashboard widgets
+   ========================================================================== */
+
+.dash-card {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(21, 14, 144, 0.08), 0 1px 2px rgba(21, 14, 144, 0.06);
+}
+
+.dash-card .card-header {
+    border: none;
+    background-color: var(--primary, #150e90);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.9rem 1.15rem;
+}
+
+.dash-card .card-header i {
+    margin-right: 0.4rem;
+    opacity: 0.85;
+}
+
+.dash-card .card-body {
+    padding: 1rem 1.15rem;
+}
+
+/* Stat card (USERS / JUMLAH KUTIPAN PORTAL) */
+.dash-stat {
+    background-color: var(--primary, #150e90);
+    color: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.dash-stat__value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.dash-stat__label {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 0.15rem;
+}
+
+.dash-stat__sparkline {
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+/* Leaderboard progress rows */
+.dash-bar-row {
+    padding: 0.55rem 0;
+}
+
+.dash-bar-row + .dash-bar-row {
+    border-top: 1px solid #f1f4f8;
+}
+
+.dash-bar-row__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1b2a4e;
+    margin-bottom: 0.3rem;
+}
+
+.dash-bar-row__value {
+    font-weight: 700;
+    color: #1b2a4e;
+}
+
+.dash-bar-track {
+    background-color: #eef1f8;
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.dash-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background-color: var(--primary, #150e90);
+}
+
+.dash-bar-fill--warning {
+    background-color: var(--warning, #ffc107);
+}
+
+/* Stacked (segmented) bars, e.g. Voucher Inventory */
+.dash-stack-group + .dash-stack-group {
+    margin-top: 1rem;
+}
+
+.dash-stack-group__title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1b2a4e;
+    margin-bottom: 0.35rem;
+}
+
+.dash-stack {
+    display: flex;
+    height: 10px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #eef1f8;
+}
+
+.dash-stack__segment {
+    height: 100%;
+}
+
+.dash-stack__segment--unused {
+    background-color: var(--primary, #150e90);
+}
+
+.dash-stack__segment--distributed {
+    background-color: var(--warning, #ffc107);
+}
+
+.dash-stack__segment--redeemed {
+    background-color: var(--gray, #869ab8);
+}
+
+.dash-stack-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.1rem;
+    font-size: 0.75rem;
+    color: #62708f;
+    margin-bottom: 0.75rem;
+}
+
+.dash-stack-legend__dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+}
+
+.dash-stack-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: #62708f;
+    margin-top: 0.35rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Donut chart */
+.dash-donut-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dash-donut {
+    position: relative;
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dash-donut__hole {
+    position: absolute;
+    inset: 14px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.dash-donut__value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1b2a4e;
+    line-height: 1.1;
+}
+
+.dash-donut__label {
+    font-size: 0.65rem;
+    color: #869ab8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dash-legend {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.dash-legend__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    padding: 0.3rem 0;
+}
+
+.dash-legend__row + .dash-legend__row {
+    border-top: 1px solid #f1f4f8;
+}
+
+.dash-legend__key {
+    display: flex;
+    align-items: center;
+    color: #1b2a4e;
+    font-weight: 500;
+}
+
+.dash-legend__dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+.dash-legend__value {
+    font-weight: 600;
+    color: #1b2a4e;
+}
+
+/* Simple list rows, e.g. Newest Users */
+.dash-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+}
+
+.dash-list-row + .dash-list-row {
+    border-top: 1px solid #f1f4f8;
+}
+
+.dash-list-row__name {
+    font-weight: 600;
+    color: #1b2a4e;
+}
+
+.dash-list-row__meta {
+    color: #869ab8;
+}
+
+.dash-sparkline-caption {
+    font-size: 0.78rem;
+    color: #869ab8;
+    margin-bottom: 0.35rem;
+}
+
+.dash-empty {
+    color: #869ab8;
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+}
+
+.daterangepicker td.in-range {
+    background-color: #ebebf8;
+}
+
+.daterangepicker .ranges li.active,
+.daterangepicker td.active, .daterangepicker td.active:hover {
+    background-color: var(--primary, #150e90);
+}

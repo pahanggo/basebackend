@@ -8,6 +8,7 @@ use App\Console\Commands\Backpack\CrudControllerBackpackCommand;
 use App\Console\Commands\Backpack\CrudModelBackpackCommand;
 use App\Console\Commands\Backpack\CrudRequestBackpackCommand;
 use App\Console\Commands\MakeReportCommand;
+use App\Console\Commands\MakeWidgetCommand;
 use App\Console\Commands\Reports\MakeReportViewCommand;
 use App\Console\Commands\Reports\MakeReportControllerCommand;
 use Illuminate\Console\Scheduling\Schedule;
@@ -29,6 +30,7 @@ class Kernel extends ConsoleKernel
         MakeReportControllerCommand::class,
         MakeReportViewCommand::class,
         MakeReportCommand::class,
+        MakeWidgetCommand::class,
     ];
 
     /**

@@ -30,6 +30,18 @@ trait DashboardWidgetTrait {
         return class_basename($this);
     }
 
+    /**
+     * Default GridStack size (12-column grid units) for this widget when it
+     * is placed on the dashboard, either via legacy-layout migration or when
+     * newly added through the "Tambah Widget" control.
+     *
+     * @return array{w: int, h: int}
+     */
+    public function getDefaultSize(): array
+    {
+        return ['w' => 3, 'h' => 2];
+    }
+
     public function setup()
     {
         $middleware = [];

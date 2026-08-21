@@ -27,9 +27,11 @@ Supercharged starter kit featuring:
 
 ### Creating New Dashboard Widgets
 
-1. Run `php artisan make:livewire widgets.plot`
+1. Run `php artisan make:widget Plot`
 2. Edit the `app/Livewire/Widgets/Plot.php` file
 3. Edit the `resources/views/livewire/widgets/plot.blade.php` view file
+
+Widgets are placed on a GridStack dashboard, so they should fill their tile both horizontally and vertically (see the generated stub or `UserCounter` for the pattern). Any name casing works (`Plot`, `plot`, `plot-summary`, `plot_summary`) — it's normalized to StudlyCase for the class and kebab-case for the view. Pass `--force` to overwrite an existing widget of the same name.
 
 > Sample widgets that is supported by the theme can be [viewed here](https://backstrap.net/index.html).
 

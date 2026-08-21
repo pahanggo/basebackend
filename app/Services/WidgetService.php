@@ -30,12 +30,33 @@ class WidgetService
                 if(!isset(static::$availableWidgets)) {
                     static::$availableWidgets = [];
                 }
+                $size = $instance->getDefaultSize();
                 static::$availableWidgets[] = [
                     'name' => $instance->getWidgetName(),
                     'path' => $instance->getPath(),
-                    'middleware' => $instance->getRequiredPermission()
+                    'middleware' => $instance->getRequiredPermission(),
+                    'w' => $size['w'],
+                    'h' => $size['h'],
                 ];
             }
         }
+    }
+
+    /**
+     * Default GridStack size for a widget by its path slug, used by the
+     * legacy-layout migrator and by Dashboard::addWidget(). Falls back to
+     * the DashboardWidgetTrait default if the path is stale/unrecognized.
+     *
+     * @return array{w: int, h: int}
+     */
+    public static function defaultSizeFor(string $path): array
+    {
+        foreach (static::$availableWidgets as $available) {
+            if ($available['path'] === $path) {
+                return ['w' => $available['w'], 'h' => $available['h']];
+            }
+        }
+
+        return ['w' => 3, 'h' => 2];
     }
 }
