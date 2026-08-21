@@ -1,12 +1,12 @@
 @if ($crud->exportButtons())
-  <script src="/js/dataTables.buttons.min.js" type="text/javascript"></script>
-  <script src="/js/buttons.bootstrap4.min.js" type="text/javascript"></script>
-  <script src="/js/jszip.min.js" type="text/javascript"></script>
-  <script src="/js/pdfmake.min.js" type="text/javascript"></script>
-  <script src="/js/vfs_fonts.js" type="text/javascript"></script>
-  <script src="/js/buttons.html5.min.js" type="text/javascript"></script>
-  <script src="/js/buttons.print.min.js" type="text/javascript"></script>
-  <script src="/js/buttons.colVis.min.js" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/dataTables.buttons.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/buttons.bootstrap4.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/jszip.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/pdfmake.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/vfs_fonts.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/buttons.html5.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/buttons.print.min.js') }}" type="text/javascript"></script>
+  <script src="{{ asset('build/vendor/list/buttons.colVis.min.js') }}" type="text/javascript"></script>
   <script>
     window.crud.dataTableConfiguration.buttons = [
         {

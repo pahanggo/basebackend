@@ -21,7 +21,7 @@
 </nav>
 
 @push('crud_list_scripts')
-    <script src="/js/uri-1.18.2.min.js"></script>
+    <script src="{{ asset('build/vendor/list/uri-1.18.2.min.js') }}"></script>
     <script>
         function addOrUpdateUriParameter(uri, parameter, value) {
             var new_url = normalizeAmpersand(uri);
