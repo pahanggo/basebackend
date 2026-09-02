@@ -7,7 +7,7 @@
     </button>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
-    <div class="collapse navbar-collapse" id="bp-filters-navbar">
+    <div class="collapse navbar-collapse" style="justify-content: space-between" id="bp-filters-navbar">
         <ul class="nav navbar-nav">
             <!-- THE ACTUAL FILTERS -->
             @foreach ($crud->filters() as $filter)

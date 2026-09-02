@@ -253,9 +253,15 @@
                 "url": "{!! url($crud->route . '/search') . '?' . Request::getQueryString() !!}",
                 "type": "POST"
             },
+            @if($crud->get('fullsearch'))
+            dom: "<'row hidden'<'col-sm-12 mt-2'if>>" +
+                "<'row'<'col-sm-12'tr>>" +
+                "<'row mt-2 d-print-none'<'col-6 d-inline-block'lB><'col-6 'p>>",
+            @else
             dom: "<'row hidden'<'col-sm-12 mt-2'i>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row mt-2 d-print-none'<'col-6 d-inline-block'lB><'col-6 'p>>",
+            @endif
             // dom: "<'row hidden'<'col-sm-4'i><'col-sm-4 d-print-none'f><'col-sm-12 mb-2'B>>" +
             //     "<'row'<'col-sm-12'tr>>" +
             //     "<'row mt-2 d-print-none '<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 'p>>",
@@ -362,8 +368,8 @@
         }
 
         // move search bar
-        // $("#crudTable_filter").appendTo($('#datatable_search_stack'));
-        // $("#crudTable_filter input").removeClass('form-control-sm');
+        $("#crudTable_filter").appendTo($('#bp-filters-navbar'));
+        $("#crudTable_filter input").removeClass('form-control-sm');
 
         // move "showing x out of y" info to header
         @if ($crud->getSubheading())

@@ -50,29 +50,31 @@ class UserCrudController extends CrudController
             ],
         ]);
 
-        $this->crud->addFilter(
-            [
-                'name'  => 'name',
-                'type'  => 'text',
-                'label' => 'Nama',
-            ],
-            null,
-            function ($value) { // if the filter is active
-                $this->crud->addClause('where', 'name', 'like', "%$value%");
-            }
-        );
+        $this->crud->set('fullsearch', true);
 
-        $this->crud->addFilter(
-            [
-                'name'  => 'email',
-                'type'  => 'text',
-                'label' => 'Emel',
-            ],
-            null,
-            function ($value) { // if the filter is active
-                $this->crud->addClause('where', 'email', 'like', "%$value%");
-            }
-        );
+        // $this->crud->addFilter(
+        //     [
+        //         'name'  => 'name',
+        //         'type'  => 'text',
+        //         'label' => 'Nama',
+        //     ],
+        //     null,
+        //     function ($value) { // if the filter is active
+        //         $this->crud->addClause('where', 'name', 'like', "%$value%");
+        //     }
+        // );
+
+        // $this->crud->addFilter(
+        //     [
+        //         'name'  => 'email',
+        //         'type'  => 'text',
+        //         'label' => 'Emel',
+        //     ],
+        //     null,
+        //     function ($value) { // if the filter is active
+        //         $this->crud->addClause('where', 'email', 'like', "%$value%");
+        //     }
+        // );
 
         // Role Filter
         $this->crud->addFilter(
