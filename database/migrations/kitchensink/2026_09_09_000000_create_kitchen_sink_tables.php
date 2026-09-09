@@ -106,6 +106,16 @@ return new class extends Migration
             $table->json('ordered_sizes')->nullable();
             $table->json('metadata')->nullable();
             $table->json('location')->nullable();
+            $table->decimal('price_money', 12, 2)->nullable();
+            $table->string('phone_my')->nullable();
+            $table->string('identity_number')->nullable();
+            $table->string('identity_type', 20)->nullable();
+            $table->foreignId('parent_category_id')->nullable()->constrained('kitchen_sink_categories')->nullOnDelete();
+            $table->foreignId('child_category_id')->nullable()->constrained('kitchen_sink_categories')->nullOnDelete();
+            $table->json('tags_json')->nullable();
+            $table->date('event_date')->nullable();
+            $table->time('opens_from')->nullable();
+            $table->time('opens_to')->nullable();
 
             // Relations
             $table->foreignId('kitchen_sink_category_id')->nullable()->constrained('kitchen_sink_categories')->nullOnDelete();

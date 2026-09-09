@@ -8,6 +8,8 @@ use App\Models\KitchenSink\KitchenSinkCategory;
 use App\Models\KitchenSink\KitchenSinkTag;
 use Backpack\CRUD\app\Http\Controllers\CrudController;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -83,6 +85,31 @@ class KitchenSinkCrudController extends CrudController
     public function fetchTag()
     {
         return $this->fetch(KitchenSinkTag::class);
+    }
+
+    /**
+     * Extra route for the dependent_select field: GET kitchensink/child-categories?parent=<id>.
+     * Backpack calls every setup*Routes method automatically when registering Route::crud().
+     */
+    public function setupChildCategoriesRoutes(string $segment, string $routeName, string $controller): void
+    {
+        Route::get($segment.'/child-categories', [
+            'as' => $routeName.'.childCategories',
+            'uses' => $controller.'@childCategories',
+            'operation' => 'childCategories',
+        ]);
+    }
+
+    /**
+     * Child categories of the given parent, shaped as {id, text} for the dependent_select field.
+     */
+    public function childCategories(): JsonResponse
+    {
+        return response()->json(
+            KitchenSinkCategory::where('parent_id', request('parent'))
+                ->orderBy('name')
+                ->get(['id', 'name as text'])
+        );
     }
 
     /**
@@ -177,19 +204,26 @@ class KitchenSinkCrudController extends CrudController
             ['name' => 'description', 'type' => 'textarea', 'label' => 'textarea', 'limit' => 40],
             ['name' => 'email', 'type' => 'email', 'label' => 'email'],
             ['name' => 'phone', 'type' => 'phone', 'label' => 'phone'],
+            ['name' => 'phone_my', 'type' => 'phone', 'label' => 'phone (phone field)'],
+            ['name' => 'identity_number', 'type' => 'identity', 'label' => 'identity', 'type_attribute' => 'identity_type'],
             ['name' => 'price', 'type' => 'number', 'label' => 'number', 'prefix' => 'RM ', 'decimals' => 2, 'thousands_sep' => ','],
+            ['name' => 'price_money', 'type' => 'money', 'label' => 'money'],
             ['name' => 'is_active', 'type' => 'boolean', 'label' => 'boolean', 'options' => [0 => 'No', 1 => 'Yes']],
             ['name' => 'agreed', 'type' => 'check', 'label' => 'check'],
             ['name' => 'is_featured', 'type' => 'boolean', 'label' => 'boolean (switch)', 'options' => [0 => 'No', 1 => 'Yes']],
             ['name' => 'published_on', 'type' => 'date', 'label' => 'date'],
+            ['name' => 'event_date', 'type' => 'date', 'label' => 'date (date_only)'],
+            ['name' => 'opens_from', 'end_name' => 'opens_to', 'type' => 'time_range', 'label' => 'time_range'],
             ['name' => 'published_at', 'type' => 'datetime', 'label' => 'datetime', 'format' => 'DD MMM YYYY HH:mm'],
             ['name' => 'status', 'type' => 'select_from_array', 'label' => 'select_from_array', 'options' => ['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived']],
             ['name' => 'gender', 'type' => 'radio', 'label' => 'radio', 'options' => ['male' => 'Male', 'female' => 'Female']],
             ['name' => 'category', 'type' => 'select', 'label' => 'select', 'entity' => 'category', 'attribute' => 'name', 'model' => KitchenSinkCategory::class],
             ['name' => 'tags', 'type' => 'select_multiple', 'label' => 'select_multiple', 'entity' => 'tags', 'attribute' => 'name', 'model' => KitchenSinkTag::class],
             ['name' => 'ajaxCategory', 'type' => 'relationship', 'label' => 'relationship', 'attribute' => 'name'],
+            ['name' => 'child_category_id', 'type' => 'closure', 'label' => 'dependent_select', 'function' => fn ($entry) => optional(KitchenSinkCategory::find($entry->child_category_id))->name ?? '-'],
             ['name' => 'checklistTags', 'type' => 'relationship_count', 'label' => 'relationship_count', 'suffix' => ' tags'],
             ['name' => 'sizes', 'type' => 'array', 'label' => 'array'],
+            ['name' => 'tags_json', 'type' => 'tags', 'label' => 'tags'],
             ['name' => 'attachments', 'key' => 'attachments_count', 'type' => 'array_count', 'label' => 'array_count', 'suffix' => ' files'],
             ['name' => 'metadata', 'type' => 'json', 'label' => 'json'],
             ['name' => 'lines', 'type' => 'multidimensional_array', 'label' => 'multidimensional_array', 'visible_key' => 'sku'],
@@ -227,10 +261,13 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'email', 'type' => 'email', 'label' => 'email'],
                 ['name' => 'website', 'type' => 'url', 'label' => 'url'],
                 ['name' => 'phone', 'type' => 'text', 'label' => 'text (phone)'],
+                ['name' => 'phone_my', 'type' => 'phone', 'label' => 'phone', 'hint' => 'Malaysian-first: type 012..., the field shows +60 12-345 6789 and stores +60123456789.'],
+                ['name' => ['identity_number', 'identity_type'], 'type' => 'identity', 'label' => 'identity', 'types' => ['ic', 'passport'], 'hint' => 'MyKad is masked to 000000-00-0000 and validated as you type; passports are uppercased.'],
                 ['name' => 'secret', 'type' => 'password', 'label' => 'password'],
                 ['name' => 'hidden_token', 'type' => 'hidden', 'value' => 'token-'.now()->timestamp],
                 ['name' => 'price', 'type' => 'number', 'label' => 'number', 'attributes' => ['step' => '0.01'], 'prefix' => 'RM'],
                 ['name' => 'rating', 'type' => 'range', 'label' => 'range', 'attributes' => ['min' => 0, 'max' => 10]],
+                ['name' => 'price_money', 'type' => 'money', 'label' => 'money', 'prefix' => 'RM', 'decimals' => 2, 'min' => 0],
                 ['name' => 'custom_html', 'type' => 'custom_html', 'value' => '<div class="alert alert-info mb-0">custom_html: any markup, no input.</div>'],
             ]),
             $tab('Choices', [
@@ -242,6 +279,7 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'size', 'type' => 'select2_from_array', 'label' => 'select2_from_array', 'options' => ['S' => 'Small', 'M' => 'Medium', 'L' => 'Large'], 'allows_null' => true],
                 ['name' => 'sizes', 'type' => 'select2_from_array', 'label' => 'select2_from_array (multiple)', 'options' => ['S' => 'Small', 'M' => 'Medium', 'L' => 'Large'], 'allows_multiple' => true],
                 ['name' => 'ordered_sizes', 'type' => 'select_and_order', 'label' => 'select_and_order', 'options' => ['S' => 'Small', 'M' => 'Medium', 'L' => 'Large']],
+                ['name' => 'tags_json', 'type' => 'tags', 'label' => 'tags', 'suggestions' => ['laravel', 'backpack', 'alpine', 'pahang']],
             ]),
             $tab('Relations', [
                 ['name' => 'kitchen_sink_category_id', 'type' => 'select', 'label' => 'select', 'entity' => 'category', 'attribute' => 'name', 'model' => KitchenSinkCategory::class],
@@ -250,6 +288,8 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'select2_grouped_category_id', 'type' => 'select2_grouped', 'label' => 'select2_grouped', 'entity' => 'select2GroupedCategory', 'attribute' => 'name', 'model' => KitchenSinkCategory::class, 'group_by' => 'group', 'group_by_attribute' => 'name', 'group_by_relationship_back' => 'categories'],
                 ['name' => 'nested_category_id', 'type' => 'select2_nested', 'label' => 'select2_nested', 'entity' => 'nestedCategory', 'attribute' => 'name', 'model' => KitchenSinkCategory::class],
                 ['name' => 'ajax_category_id', 'type' => 'select2_from_ajax', 'label' => 'select2_from_ajax', 'entity' => 'ajaxCategory', 'attribute' => 'name', 'model' => KitchenSinkCategory::class, 'data_source' => backpack_url('kitchensink/fetch/category'), 'placeholder' => 'Type to search categories', 'minimum_input_length' => 0],
+                ['name' => 'parent_category_id', 'type' => 'select_from_array', 'label' => 'select_from_array (parent for dependent_select)', 'options' => KitchenSinkCategory::whereNull('parent_id')->orderBy('name')->pluck('name', 'id')->toArray(), 'allows_null' => true],
+                ['name' => 'child_category_id', 'type' => 'dependent_select', 'label' => 'dependent_select', 'depends_on' => 'parent_category_id', 'data_source' => backpack_url('kitchensink/child-categories'), 'options' => fn ($parentId) => KitchenSinkCategory::where('parent_id', $parentId)->orderBy('name')->pluck('name', 'id')->toArray(), 'placeholder' => 'Select a child category', 'allows_null' => true, 'hint' => 'Options come from the parent above; change it to reload them.'],
                 ['name' => 'ajaxCategory', 'type' => 'relationship', 'label' => 'relationship (belongsTo, ajax)', 'attribute' => 'name', 'ajax' => true, 'data_source' => backpack_url('kitchensink/fetch/category'), 'minimum_input_length' => 0],
                 ['name' => 'tags', 'type' => 'relationship', 'label' => 'relationship (belongsToMany)', 'attribute' => 'name'],
                 ['name' => 'checklistTags', 'type' => 'checklist', 'label' => 'checklist', 'entity' => 'checklistTags', 'attribute' => 'name', 'model' => KitchenSinkTag::class, 'pivot' => true],
@@ -264,7 +304,9 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'billing_month', 'type' => 'month', 'label' => 'month'],
                 ['name' => 'week', 'type' => 'week', 'label' => 'week'],
                 ['name' => 'birthday', 'type' => 'date_picker', 'label' => 'date_picker', 'date_picker_options' => ['format' => 'dd/mm/yyyy']],
+                ['name' => 'event_date', 'type' => 'date_only', 'label' => 'date_only', 'clear_button' => true],
                 ['name' => 'remind_at', 'type' => 'datetime_picker', 'label' => 'datetime_picker', 'datetime_picker_options' => ['format' => 'DD/MM/YYYY HH:mm']],
+                ['name' => ['opens_from', 'opens_to'], 'type' => 'time_range', 'label' => 'time_range'],
                 ['name' => ['starts_at', 'ends_at'], 'type' => 'date_range', 'label' => 'date_range', 'date_range_options' => ['timePicker' => true, 'locale' => ['format' => 'DD/MM/YYYY HH:mm']]],
             ]),
             $tab('Visual', [

@@ -4,6 +4,7 @@ paths:
   - 'resources/views/crud/fields/ajax_*upload.blade.php'
   - resources/views/crud/fields/slug.blade.php
   - resources/views/crud/fields/switch.blade.php
+  - 'resources/views/crud/fields/{money,phone,identity,dependent_select,tags,date_only,time_range}.blade.php'
 ---
 
 # Fields
@@ -19,3 +20,6 @@ Both fields upload immediately to the named route ajax-upload (Admin\AjaxUploadC
 
 ## switch field
 CoreUI 2 pill switch storing 0/1 through a hidden input (same contract as the checkbox field, so use it for boolean columns). `color` accepts a theme colour name (rendered as .switch-{color}) or any CSS colour, which uses the .switch-custom class plus the --bg-switch-checked-color variable defined in resources/scss/_custom.scss. `onLabel`/`offLabel` render inside the slider via data-checked/data-unchecked; `size` sm|lg. Note: CSS transitions do not advance in a background browser tab, so computed background colours read by automation lag one state behind — check `checked`/hidden values instead.
+
+## money, phone, identity, dependent_select, tags, date_only, time_range fields
+All submit through inputs named exactly the field name and round-trip old(): money (hidden decimal, visible formatted; prefix ''/null = plain number formatting; column `money`), phone (Malaysian-first, stores e164/national/display per `store`; reuse the existing `phone` column), identity (MyKad mask + validation or passport; `types` accepts 'ic'|'mykad'|'passport'; to persist the chosen type declare the field as 'name' => ['identity_number', 'identity_type'] — Backpack strips undeclared inputs on save, so the legacy `type_field` option alone is NOT saved; column `identity` with `mask`/`type_attribute`), dependent_select (plain select reloading from `data_source?parent=` when `depends_on` changes; provide server-side `options` closure for edit pages; a disabled select is never submitted so a hidden twin carries '' when the parent is empty), tags (JSON array in a hidden input, cast to array; column `tags` badges), date_only (bootstrap-datepicker wrapper, hidden Y-m-d), time_range (field: name => [start,end], two native time inputs; column `time_range` must use a scalar 'name' plus 'end_name' because Backpack keys columns by name). Alpine fields use x-ignore + Alpine.initTree from the data-init-function hook; UI strings use __() with Malay in lang/ms_MY.json.

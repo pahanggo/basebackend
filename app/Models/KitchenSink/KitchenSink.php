@@ -44,6 +44,9 @@ class KitchenSink extends Model
         'ordered_sizes' => 'array',
         'metadata' => 'array',
         'location' => 'array',
+        'price_money' => 'decimal:2',
+        'tags_json' => 'array',
+        'event_date' => 'date',
     ];
 
     /*
