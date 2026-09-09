@@ -36,6 +36,17 @@ return [
         'redirect'      => env('GOOGLE_REDIRECT')
     ],
 
+    // Raster tiles for Leaflet maps (latlng_picker field) and the static map fallback.
+    // The Pahang Go server uses {x}/{y}/{z} order, not the usual {z}/{x}/{y}.
+    'map_tiles' => [
+        'url' => env('MAP_TILES_URL', 'https://tiles.pahanggo.com/tiles/google-roadmap/{x}/{y}/{z}.png'),
+        'attribution' => env('MAP_TILES_ATTRIBUTION', '&copy; Pahang Go'),
+    ],
+
+    'google_places' => [
+        'key' => env('GOOGLE_PLACES_KEY', 'AIzaSyCsW71wapMGVt1VXrSN7hpfyiawR4mhng4'),
+    ],
+
     'github' => [
         'client_id'     => env('GITHUB_CLIENT_ID'),
         'client_secret' => env('GITHUB_CLIENT_SECRET'),

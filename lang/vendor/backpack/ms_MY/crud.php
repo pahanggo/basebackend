@@ -167,6 +167,7 @@ return [
     //Table field
     'table_cant_add'    => 'Tidak dapat menambah :entity baharu',
     'table_max_reached' => 'Had maksimum :max telah dicapai',
+    'latlng_search_placeholder' => 'Cari lokasi...',
 
     // File manager
     'file_manager' => 'File Manager',
