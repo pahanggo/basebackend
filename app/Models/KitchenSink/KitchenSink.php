@@ -173,8 +173,9 @@ class KitchenSink extends Model
     }
 
     /**
-     * Backpack image fields post a base64 data URL; persist it to the public disk
-     * and keep only the relative path on the model.
+     * Backpack image fields post a base64 data URL for a new picture, an empty
+     * value to clear it, or the current display URL when nothing changed. Only
+     * the first two touch the stored (relative) path.
      */
     protected function storeBase64Image(string $attribute, ?string $value, string $folder): void
     {
@@ -188,8 +189,7 @@ class KitchenSink extends Model
         }
 
         if (! Str::startsWith($value, 'data:image')) {
-            $this->attributes[$attribute] = $value;
-
+            // unchanged: keep whatever path is already stored
             return;
         }
 
