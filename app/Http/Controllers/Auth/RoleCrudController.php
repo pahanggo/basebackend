@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\CrudController;
+use App\Models\Auth\Permission;
+use App\Models\Auth\Role;
 use Backpack\PermissionManager\app\Http\Requests\RoleStoreCrudRequest as StoreRequest;
 use Backpack\PermissionManager\app\Http\Requests\RoleUpdateCrudRequest as UpdateRequest;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +17,9 @@ class RoleCrudController extends CrudController
     use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+
+    protected Role $role_model;
+    protected Permission $permission_model;
 
     public function setup()
     {
