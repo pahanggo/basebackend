@@ -35,6 +35,7 @@ class KitchenSinkCrudController extends CrudController
     use \Backpack\CRUD\app\Http\Controllers\Operations\CloneOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\FetchOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\ReorderOperation;
+    use \Backpack\CRUD\app\Http\Controllers\Operations\BulkDeleteOperation;
 
     public function setup(): void
     {
@@ -53,6 +54,10 @@ class KitchenSinkCrudController extends CrudController
         CRUD::addColumns($this->columns());
         CRUD::orderBy('lft');
         $this->addFilters();
+
+        // BulkDeleteOperation defaults it to the 'bottom' stack, next to pagination; move it up
+        // next to Create/Reorder instead, and put it before them per the requested layout.
+        CRUD::modifyButton('bulk_delete', ['stack' => 'top'])->makeFirst();
     }
 
     protected function setupReorderOperation(): void
