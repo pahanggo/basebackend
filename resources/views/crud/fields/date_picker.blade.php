@@ -11,7 +11,7 @@
     $field['attributes']['style'] = $field['attributes']['style'] ?? 'background-color: white!important;';
     $field['attributes']['readonly'] = $field['attributes']['readonly'] ?? 'readonly';
 
-    $field_language = isset($field['date_picker_options']['language']) ? $field['date_picker_options']['language'] : \App::getLocale();
+    $field_language = frontend_locale('packages/bootstrap-datepicker/dist/locales/bootstrap-datepicker.%s.min.js', $field['date_picker_options']['language'] ?? null) ?? 'en';
 ?>
 
 @include('crud::fields.inc.wrapper_start')

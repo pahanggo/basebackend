@@ -48,7 +48,7 @@
 @push('crud_list_scripts')
 	<!-- include select2 js-->
 	<script src="{{ asset('packages/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js') }}"></script>
-	@php $language = $filter->options['language'] ?? \App::getLocale(); @endphp
+	@php $language = frontend_locale('packages/bootstrap-datepicker/dist/locales/bootstrap-datepicker.%s.min.js', $filter->options['language'] ?? null) ?? 'en'; @endphp
 	@if ($language !== 'en')
 	<script charset="UTF-8" src="{{ asset('packages/bootstrap-datepicker/dist/locales/bootstrap-datepicker.'.$language.'.min.js') }}"></script>
 	@endif

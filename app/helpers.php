@@ -59,3 +59,27 @@ if(!function_exists('username_from_email')) {
         return explode('@', $email)[0];
     }
 }
+if(!function_exists('frontend_locale')) {
+    /**
+     * Resolve the app locale (e.g. "ms_MY") to the locale key a vendor JS package actually ships,
+     * given a sprintf pattern for the file's public path (e.g. "packages/select2/dist/js/i18n/%s.js").
+     * Tries "ms_MY", "ms-MY", then "ms"; returns null when the package has no matching file.
+     */
+    function frontend_locale(string $pattern, ?string $locale = null): ?string
+    {
+        $locale = $locale ?: app()->getLocale();
+        $candidates = array_unique([
+            $locale,
+            str_replace('_', '-', $locale),
+            explode('_', str_replace('-', '_', $locale))[0],
+        ]);
+
+        foreach ($candidates as $candidate) {
+            if (file_exists(public_path(sprintf($pattern, $candidate)))) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+}

@@ -116,7 +116,9 @@
     <!-- include select2 js-->
     <script src="{{ asset('packages/select2/dist/js/select2.full.min.js') }}"></script>
     @if (app()->getLocale() !== 'en')
-    <script src="{{ asset('packages/select2/dist/js/i18n/' . str_replace('_', '-', app()->getLocale()) . '.js') }}"></script>
+    @if ($select2Locale = frontend_locale('packages/select2/dist/js/i18n/%s.js'))
+        <script src="{{ asset(sprintf('packages/select2/dist/js/i18n/%s.js', $select2Locale)) }}"></script>
+        @endif
     @endif
     @endpush
 
