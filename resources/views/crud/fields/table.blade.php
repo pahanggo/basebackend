@@ -1,4 +1,4 @@
-<!-- Backpack Table Field Type -->
+<!-- Backpack Table Field Type (Alpine.js) -->
 
 <?php
     $max = isset($field['max']) && (int) $field['max'] > 0 ? $field['max'] : -1;
@@ -33,17 +33,26 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    <input class="array-json"
-            type="hidden"
-            data-init-function="bpFieldInitTableElement"
-            name="{{ $field['name'] }}"
-            value="{{ $items }}"
-            data-max="{{$max}}"
-            data-min="{{$min}}"
-            data-maxErrorTitle="{{trans('backpack::crud.table_cant_add', ['entity' => $item_name])}}"
-            data-maxErrorMessage="{{trans('backpack::crud.table_max_reached', ['max' => $max])}}">
+    {{-- The container starts as x-ignore so Alpine does not initialise it on its own;
+         bpFieldInitTableElement (called by Backpack's field init pipeline, including
+         for repeatable clones) lifts the ignore and initialises the tree. --}}
+    <div class="array-container form-group"
+         x-ignore
+         x-data="bpTableField({
+             rows: {{ $items }},
+             columns: @js(array_keys($field['columns'])),
+             min: {{ $min }},
+             max: {{ $max }},
+             maxErrorTitle: @js(trans('backpack::crud.table_cant_add', ['entity' => $item_name])),
+             maxErrorMessage: @js(trans('backpack::crud.table_max_reached', ['max' => $max])),
+         })">
 
-    <div class="array-container form-group">
+        <input class="array-json"
+               type="hidden"
+               name="{{ $field['name'] }}"
+               value="{{ $items === '[]' ? '' : $items }}"
+               data-init-function="bpFieldInitTableElement"
+               :value="serialized">
 
         <table class="table table-sm table-striped m-b-0">
 
@@ -54,33 +63,38 @@
                         {{ $column }}
                     </th>
                     @endforeach
-                    <th class="text-center"> {{-- <i class="la la-sort"></i> --}} </th>
-                    <th class="text-center"> {{-- <i class="la la-trash"></i> --}} </th>
+                    <th class="text-center"></th>
+                    <th class="text-center"></th>
                 </tr>
             </thead>
 
-            <tbody class="table-striped items sortableOptions">
-
-                <tr class="array-row clonable" style="display: none;">
-                    @foreach( $field['columns'] as $column => $label)
-                    <td>
-                        <input class="form-control form-control-sm" type="text" data-cell-name="item.{{ $column }}">
-                    </td>
-                    @endforeach
-                    <td>
-                        <span class="btn btn-sm btn-light sort-handle pull-right"><span class="sr-only">sort item</span><i class="la la-sort" role="presentation" aria-hidden="true"></i></span>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-light removeItem" type="button"><span class="sr-only">delete item</span><i class="la la-trash" role="presentation" aria-hidden="true"></i></button>
-                    </td>
-                </tr>
-
+            <tbody class="table-striped items">
+                <template x-for="(row, index) in rows" :key="row._id">
+                    <tr class="array-row"
+                        :class="{ 'table-active': dragging === index }"
+                        :draggable="dragging === index"
+                        @dragstart="dragging = index"
+                        @dragover.prevent="moveTo(index)"
+                        @dragend="dragging = null">
+                        @foreach( $field['columns'] as $column => $label)
+                        <td>
+                            <input class="form-control form-control-sm" type="text" x-model="row[@js($column)]">
+                        </td>
+                        @endforeach
+                        <td>
+                            <span class="btn btn-sm btn-light sort-handle pull-right" @mousedown="dragging = index"><span class="sr-only">sort item</span><i class="la la-sort" role="presentation" aria-hidden="true"></i></span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-light removeItem" type="button" @click="removeRow(index)"><span class="sr-only">delete item</span><i class="la la-trash" role="presentation" aria-hidden="true"></i></button>
+                        </td>
+                    </tr>
+                </template>
             </tbody>
 
         </table>
 
         <div class="array-controls btn-group m-t-10">
-            <button class="btn btn-sm btn-light" type="button" data-button-type="addItem"><i class="la la-plus"></i> {{trans('backpack::crud.add')}} {{ $item_name }}</button>
+            <button class="btn btn-sm btn-light" type="button" @click="addRow()"><i class="la la-plus"></i> {{trans('backpack::crud.add')}} {{ $item_name }}</button>
         </div>
 
     </div>
@@ -101,125 +115,123 @@
 
     {{-- FIELD JS - will be loaded in the after_scripts section --}}
     @push('crud_fields_scripts')
-        {{-- YOUR JS HERE --}}
-        <script type="text/javascript" src="{{ asset('packages/jquery-ui-dist/jquery-ui.min.js') }}"></script>
-
         <script>
-            function bpFieldInitTableElement(element) {
-                var $tableWrapper = element.parent('[data-field-type=table]');
-                var $rows = (element.attr('value') != '') ? $.parseJSON(element.attr('value')) : '';
-                var $max = element.attr('data-max');
-                var $min = element.attr('data-min');
-                var $maxErrorTitle = element.attr('data-maxErrorTitle');
-                var $maxErrorMessage = element.attr('data-maxErrorMessage');
+            (function () {
+                var nextRowId = 0;
 
+                Alpine.data('bpTableField', function (config) {
+                    return {
+                        rows: [],
+                        columns: config.columns,
+                        min: Number(config.min),
+                        max: Number(config.max),
+                        dragging: null,
 
-                // add rows with the information from the database
-                if($rows != '[]') {
-                    $.each($rows, function(key) {
+                        init: function () {
+                            var self = this;
+                            var initial = this.currentValue();
 
-                        addItem();
+                            this.rows = initial.map(function (row) {
+                                return self.withId(Object.assign(self.blankRow(), row));
+                            });
 
-                        $.each(this, function(column , value) {
-                            $tableWrapper.find('tbody tr:last').find('input[data-cell-name="item.' + column + '"]').val(value);
-                        });
-
-                        // if it's the last row, update the JSON
-                        if ($rows.length == key+1) {
-                            updateTableFieldJson();
-                        }
-                    });
-                }
-
-                // add minimum rows if needed
-                var itemCount = $tableWrapper.find('tbody tr').not('.clonable').length;
-                if($min > 0 && itemCount < $min) {
-                    $rowsToAdd = Number($min) - Number(itemCount);
-
-                    for(var i = 0; i < $rowsToAdd; i++){
-                        addItem();
-                    }
-                }
-
-                $tableWrapper.find('.sortableOptions').sortable({
-                    handle: '.sort-handle',
-                    axis: 'y',
-                    helper: function(e, ui) {
-                        ui.children().each(function() {
-                            $(this).width($(this).width());
-                        });
-                        return ui;
-                    },
-                    update: function( event, ui ) {
-                        updateTableFieldJson();
-                    }
-                });
-
-
-                $tableWrapper.find('[data-button-type=addItem]').click(function() {
-                    if($max > -1) {
-                        var totalRows = $tableWrapper.find('tbody tr').not('.clonable').length;
-
-                        if(totalRows < $max) {
-                            addItem();
-                            updateTableFieldJson();
-                        } else {
-                            new Noty({
-                              type: "warning",
-                              text: "<strong>"+$maxErrorTitle+"</strong><br>"+$maxErrorMessage
-                            }).show();
-                        }
-                    } else {
-                        addItem();
-                        updateTableFieldJson();
-                    }
-                });
-
-                function addItem() {
-                    $tableWrapper.find('tbody').append($tableWrapper.find('tbody .clonable').clone().show().removeClass('clonable'));
-                }
-
-                $tableWrapper.on('click', '.removeItem', function() {
-                    var totalRows = $tableWrapper.find('tbody tr').not('.clonable').length;
-                    if (totalRows > $min) {
-                        $(this).closest('tr').remove();
-                        updateTableFieldJson();
-                        return false;
-                    }
-                });
-
-                $tableWrapper.find('tbody').on('keyup', function() {
-                    updateTableFieldJson();
-                });
-
-
-                function updateTableFieldJson() {
-                    var $rows = $tableWrapper.find('tbody tr').not('.clonable');
-                    var $hiddenField = $tableWrapper.find('input.array-json');
-
-                    var json = '[';
-                    var otArr = [];
-                    var tbl2 = $rows.each(function(i) {
-                        x = $(this).children().closest('td').find('input');
-                        var itArr = [];
-                        x.each(function() {
-                            if(this.value.length > 0) {
-                                var key = $(this).attr('data-cell-name').replace('item.','');
-                                itArr.push('"' + key + '":' + JSON.stringify(this.value));
+                            while (this.min > 0 && this.rows.length < this.min) {
+                                this.rows.push(this.withId(this.blankRow()));
                             }
-                        });
-                        otArr.push('{' + itArr.join(',') + '}');
-                    })
-                    json += otArr.join(",") + ']';
+                        },
 
-                    var totalRows = $rows.length;
+                        get serialized() {
+                            if (! this.rows.length) {
+                                return '';
+                            }
 
-                    $hiddenField.val( totalRows ? json : null );
-                }
+                            return JSON.stringify(this.rows.map(function (row) {
+                                var clean = {};
+                                Object.keys(row).forEach(function (key) {
+                                    if (key !== '_id' && String(row[key]).length > 0) {
+                                        clean[key] = row[key];
+                                    }
+                                });
+                                return clean;
+                            }));
+                        },
 
-                // on page load, make sure the input has the old values
-                updateTableFieldJson();
-            }
+                        /**
+                         * Rows to start from. The hidden input wins over the rendered config
+                         * because the repeatable field writes restored values into it before
+                         * calling the init function on a cloned group.
+                         */
+                        currentValue: function () {
+                            var hidden = this.$root.querySelector('input.array-json');
+                            var raw = hidden ? hidden.value : '';
+
+                            if (typeof raw === 'string' && raw.length) {
+                                try {
+                                    var parsed = JSON.parse(raw);
+                                    if (Array.isArray(parsed)) {
+                                        return parsed;
+                                    }
+                                } catch (e) {}
+                            }
+
+                            return Array.isArray(config.rows) ? config.rows : [];
+                        },
+
+                        blankRow: function () {
+                            var row = {};
+                            this.columns.forEach(function (column) {
+                                row[column] = '';
+                            });
+                            return row;
+                        },
+
+                        withId: function (row) {
+                            row._id = ++nextRowId;
+                            return row;
+                        },
+
+                        addRow: function () {
+                            if (this.max > -1 && this.rows.length >= this.max) {
+                                new Noty({
+                                    type: 'warning',
+                                    text: '<strong>' + config.maxErrorTitle + '</strong><br>' + config.maxErrorMessage
+                                }).show();
+                                return;
+                            }
+
+                            this.rows.push(this.withId(this.blankRow()));
+                        },
+
+                        removeRow: function (index) {
+                            if (this.rows.length > this.min) {
+                                this.rows.splice(index, 1);
+                            }
+                        },
+
+                        moveTo: function (index) {
+                            if (this.dragging === null || this.dragging === index) {
+                                return;
+                            }
+
+                            var moved = this.rows.splice(this.dragging, 1)[0];
+                            this.rows.splice(index, 0, moved);
+                            this.dragging = index;
+                        }
+                    };
+                });
+
+                window.bpFieldInitTableElement = function (element) {
+                    var container = element.closest('.array-container')[0];
+
+                    if (! container || container._x_dataStack) {
+                        return;
+                    }
+
+                    delete container._x_ignore;
+                    container.removeAttribute('x-ignore');
+                    Alpine.initTree(container);
+                };
+            })();
         </script>
     @endpush
 @endif
