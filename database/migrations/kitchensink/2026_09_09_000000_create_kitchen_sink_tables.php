@@ -49,6 +49,7 @@ return new class extends Migration
 
             // Simple inputs
             $table->string('title');
+            $table->string('slug')->nullable();
             $table->text('description')->nullable();
             $table->string('email')->nullable();
             $table->string('website')->nullable();
@@ -59,6 +60,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('rating')->nullable();
             $table->boolean('is_active')->default(false);
             $table->boolean('agreed')->default(false);
+            $table->boolean('is_featured')->default(false);
             $table->string('status')->nullable();
             $table->string('gender')->nullable();
             $table->string('size')->nullable();
@@ -94,6 +96,8 @@ return new class extends Migration
             $table->string('avatar')->nullable();
             $table->string('attachment')->nullable();
             $table->json('attachments')->nullable();
+            $table->string('ajax_file')->nullable();
+            $table->json('ajax_files')->nullable();
             $table->json('video')->nullable();
 
             // Structured data

@@ -25,6 +25,7 @@ class KitchenSink extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'agreed' => 'boolean',
+        'is_featured' => 'boolean',
         'price' => 'decimal:2',
         'rating' => 'integer',
         'published_on' => 'date',
@@ -36,6 +37,7 @@ class KitchenSink extends Model
         'sizes' => 'array',
         'address_google' => 'array',
         'attachments' => 'array',
+        'ajax_files' => 'array',
         'video' => 'array',
         'extras' => 'array',
         'lines' => 'array',

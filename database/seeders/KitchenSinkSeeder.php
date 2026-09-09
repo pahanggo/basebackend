@@ -47,6 +47,7 @@ class KitchenSinkSeeder extends Seeder
 
             $sink = KitchenSink::create([
                 'title' => "Sample item {$i}",
+                'slug' => "sample-item-{$i}",
                 'description' => "A longer description for sample item {$i}.\nSecond line.",
                 'email' => "sample{$i}@example.com",
                 'website' => 'https://example.com',
@@ -57,6 +58,7 @@ class KitchenSinkSeeder extends Seeder
                 'rating' => 3 * $i,
                 'is_active' => $i % 2 === 1,
                 'agreed' => true,
+                'is_featured' => $i === 1,
                 'status' => ['draft', 'published', 'archived'][$i - 1],
                 'gender' => $i % 2 ? 'male' : 'female',
                 'size' => ['S', 'M', 'L'][$i - 1],
@@ -100,6 +102,8 @@ class KitchenSinkSeeder extends Seeder
                 'avatar' => $avatar,
                 'attachment' => $attachments[0],
                 'attachments' => json_encode($attachments),
+                'ajax_file' => $image,
+                'ajax_files' => json_encode([$image, $attachments[1]]),
             ]);
 
             $sink->tags()->sync($tags->slice(0, $i)->pluck('id'));

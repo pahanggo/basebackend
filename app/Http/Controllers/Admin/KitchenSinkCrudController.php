@@ -173,12 +173,14 @@ class KitchenSinkCrudController extends CrudController
         return [
             ['name' => 'row_number', 'type' => 'row_number', 'label' => 'row_number', 'orderable' => false],
             ['name' => 'title', 'type' => 'text', 'label' => 'text'],
+            ['name' => 'slug', 'type' => 'text', 'label' => 'text (slug)'],
             ['name' => 'description', 'type' => 'textarea', 'label' => 'textarea', 'limit' => 40],
             ['name' => 'email', 'type' => 'email', 'label' => 'email'],
             ['name' => 'phone', 'type' => 'phone', 'label' => 'phone'],
             ['name' => 'price', 'type' => 'number', 'label' => 'number', 'prefix' => 'RM ', 'decimals' => 2, 'thousands_sep' => ','],
             ['name' => 'is_active', 'type' => 'boolean', 'label' => 'boolean', 'options' => [0 => 'No', 1 => 'Yes']],
             ['name' => 'agreed', 'type' => 'check', 'label' => 'check'],
+            ['name' => 'is_featured', 'type' => 'boolean', 'label' => 'boolean (switch)', 'options' => [0 => 'No', 1 => 'Yes']],
             ['name' => 'published_on', 'type' => 'date', 'label' => 'date'],
             ['name' => 'published_at', 'type' => 'datetime', 'label' => 'datetime', 'format' => 'DD MMM YYYY HH:mm'],
             ['name' => 'status', 'type' => 'select_from_array', 'label' => 'select_from_array', 'options' => ['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived']],
@@ -197,6 +199,7 @@ class KitchenSinkCrudController extends CrudController
             ['name' => 'avatar', 'type' => 'image', 'label' => 'image (base64_image)', 'disk' => 'public', 'height' => '40px', 'width' => '40px'],
             ['name' => 'attachment', 'type' => 'closure', 'label' => 'closure (upload link)', 'escaped' => false, 'function' => fn (KitchenSink $entry) => $entry->attachment ? '<a href="'.e(Storage::disk('public')->url($entry->attachment)).'" target="_blank">'.e(basename($entry->attachment)).'</a>' : '-'],
             ['name' => 'attachments', 'type' => 'upload_multiple', 'label' => 'upload_multiple', 'disk' => 'public'],
+            ['name' => 'ajax_files', 'type' => 'upload_multiple', 'label' => 'upload_multiple (ajax_multi_upload)', 'disk' => 'public'],
             ['name' => 'video', 'type' => 'video', 'label' => 'video'],
             ['name' => 'location', 'type' => 'latlng_map', 'label' => 'latlng_map', 'width' => 200, 'height' => 120, 'zoom' => 14],
             ['name' => 'title_with_rating', 'type' => 'model_function', 'label' => 'model_function', 'function_name' => 'titleWithRating'],
@@ -219,6 +222,7 @@ class KitchenSinkCrudController extends CrudController
         return array_merge(
             $tab('Text', [
                 ['name' => 'title', 'type' => 'text', 'label' => 'text'],
+                ['name' => 'slug', 'type' => 'slug', 'label' => 'slug', 'target' => 'title', 'hint' => 'Follows the text field above until you edit it; clear it to resume.'],
                 ['name' => 'description', 'type' => 'textarea', 'label' => 'textarea'],
                 ['name' => 'email', 'type' => 'email', 'label' => 'email'],
                 ['name' => 'website', 'type' => 'url', 'label' => 'url'],
@@ -232,6 +236,7 @@ class KitchenSinkCrudController extends CrudController
             $tab('Choices', [
                 ['name' => 'is_active', 'type' => 'boolean', 'label' => 'boolean'],
                 ['name' => 'agreed', 'type' => 'checkbox', 'label' => 'checkbox'],
+                ['name' => 'is_featured', 'type' => 'switch', 'label' => 'switch', 'color' => '#232323', 'onLabel' => '✓', 'offLabel' => '✕'],
                 ['name' => 'gender', 'type' => 'radio', 'label' => 'radio', 'options' => ['male' => 'Male', 'female' => 'Female'], 'inline' => true],
                 ['name' => 'status', 'type' => 'select_from_array', 'label' => 'select_from_array', 'options' => ['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived'], 'allows_null' => true],
                 ['name' => 'size', 'type' => 'select2_from_array', 'label' => 'select2_from_array', 'options' => ['S' => 'Small', 'M' => 'Medium', 'L' => 'Large'], 'allows_null' => true],
@@ -270,6 +275,8 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'avatar', 'type' => 'base64_image', 'label' => 'base64_image', 'crop' => true, 'aspect_ratio' => 1, 'src' => 'avatarUrl', 'filename' => null],
                 ['name' => 'attachment', 'type' => 'upload', 'label' => 'upload', 'upload' => true, 'disk' => 'public'],
                 ['name' => 'attachments', 'type' => 'upload_multiple', 'label' => 'upload_multiple', 'upload' => true, 'disk' => 'public'],
+                ['name' => 'ajax_file', 'type' => 'ajax_upload', 'label' => 'ajax_upload', 'path' => 'kitchensink', 'accept' => 'image/*,.pdf', 'max_size' => 2048, 'hint' => 'Uploads immediately; only the path is submitted.'],
+                ['name' => 'ajax_files', 'type' => 'ajax_multi_upload', 'label' => 'ajax_multi_upload', 'path' => 'kitchensink', 'hint' => 'Drag to reorder.'],
                 ['name' => 'video', 'type' => 'video', 'label' => 'video'],
             ]),
             $tab('Editors', [
