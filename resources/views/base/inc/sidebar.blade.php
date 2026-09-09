@@ -37,26 +37,13 @@
 
 @push('before_scripts')
 <script type="text/javascript">
-    // Save default sidebar class
-    let sidebarClass = (document.body.className.match(/sidebar-(sm|md|lg|xl)-show/) || ['sidebar-lg-show'])[0];
     let sidebarTransition = value => document.querySelector('.app-body > .sidebar').style.transition = value || '';
 
-    // Recover "collapsed to icons" state before first paint so it does not flicker
+    // Recover "collapsed to icons" state before first paint so it does not flicker.
+    // The mobile hamburger (sidebar-show) is transient and is deliberately not persisted.
     if (localStorage.getItem('sidebar-minimized') === '1') {
         sidebarTransition("none");
         document.body.classList.add('sidebar-minimized');
-        setTimeout(sidebarTransition, 100);
-    }
-
-    // Recover sidebar state
-    let sessionState = sessionStorage.getItem('sidebar-collapsed');
-    if (sessionState) {
-        // disable the transition animation temporarily, so that if you're browsing across
-        // pages with the sidebar closed, the sidebar does not flicker into the view
-        sidebarTransition("none");
-        document.body.classList.toggle(sidebarClass, sessionState === '1');
-
-        // re-enable the transition, so that if the user clicks the hamburger menu, it does have a nice transition
         setTimeout(sidebarTransition, 100);
     }
 </script>
@@ -68,12 +55,6 @@
     document.querySelectorAll('.sidebar-collapse-toggle').forEach(toggler =>
     toggler.addEventListener('click', () =>
     localStorage.setItem('sidebar-minimized', Number(document.body.classList.toggle('sidebar-minimized')))
-    )
-    );
-    // Store sidebar state
-    document.querySelectorAll('.sidebar-toggler').forEach(toggler =>
-    toggler.addEventListener('click', () =>
-    sessionStorage.setItem('sidebar-collapsed', Number(!document.body.classList.contains(sidebarClass)))
     )
     );
     // Set active state on menu element
