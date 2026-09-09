@@ -18,7 +18,15 @@ class WorkflowServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
+        // Deliberately NOT loadMigrationsFrom(): this connection's migration
+        // repository must stay on the "workflow" connection too (see
+        // Console\WorkflowInstallCommand), the same reason kitchensink's own
+        // migrations aren't auto-loaded either — otherwise a plain `migrate`/
+        // `migrate:fresh` on the main app's default connection wipes its own
+        // migrations table, "forgets" this migration ran, and then fails with
+        // "table already exists" when it tries to recreate tables that were
+        // never dropped (they live on a separate connection/file untouched
+        // by a default-connection migrate:fresh).
         $this->loadViewsFrom(__DIR__.'/resources/views', 'workflow');
         $this->loadRoutesFrom(__DIR__.'/routes/workflow.php');
 
@@ -38,6 +46,7 @@ class WorkflowServiceProvider extends ServiceProvider
 
         $this->commands([
             \Workflow\Console\ProcessTimersCommand::class,
+            \Workflow\Console\WorkflowInstallCommand::class,
         ]);
     }
 }

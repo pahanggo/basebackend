@@ -15,7 +15,6 @@ return new class extends Migration
 
     public function up(): void
     {
-        try {
         Schema::connection('workflow')->create('workflow_definitions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -104,7 +103,6 @@ return new class extends Migration
 
             $table->index(['actor_type', 'actor_id']);
         });
-        } catch (Throwable $e) {}
     }
 
     public function down(): void
