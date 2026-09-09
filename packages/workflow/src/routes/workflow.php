@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Workflow\Http\Controllers\WorkflowDesignerController;
+use Workflow\Http\Controllers\WorkflowTransitionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,4 +28,6 @@ Route::group([
         ->name('workflow.designer.edit');
     Route::post('definitions/{workflowDefinition}/design', [WorkflowDesignerController::class, 'update'])
         ->name('workflow.designer.update');
+
+    Route::post('transition', WorkflowTransitionController::class)->name('workflow.transition');
 });
