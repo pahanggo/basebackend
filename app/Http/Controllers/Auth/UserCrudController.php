@@ -50,8 +50,6 @@ class UserCrudController extends CrudController
             ],
         ]);
 
-        $this->crud->set('fullsearch', true);
-
         // $this->crud->addFilter(
         //     [
         //         'name'  => 'name',

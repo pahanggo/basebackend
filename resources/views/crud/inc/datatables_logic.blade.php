@@ -253,12 +253,12 @@
                 "url": "{!! url($crud->route . '/search') . '?' . Request::getQueryString() !!}",
                 "type": "POST"
             },
-            @if($crud->get('fullsearch'))
-            dom: "<'row hidden'<'col-sm-12 mt-2'if>>" +
+            @if($crud->get('hide-search'))
+            dom: "<'row hidden'<'col-sm-12 mt-2'i>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row mt-2 d-print-none'<'col-6 d-inline-block'lB><'col-6 'p>>",
             @else
-            dom: "<'row hidden'<'col-sm-12 mt-2'i>>" +
+            dom: "<'row hidden'<'col-sm-12 mt-2'if>>" +
                 "<'row'<'col-sm-12'tr>>" +
                 "<'row mt-2 d-print-none'<'col-6 d-inline-block'lB><'col-6 'p>>",
             @endif
