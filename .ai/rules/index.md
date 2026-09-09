@@ -5,5 +5,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | app/Http/Controllers/Admin/KitchenSinkCrudController.php | .ai/rules/admin.md |
-| resources/views/crud/fields/latlng_picker.blade.php | .ai/rules/fields.md |
+| resources/views/crud/buttons/** | .ai/rules/buttons.md |
+| resources/views/crud/fields/latlng_picker.blade.php, resources/views/crud/fields/ajax_*upload.blade.php, resources/views/crud/fields/slug.blade.php, resources/views/crud/fields/switch.blade.php | .ai/rules/fields.md |
 | resources/views/base/inc/** | .ai/rules/inc.md |

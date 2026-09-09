@@ -444,6 +444,11 @@
                 crud.executeFunctionByName(functionName);
             });
             $('#crudTable .dropdown-menu > a').addClass('dropdown-item');
+
+            // icon-only line buttons show their label as a tooltip; rows are re-rendered on
+            // every draw, so remove tooltips left behind by the previous rows first
+            $('.tooltip').remove();
+            $('#crudTable [data-toggle="tooltip"]').tooltip({ container: 'body', trigger: 'hover', boundary: 'window' });
         }).dataTable();
 
         // when datatables-colvis (column visibility) is toggled

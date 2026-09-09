@@ -748,6 +748,16 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
+/* Icon-only line action buttons (show/edit/delete/clone): bigger icons for hover and tap targets. */
+#crudTable td .btn.btn-sm.btn-link {
+  padding: .2rem .4rem;
+
+  .la {
+    font-size: 1.15rem;
+    vertical-align: middle;
+  }
+}
+
 /* DataTables responsive detail modal: wider dialog, labels hug their content. */
 .dtr-bs-modal .modal-dialog {
   max-width: 1140px;
