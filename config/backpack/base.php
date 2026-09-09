@@ -73,7 +73,7 @@ return [
     // `npm run build` needed. The defaults below match the colors currently
     // compiled into resources/scss/_variables.scss.
     'theme_colors' => [
-        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#5f0461'),
+        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#480049'),
         'secondary' => env('BACKPACK_COLOR_SECONDARY', '#D9E2EF'),
         'success'   => env('BACKPACK_COLOR_SUCCESS', '#269740'),
         'info'      => env('BACKPACK_COLOR_INFO', '#467FD0'),
@@ -93,7 +93,7 @@ return [
     'breadcrumbs' => true,
 
     // Horizontal navbar classes. Helps make the admin panel look similar to your project's design.
-    'header_class' => 'app-header bg-dark border-0 navbar',
+    'header_class' => 'app-header navbar',
     // For background colors use: bg-dark, bg-primary, bg-secondary, bg-danger, bg-warning, bg-success, bg-info, bg-blue, bg-light-blue, bg-indigo, bg-purple, bg-pink, bg-red, bg-orange, bg-yellow, bg-green, bg-teal, bg-cyan, bg-white
     // For links to be visible on different background colors use: "navbar-dark", "navbar-light", "navbar-color"
 
@@ -102,7 +102,7 @@ return [
     // ----
 
     // Body element classes.
-    'body_class' => 'app aside-menu-fixed sidebar-lg-show',
+    'body_class' => 'app sidebar-fixed sidebar-lg-show',
     // Try sidebar-hidden, sidebar-fixed, sidebar-compact, sidebar-lg-show
 
     // Sidebar element classes.
