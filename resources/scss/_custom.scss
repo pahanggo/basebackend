@@ -748,6 +748,19 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
+/* switch field: custom colours via --bg-switch-checked-color (theme colours use CoreUI's .switch-{color}) */
+.switch-custom {
+  .switch-input:checked ~ .switch-slider {
+    background-color: var(--bg-switch-checked-color, var(--primary));
+    border-color: var(--bg-switch-checked-color, var(--primary));
+    color: #fff;
+
+    &::before {
+      border-color: var(--bg-switch-checked-color, var(--primary));
+    }
+  }
+}
+
 /* Icon-only line action buttons (show/edit/delete/clone): bigger icons for hover and tap targets. */
 #crudTable td .btn.btn-sm.btn-link {
   padding: .2rem .4rem;
