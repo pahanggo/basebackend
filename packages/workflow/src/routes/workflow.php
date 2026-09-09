@@ -1,16 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Workflow\Http\Controllers\WorkflowDesignerController;
 
 /*
 |--------------------------------------------------------------------------
 | Workflow package routes
 |--------------------------------------------------------------------------
 |
-| Registered automatically by WorkflowServiceProvider. The canvas/inspector
-| editor, definition/instance Backpack controllers, the "My Tasks" widget
-| endpoint, and the signed inbound webhook route are added here as they are
-| built — this file is intentionally a placeholder for now.
+| Registered automatically by WorkflowServiceProvider — a downstream app
+| gets a working /admin/workflows/* section with zero app/ files needed.
 |
 */
 
@@ -21,7 +20,11 @@ Route::group([
         (array) config('backpack.base.middleware_key', 'admin')
     ),
     'namespace' => 'Workflow\Http\Controllers',
-    'as' => 'workflow.',
 ], function () {
-    //
+    Route::crud('definitions', 'WorkflowDefinitionCrudController');
+
+    Route::get('definitions/{workflowDefinition}/design', [WorkflowDesignerController::class, 'edit'])
+        ->name('workflow.designer.edit');
+    Route::post('definitions/{workflowDefinition}/design', [WorkflowDesignerController::class, 'update'])
+        ->name('workflow.designer.update');
 });

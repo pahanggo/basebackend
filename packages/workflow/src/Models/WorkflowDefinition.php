@@ -2,12 +2,15 @@
 
 namespace Workflow\Models;
 
+use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkflowDefinition extends Model
 {
+    use CrudTrait;
+
     protected $connection = 'workflow';
 
     protected $fillable = ['name', 'slug', 'description', 'model', 'published_version_id'];
