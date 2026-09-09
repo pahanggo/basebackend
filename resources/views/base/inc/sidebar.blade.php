@@ -1,6 +1,14 @@
 @if (backpack_auth()->check())
 <!-- Left side column. contains the sidebar -->
 <div class="{{ config('backpack.base.sidebar_class') }}">
+    <div class="sidebar-brand d-none d-lg-flex">
+        <a class="navbar-brand" href="{{ url(config('backpack.base.home_link')) }}" title="{{ config('backpack.base.project_name') }}">
+            {!! config('backpack.base.project_logo') !!}
+        </a>
+        <button class="sidebar-collapse-toggle" type="button" aria-label="{{ trans('backpack::base.toggle_navigation') }}">
+            <i class="la la-bars"></i>
+        </button>
+    </div>
     <!-- sidebar: style can be found in sidebar.less -->
     <nav class="sidebar-nav overflow-hidden">
         <!-- sidebar menu: : style can be found in sidebar.less -->
@@ -15,16 +23,14 @@
             <!-- ======================================= -->
             <!-- <li class="divider"></li> -->
             <!-- <li class="nav-title">Entries</li> -->
-
-            <hr>
-            <div class="text-center" style="color:#495057">
-                <small>
-                    <a href="{{config('backpack.base.developer_link')}}">{{config('backpack.base.developer_name')}}</a><br>
-                    {{config('app.name')}} - v{{app_version()}}
-                </small>
-            </div>
         </ul>
     </nav>
+    <div class="sidebar-footer text-center">
+        <small>
+            <a href="{{config('backpack.base.developer_link')}}">{{config('backpack.base.developer_name')}}</a><br>
+            {{config('app.name')}} - v{{app_version()}}
+        </small>
+    </div>
     <!-- /.sidebar -->
 </div>
 @endif
@@ -34,6 +40,13 @@
     // Save default sidebar class
     let sidebarClass = (document.body.className.match(/sidebar-(sm|md|lg|xl)-show/) || ['sidebar-lg-show'])[0];
     let sidebarTransition = value => document.querySelector('.app-body > .sidebar').style.transition = value || '';
+
+    // Recover "collapsed to icons" state before first paint so it does not flicker
+    if (localStorage.getItem('sidebar-minimized') === '1') {
+        sidebarTransition("none");
+        document.body.classList.add('sidebar-minimized');
+        setTimeout(sidebarTransition, 100);
+    }
 
     // Recover sidebar state
     let sessionState = sessionStorage.getItem('sidebar-collapsed');
@@ -51,6 +64,12 @@
 
 @push('after_scripts')
 <script>
+    // Collapse the sidebar to icons (desktop) and remember the choice
+    document.querySelectorAll('.sidebar-collapse-toggle').forEach(toggler =>
+    toggler.addEventListener('click', () =>
+    localStorage.setItem('sidebar-minimized', Number(document.body.classList.toggle('sidebar-minimized')))
+    )
+    );
     // Store sidebar state
     document.querySelectorAll('.sidebar-toggler').forEach(toggler =>
     toggler.addEventListener('click', () =>

@@ -1,6 +1,7 @@
 @use "variables";
 @use "vendors/coreui-2.1.16/bootstrap/variables" as bootstrap-variables;
 @use "vendors/coreui-2.1.16/bootstrap/functions" as functions;
+@use "vendors/coreui-2.1.16/variables" as coreui;
 
 @use "sass:color";
 
@@ -745,6 +746,12 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   border: 1px solid bootstrap-variables.$border-color;
   border-radius: 3px;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Datatable search box keeps Backpack's pill shape whether it stays inside
+   .dataTables_wrapper (no filters) or is moved into #bp-filters-navbar. */
+.dataTables_wrapper .dataTables_filter input {
+  border-radius: 25px;
 }
 
 .form-control-sm {
@@ -1707,5 +1714,179 @@ $reactive-colors: (
     color: if($name == "secondary", bootstrap-variables.$black, bootstrap-variables.$gray-100);
     background-color: var(--#{$name});
     border-color: var(--#{$name}-active);
+  }
+}
+
+// --------------------------------------------------------------
+// App shell: full-height dark sidebar + white header
+// --------------------------------------------------------------
+// The sidebar runs from the top of the viewport to the bottom and carries
+// the brand and the collapse toggle, so both collapse with it. The header
+// sits to the right of the sidebar and shifts when the sidebar is
+// minimized to icons (body.sidebar-minimized, toggled in inc/sidebar).
+
+$shell-sidebar-bg:        bootstrap-variables.$black;
+$shell-sidebar-divider:   rgba(255, 255, 255, 0.08);
+$shell-sidebar-muted:     rgba(255, 255, 255, 0.45);
+$shell-sidebar-text:      rgba(255, 255, 255, 0.8);
+
+// Header
+.app-header {
+  background-color: bootstrap-variables.$white;
+  border-bottom: 1px solid variables.$border-color;
+
+  .navbar-brand {
+    width: auto;
+    padding: 0 0.75rem;
+    font-weight: 600;
+    color: bootstrap-variables.$gray-900;
+  }
+
+  .navbar-nav .nav-link {
+    color: bootstrap-variables.$gray-700;
+
+    &:hover,
+    &:focus {
+      color: bootstrap-variables.$gray-900;
+    }
+  }
+
+  .avatar-name {
+    color: bootstrap-variables.$gray-900;
+    font-weight: 500;
+
+    small {
+      color: bootstrap-variables.$gray-600;
+      font-weight: 400;
+    }
+  }
+}
+
+// Sidebar
+.sidebar {
+  background: $shell-sidebar-bg;
+
+  .sidebar-brand {
+    display: flex;
+    flex: 0 0 coreui.$navbar-height;
+    align-items: center;
+    height: coreui.$navbar-height;
+    padding-left: 1rem;
+    border-bottom: 1px solid $shell-sidebar-divider;
+
+    .navbar-brand {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-size: 1.1rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      color: bootstrap-variables.$white;
+    }
+  }
+
+  .sidebar-collapse-toggle {
+    flex: 0 0 coreui.$sidebar-minimized-width;
+    width: coreui.$sidebar-minimized-width;
+    height: coreui.$navbar-height;
+    padding: 0;
+    font-size: 1.25rem;
+    color: $shell-sidebar-muted;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      color: bootstrap-variables.$white;
+      outline: 0;
+    }
+  }
+
+  .nav-link {
+    color: $shell-sidebar-text;
+
+    .nav-icon {
+      color: $shell-sidebar-muted;
+    }
+
+    &:hover {
+      color: bootstrap-variables.$white;
+      background: rgba(255, 255, 255, 0.06);
+
+      .nav-icon {
+        color: bootstrap-variables.$white;
+      }
+    }
+
+    &.active,
+    &.active:hover {
+      color: bootstrap-variables.$white;
+      background: var(--primary);
+
+      .nav-icon {
+        color: bootstrap-variables.$white;
+      }
+    }
+  }
+
+  .sidebar-footer {
+    padding: 0.75rem 1rem;
+    color: $shell-sidebar-muted;
+    background: transparent;
+    border-top: 1px solid $shell-sidebar-divider;
+
+    a {
+      color: $shell-sidebar-text;
+    }
+  }
+}
+
+@media (min-width: 992px) {
+  // Sidebar spans the full viewport height, header sits beside it.
+  .sidebar-fixed .app-header + .app-body .sidebar {
+    top: 0;
+    height: 100vh;
+  }
+
+  html:not([dir="rtl"]) .sidebar-lg-show.sidebar-fixed {
+    .app-header {
+      margin-left: coreui.$sidebar-width;
+      transition: margin-left coreui.$layout-transition-speed;
+    }
+
+    &.sidebar-minimized .app-header {
+      margin-left: coreui.$sidebar-minimized-width;
+    }
+  }
+
+  html[dir="rtl"] .sidebar-lg-show.sidebar-fixed {
+    .app-header {
+      margin-right: coreui.$sidebar-width;
+      transition: margin-right coreui.$layout-transition-speed;
+    }
+
+    &.sidebar-minimized .app-header {
+      margin-right: coreui.$sidebar-minimized-width;
+    }
+  }
+
+  // Collapsed to icons: let hovered items flyout past the 50px column
+  // (the nav carries the .overflow-hidden utility, which is !important).
+  .sidebar-minimized .sidebar .sidebar-nav {
+    overflow: visible !important;
+  }
+
+  // Collapsed to icons: hide the brand, keep only the hamburger in the top row.
+  .sidebar-minimized .sidebar .sidebar-brand {
+    padding-left: 0;
+    justify-content: center;
+
+    .navbar-brand {
+      display: none;
+    }
   }
 }
