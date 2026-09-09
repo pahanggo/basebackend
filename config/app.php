@@ -49,6 +49,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Kitchen Sink
+    |--------------------------------------------------------------------------
+    |
+    | Enables the Kitchen Sink CRUD, a showcase of every column and field type
+    | available in this base framework. It lives in its own SQLite database
+    | (see the "kitchensink" connection in config/database.php). Run
+    | `php artisan kitchensink:install` once to create and seed it. Disable
+    | this on projects that do not need it; the route and header link go away.
+    |
+    */
+
+    'kitchensink' => true,
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

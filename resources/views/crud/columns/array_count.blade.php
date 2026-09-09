@@ -9,7 +9,7 @@
 
     // the value should be an array wether or not attribute casting is used
     if (! is_array($array)) {
-        $array = json_decode($array, true);
+        $array = is_string($array) ? json_decode($array, true) : [];
     }
 
     if($array && count($array)) {

@@ -17,6 +17,13 @@
 <!-- ========= Top menu right items (ordered right) ========== -->
 <!-- ========================================================= -->
 <ul class="nav navbar-nav ml-auto @if(config('backpack.base.html_direction') == 'rtl') mr-0 @endif">
+    @if (config('app.kitchensink') && backpack_auth()->check())
+    <li class="nav-item">
+        <a class="nav-link" href="{{ backpack_url('kitchensink') }}" title="{{ __('Kitchen Sink') }}">
+            <i class="la la-flask"></i>
+        </a>
+    </li>
+    @endif
     @can('Manage Settings')
     <li class="nav-item">
         <a class="nav-link" href="{{ route('settings') }}">

@@ -18,4 +18,10 @@ Route::group([
     ),
     'namespace'  => 'App\Http\Controllers\Admin',
 ], function () { // custom admin routes
+    // Cached static map images for the latlng_map column
+    Route::get('static-map', 'StaticMapController@show')->name('static-map');
+
+    if (config('app.kitchensink')) {
+        Route::crud('kitchensink', 'KitchenSinkCrudController');
+    }
 }); // this should be the absolute last line of this file
