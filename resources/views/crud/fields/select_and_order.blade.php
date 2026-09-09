@@ -1,34 +1,64 @@
-<!-- select_and_order -->
+<!-- select_and_order (Alpine.js) -->
 @php
     $values = old($field['name']) ?? $field['value'] ?? $field['default'] ?? [];
-    $values = (array)$values;
+    $values = array_values(array_filter((array) $values, fn ($value) => $value !== '' && $value !== null && $value !== ' '));
+    $options = collect($field['options'])->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values();
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
-    <div class="row"
+    {{-- x-ignore until Backpack's init pipeline calls bpFieldInitSelectAndOrderElement, so repeatable clones
+         are taken from an un-rendered template (same approach as the table field) --}}
+    <div class="row select-and-order"
+         x-ignore
+         x-data="bpSelectAndOrder({ options: @js($options), selected: @js(array_map('strval', $values)) })"
          data-init-function="bpFieldInitSelectAndOrderElement"
-         data-all-options='@json($field['options'])'
          data-field-name="{{ $field['name'] }}">
         <div class="col-md-12">
-            <ul data-identifier="drag-destination" class="{{ $field['name'] }}_connectedSortable select_and_order_selected float-left"></ul>
-            <ul data-identifier="drag-source" class="{{ $field['name'] }}_connectedSortable select_and_order_all float-right"></ul>
+            <ul class="select_and_order_selected float-left"
+                @dragover.prevent="dragOverList('selected', $event)"
+                @drop.prevent="endDrag()">
+                <template x-for="(item, index) in selectedItems" :key="item.value">
+                    <li :draggable="dragging && dragging.value === item.value"
+                        :class="{ 'is-dragging': dragging && dragging.value === item.value }"
+                        @mousedown="armDrag(item)"
+                        @dragstart="startDrag($event, item)"
+                        @dragover.prevent.stop="dragOverItem(index, $event)"
+                        @dragend="endDrag()">
+                        <i class="la la-arrows"></i> <span x-text="item.label"></span>
+                        <a href="#" class="float-right text-muted" @click.prevent="deselect(item.value)" title="{{ trans('backpack::crud.delete') }}"><i class="la la-times"></i></a>
+                    </li>
+                </template>
+            </ul>
+            <ul class="select_and_order_all float-right"
+                @dragover.prevent="dragOverList('available', $event)"
+                @drop.prevent="endDrag()">
+                <template x-for="item in availableItems" :key="item.value">
+                    <li :draggable="dragging && dragging.value === item.value"
+                        :class="{ 'is-dragging': dragging && dragging.value === item.value }"
+                        @mousedown="armDrag(item)"
+                        @dragstart="startDrag($event, item)"
+                        @dragend="endDrag()"
+                        @dblclick="select(item.value)">
+                        <i class="la la-arrows"></i> <span x-text="item.label"></span>
+                        <a href="#" class="float-right text-muted" @click.prevent="select(item.value)" title="{{ trans('backpack::crud.add') }}"><i class="la la-plus"></i></a>
+                    </li>
+                </template>
+            </ul>
 
-            {{-- The results will be stored here --}}
-            <div data-identifier="results">
-                <select class="d-none" 
-                    name="{{ $field['name'] }}[]" 
-                    data-selected-options='@json($values)'
-                    multiple>
-                </select>
-            </div>
+            {{-- The results are stored here, in the order they were selected --}}
+            <select class="d-none" name="{{ $field['name'] }}[]" multiple>
+                <template x-for="value in selected" :key="value">
+                    <option :value="value" selected></option>
+                </template>
+            </select>
         </div>
 
-    {{-- HINT --}}
-    @if (isset($field['hint']))
-        <p class="help-block">{!! $field['hint'] !!}</p>
-    @endif
+        {{-- HINT --}}
+        @if (isset($field['hint']))
+            <p class="help-block">{!! $field['hint'] !!}</p>
+        @endif
     </div>
 @include('crud::fields.inc.wrapper_end')
 
@@ -43,7 +73,6 @@
 
     {{-- FIELD CSS - will be loaded in the after_styles section --}}
     @push('crud_fields_styles')
-
     <style>
         .select_and_order_all,
         .select_and_order_selected {
@@ -60,7 +89,7 @@
             border: none;
         }
         .select_and_order_all li,
-        .select_and_order_selected li{
+        .select_and_order_selected li {
             border: 1px solid #eee;
             margin-top: 5px;
             padding: 5px;
@@ -68,6 +97,7 @@
             overflow: hidden;
             cursor: grab;
             border-style: dashed;
+            user-select: none;
         }
         .select_and_order_all li {
             background: #fbfbfb;
@@ -76,104 +106,94 @@
         .select_and_order_selected li {
             border-style: solid;
         }
-        .select_and_order_all li.ui-sortable-helper,
-        .select_and_order_selected li.ui-sortable-helper {
+        .select_and_order_all li.is-dragging,
+        .select_and_order_selected li.is-dragging {
             color: #3c8dbc;
-            border-collapse: #3c8dbc;
-            z-index: 9999;
-        }
-        .select_and_order_all .ui-sortable-placeholder,
-        .select_and_order_selected .ui-sortable-placeholder {
             border: 1px dashed #3c8dbc;
-            visibility: visible!important;
+            opacity: .6;
         }
-        .ui-sortable-handle {
-            -ms-touch-action: none;
-            touch-action: none;
-        }
-
     </style>
     @endpush
 
-{{-- FIELD JS - will be loaded in the after_scripts section --}}
-@push('crud_fields_scripts')
-<script src="{{ asset('packages/jquery-ui-dist/jquery-ui.min.js') }}"></script>
-<script>
-    function bpFieldInitSelectAndOrderElement(element) {
-        var $dragSource = element.find('[data-identifier=drag-source]');
-        var $dragDestination = element.find('[data-identifier=drag-destination]');
-        var $hiddenSelect = element.find('[data-identifier=results] select');
-        var $fieldName = element.attr('data-field-name');
-        var $alreadySelectedOptions = $hiddenSelect.data('selected-options');
-        var $allOptions = element.data('all-options');
+    {{-- FIELD JS - will be loaded in the after_scripts section --}}
+    @push('crud_fields_scripts')
+    <script>
+        Alpine.data('bpSelectAndOrder', function (config) {
+            return {
+                options: config.options,
+                selected: Array.isArray(config.selected) ? config.selected.map(String) : String(config.selected || '').split(',').filter(Boolean),
+                dragging: null,
 
-        // selected options should be an array no matter what was received (string or direct array)
-        // useful if the selected-options were set by the repeatable field
-        if (typeof $alreadySelectedOptions === 'string' ) {
-            $alreadySelectedOptions = $alreadySelectedOptions.split(",");
-        }
-
-        // set unique IDs on the drag-and-drop areas so we can reference them later on
-        var $allId = 'sao_all_'+Math.ceil(Math.random() * 1000000);
-        var $selectedId = 'sao_selected_'+Math.ceil(Math.random() * 1000000);
-
-        element.find('[data-identifier=drag-destination]').attr('id', $selectedId);
-        element.find('[data-identifier=drag-source]').attr('id', $allId);
-
-        // initialize jQueryUI sortable
-        $( "#"+$allId+", #"+$selectedId ).sortable({
-            connectWith: "."+$fieldName+"_connectedSortable",
-            create: function (event, ui) {
-                // populate all options in the right-hand area (aka $dragSource)
-                if (Object.keys($allOptions).length) {
-                    $dragSource.html("");
-
-                    for (value in $allOptions) {
-                        $dragSource.append('<li value="'+value+'"><i class="la la-arrows"></i> '+$allOptions[value]+'</li>');
-                    }
-                }
-
-                // populate selected options in the left-hand area (aka $dragDestination)
-                if ($alreadySelectedOptions.length) {
-                    if ($alreadySelectedOptions.length == 1 && ($alreadySelectedOptions[0] =='' || $alreadySelectedOptions == ' ' ) ) {
-                        return;
-                    }
-
-                    $dragDestination.html("");
-                    $hiddenSelect.html("");
-
-                    $alreadySelectedOptions.forEach(function(value, key) {
-                        $dragDestination.append('<li value="'+value+'"><i class="la la-arrows"></i> '+$allOptions[value]+'</li>');
-                        $dragSource.find('li[value='+value+']').remove();
-                        $hiddenSelect.append('<option value="'+value+'" selected></option>');
+                get selectedItems() {
+                    var self = this;
+                    return this.selected.map(function (value) {
+                        return self.options.find(function (option) { return option.value === value; }) || { value: value, label: value };
                     });
-                }
-            },
-            update: function() {
-                var updatedlist = $(this).attr('id');
+                },
 
-                if((updatedlist == $selectedId)) {
-                    // clear all options inside the select
-                    $hiddenSelect.html("");
+                get availableItems() {
+                    var self = this;
+                    return this.options.filter(function (option) { return self.selected.indexOf(option.value) === -1; });
+                },
 
-                    // if there are no items dragged inside the selected area, abort
-                    if($dragDestination.find('li').length=0) {
-                        return;
+                select: function (value, index) {
+                    var current = this.selected.indexOf(value);
+                    if (current !== -1) {
+                        this.selected.splice(current, 1);
+                        if (index !== undefined && index > current) index--;
                     }
+                    this.selected.splice(index === undefined ? this.selected.length : index, 0, value);
+                },
 
-                    // for each item dragged inside the selected area
-                    // add a new selected option inside the hidden select
-                    $dragDestination.find('li').each(function(val,obj) {
-                        $hiddenSelect.append('<option value="'+obj.getAttribute('value')+'" selected></option>');
-                    });
-                }
+                deselect: function (value) {
+                    var current = this.selected.indexOf(value);
+                    if (current !== -1) this.selected.splice(current, 1);
+                },
+
+                armDrag: function (item) { this.dragging = item; },
+
+                startDrag: function (event, item) {
+                    this.dragging = item;
+                    event.dataTransfer.effectAllowed = 'move';
+                },
+
+                // hovering a selected item drops the dragged one before or after it
+                dragOverItem: function (index, event) {
+                    if (! this.dragging) return;
+                    var rect = event.currentTarget.getBoundingClientRect();
+                    var target = index + (event.clientY > rect.top + rect.height / 2 ? 1 : 0);
+                    var current = this.selected.indexOf(this.dragging.value);
+                    if (current === index || (current !== -1 && current + 1 === target)) return;
+                    this.select(this.dragging.value, target);
+                },
+
+                // hovering empty list space: append to "selected" or move back to "available"
+                dragOverList: function (list, event) {
+                    if (! this.dragging || event.target.closest('li')) return;
+                    if (list === 'selected' && this.selected.indexOf(this.dragging.value) === -1) {
+                        this.select(this.dragging.value);
+                    } else if (list === 'available') {
+                        this.deselect(this.dragging.value);
+                    }
+                },
+
+                endDrag: function () { this.dragging = null; }
+            };
+        });
+
+        function bpFieldInitSelectAndOrderElement(element) {
+            var container = element[0];
+
+            if (! container || container._x_dataStack) {
+                return;
             }
-        }).disableSelection();
-    }
-</script>
 
-@endpush
-
+            delete container._x_ignore;
+            container.removeAttribute('x-ignore');
+            Alpine.initTree(container);
+        }
+    </script>
+    @endpush
 @endif
 
 {{-- End of Extra CSS and JS --}}

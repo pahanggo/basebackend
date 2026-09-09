@@ -30,13 +30,36 @@ if($sortable){
 
     <div><label>{!! $field['label'] !!}</label></div>
     @include('crud::fields.inc.translatable_icon')
-    <div class="list" data-field-name="{{ $field['name'] }}">
     @if ($multiple)
-        <input type="hidden" data-marker="multipleBrowseInput" name="{{ $field['name'] }}" value="{{ json_encode($value) }}">
+        {{-- x-ignore until Backpack's init pipeline calls bpFieldInitBrowseMultipleElement (keeps repeatable clones clean) --}}
+        <div class="list" data-field-name="{{ $field['name'] }}"
+             x-ignore
+             x-data="bpBrowseMultiple({ paths: @js(array_values(array_filter((array) $value, fn ($path) => $path !== '' && $path !== null))), sortable: @js((bool) $sortable) })">
+            <input type="hidden" data-marker="multipleBrowseInput" name="{{ $field['name'] }}" :value="JSON.stringify(paths)">
+            <template x-for="(path, index) in paths" :key="path + '-' + index">
+                <div class="input-group input-group-sm"
+                     :class="{ 'is-dragging': dragging === index }"
+                     :draggable="sortable && dragging === index"
+                     @dragstart="startDrag($event, index)"
+                     @dragover.prevent="dragOver($event, index)"
+                     @dragend="endDrag()">
+                    <input type="text" :value="path" @include('crud::fields.inc.attributes') readonly>
+                    <div class="input-group-btn">
+                        <button type="button" class="browse remove btn btn-sm btn-light" @click="remove(index)">
+                            <i class="la la-trash"></i>
+                        </button>
+                        @if($sortable)
+                            <button type="button" class="browse move btn btn-sm btn-light" @mousedown="armDrag(index)" style="cursor: grab;"><span class="la la-sort"></span></button>
+                        @endif
+                    </div>
+                </div>
+            </template>
+        </div>
     @else
-        <input type="text" data-marker="multipleBrowseInput" name="{{ $field['name'] }}" value="{{ $value }}" @include('crud::fields.inc.attributes') readonly>
+        <div class="list" data-field-name="{{ $field['name'] }}">
+            <input type="text" data-marker="multipleBrowseInput" name="{{ $field['name'] }}" value="{{ $value }}" @include('crud::fields.inc.attributes') readonly>
+        </div>
     @endif
-</div>
     <div class="btn-group" role="group" aria-label="..." style="margin-top: 3px;">
         <button type="button" class="browse popup btn btn-sm btn-light">
             <i class="la la-cloud-upload"></i>
@@ -52,19 +75,6 @@ if($sortable){
         <p class="help-block">{!! $field['hint'] !!}</p>
     @endif
 
-    <script type="text/html" data-marker="browse_multiple_template">
-        <div class="input-group input-group-sm">
-            <input type="text" @include('crud::fields.inc.attributes') readonly>
-            <div class="input-group-btn">
-                <button type="button" class="browse remove btn btn-sm btn-light">
-                    <i class="la la-trash"></i>
-                </button>
-                @if($sortable)
-                    <button type="button" class="browse move btn btn-sm btn-light"><span class="la la-sort"></span></button>
-                @endif
-            </div>
-        </div>
-    </script>
 @include('crud::fields.inc.wrapper_end')
 
 
@@ -83,12 +93,14 @@ if($sortable){
             #cboxContent, #cboxLoadedContent, .cboxIframe {
                 background: transparent;
             }
+            [data-field-type] .list .input-group.is-dragging {
+                opacity: .5;
+            }
         </style>
     @endpush
 
     @push('crud_fields_scripts')
         
-        <script src="{{ asset('packages/jquery-ui-dist/jquery-ui.min.js') }}"></script>
         <script src="{{ asset('packages/jquery-colorbox/jquery.colorbox-min.js') }}"></script>
         <script>
             // this global variable is used to remember what input to update with the file path
@@ -97,44 +109,49 @@ if($sortable){
 
             // function to use the files selected inside elfinder
             function processSelectedMultipleFiles(files, requestingField) {
-                elfinderTarget.trigger('createInputsForItemsSelectedWithElfinder', [files]);                
+                elfinderTarget.trigger('createInputsForItemsSelectedWithElfinder', [files]);
                 elfinderTarget = false;
             }
 
+            Alpine.data('bpBrowseMultiple', function (config) {
+                return {
+                    paths: Array.isArray(config.paths) ? config.paths : [],
+                    sortable: !! config.sortable,
+                    dragging: null,
+
+                    add: function (path) { this.paths.push(path); },
+                    remove: function (index) { this.paths.splice(index, 1); },
+                    clear: function () { this.paths = []; },
+
+                    armDrag: function (index) { this.dragging = index; },
+                    startDrag: function (event, index) {
+                        this.dragging = index;
+                        event.dataTransfer.effectAllowed = 'move';
+                    },
+                    dragOver: function (event, index) {
+                        if (this.dragging === null || this.dragging === index) return;
+                        var moved = this.paths.splice(this.dragging, 1)[0];
+                        this.paths.splice(index, 0, moved);
+                        this.dragging = index;
+                    },
+                    endDrag: function () { this.dragging = null; }
+                };
+            });
+
             function bpFieldInitBrowseMultipleElement(element) {
                 var $triggerUrl = element.data('elfinder-trigger-url');
-                var $template = element.find("[data-marker=browse_multiple_template]").html();
                 var $list = element.find(".list");
                 var $input = element.find('input[data-marker=multipleBrowseInput]');
                 var $multiple = element.attr('data-multiple');
-                var $sortable = element.attr('sortable');
+                var list = $list[0];
 
-                // show existing items - display visible inputs for each stored path  
-                if ($input.val() != '' && $input.val() != null && $multiple === 'true') {
-                    $paths = JSON.parse($input.val());
-                    if (Array.isArray($paths) && $paths.length) {
-                        // remove any already visible inputs
-                        $list.find('.input-group').remove();
-
-                        // add visible inputs for each item inside the hidden input array
-                        $paths.forEach(function (path) {
-                            var newInput = $($template);
-                            newInput.find('input').val(path);
-                            $list.append(newInput);
-                        });
-                    }
+                // multiple: the list is an Alpine component that owns the paths and the hidden JSON input
+                if ($multiple === 'true' && list && ! list._x_dataStack) {
+                    delete list._x_ignore;
+                    list.removeAttribute('x-ignore');
+                    Alpine.initTree(list);
                 }
-
-                // make the items sortable, if configurations says so
-                if($sortable){
-                    $list.sortable({
-                        handle: 'button.move',
-                        cancel: '',
-                        update: function (event, ui) {
-                            element.trigger('saveToJson');
-                        }
-                    });
-                }
+                var state = function () { return Alpine.$data(list); };
 
                 element.on('click', 'button.popup', function (event) {
                     event.preventDefault();
@@ -152,50 +169,17 @@ if($sortable){
                     });
                 });
 
-                // turn non-hidden inputs into a JSON
-                // and save them inside the hidden input that ACTUALLY holds all paths
-                element.on('saveToJson', function(event) {
-                    var $paths = element.find('input').not('[type=hidden]').map(function (idx, item) {
-                        return $(item).val();
-                    }).toArray();
-
-                    // save the JSON inside the hidden input
-                    $input.val(JSON.stringify($paths));
-                });
-
                 if ($multiple === 'true') {
-                    // remote item button
-                    element.on('click', 'button.remove', function (event) {
-                        event.preventDefault();
-                        $(this).closest('.input-group').remove();
-                        element.trigger('saveToJson');
-                    });
-
-                    // clear button
                     element.on('click', 'button.clear', function (event) {
                         event.preventDefault();
-
-                        $('.input-group', $list).remove();
-                        element.trigger('saveToJson');
+                        state().clear();
                     });
 
                     // called after one or more items are selected in the elFinder window
                     element.on('createInputsForItemsSelectedWithElfinder', element, function(event, files) {
-                        files.forEach(function (file) {
-                            var newInput = $($template);
-                            newInput.find('input').val(file.path);
-                            $list.append(newInput);
-                        });
-
-                        if($sortable){
-                            $list.sortable("refresh")
-                        }
-
-                        element.trigger('saveToJson');
+                        files.forEach(function (file) { state().add(file.path); });
                     });
-
                 } else {
-                    // clear button
                     element.on('click', 'button.clear', function (event) {
                         $input.val('');
                     });
