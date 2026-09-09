@@ -18,8 +18,8 @@ class RoleCrudController extends CrudController
     use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
     use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
 
-    protected Role $role_model;
-    protected Permission $permission_model;
+    protected string $role_model;
+    protected string $permission_model;
 
     public function setup()
     {
