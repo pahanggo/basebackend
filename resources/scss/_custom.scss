@@ -748,9 +748,29 @@ fieldset:disabled .dataTables_wrapper .dataTables_paginate a.paginate_button,
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
+/* DataTables responsive detail modal: wider dialog, labels hug their content. */
+.dtr-bs-modal .modal-dialog {
+  max-width: 1140px;
+  margin: 1.75rem auto;
+  width: calc(100% - 2rem);
+}
+
+/* Range filter: the default 10rem dropdown is too narrow for two number inputs. */
+.navbar-filters .dropdown-menu.range-filter {
+  min-width: 20rem;
+
+  .form-control {
+    min-width: 7rem;
+  }
+}
+
 /* Datatable search box keeps Backpack's pill shape whether it stays inside
-   .dataTables_wrapper (no filters) or is moved into #bp-filters-navbar. */
-.dataTables_wrapper .dataTables_filter input {
+   .dataTables_wrapper (no filters) or is moved into #bp-filters-navbar.
+   The "text" filter reuses the same look. */
+.dataTables_wrapper .dataTables_filter input,
+.navbar-filters .text-filter input {
+  display: inline-block;
+  width: auto;
   border-radius: 25px;
 }
 

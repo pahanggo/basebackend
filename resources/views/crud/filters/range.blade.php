@@ -4,7 +4,7 @@
     filter-key="{{ $filter->key }}"
 	class="nav-item dropdown {{ Request::get($filter->name)?'active':'' }}">
     <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ $filter->label }} <span class="caret"></span></a>
-    <div class="dropdown-menu p-0">
+    <div class="dropdown-menu p-0 range-filter">
 
 			<div class="form-group backpack-filter mb-0">
 					<?php

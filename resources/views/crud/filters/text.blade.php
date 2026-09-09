@@ -1,44 +1,30 @@
-{{-- Text Backpack CRUD filter --}}
+{{-- Text Backpack CRUD filter: same markup and look as the datatable search box --}}
 
 <li filter-name="{{ $filter->name }}"
     filter-type="{{ $filter->type }}"
     filter-key="{{ $filter->key }}"
-    class="nav-item dropdown {{ Request::get($filter->name) ? 'active' : '' }}">
-    <div class="d-flex align-items-center">
-        <label for="text-filter-{{ $filter->key }}" id="text-filter-label-{{ $filter->key }}" class="caret px-2 mb-0" style="color:#869ab8">
-            {{ $filter->label }}
-        </label>
-        <div class="input-group">
-            <input class="form-control pull-right"
-                autocomplete="disabled-field-unique-string"
-                id="text-filter-{{ $filter->key }}"
-                type="text"
-                @if ($filter->currentValue)
-                    value="{{ $filter->currentValue }}"
-                @endif
-                >
-
-            <div class="input-group-append text-filter-{{ $filter->key }}-button @if (!$filter->currentValue) d-none @endif">
-                <button class="input-group-text" href=""><i class="la la-times"></i></button>
-            </div>
-        </div>
-    </div>
+    class="nav-item text-filter {{ $filter->currentValue ? 'active' : '' }}">
+    <input class="form-control"
+        autocomplete="off"
+        id="text-filter-{{ $filter->key }}"
+        type="search"
+        placeholder="{{ $filter->label }}"
+        aria-label="{{ $filter->label }}"
+        value="{{ $filter->currentValue ?? '' }}">
 </li>
 
 {{-- ########################################### --}}
 {{-- Extra CSS and JS for this particular filter --}}
 
-
-{{-- FILTERS EXTRA JS --}}
-{{-- push things in the after_scripts section --}}
-
 @push('crud_list_scripts')
-    <!-- include select2 js-->
-  <script>
+    <script>
         jQuery(document).ready(function($) {
-            function search(e) {
+            var $li = $('li[filter-key={{ $filter->key }}]');
+            var $input = $('#text-filter-{{ $filter->key }}');
+
+            function search() {
                 var parameter = '{{ $filter->name }}';
-                var value = $(this).val();
+                var value = $input.val();
 
                 // behaviour for ajax table
                 var ajax_table = $('#crudTable').DataTable();
@@ -54,38 +40,22 @@
 
                 // mark this filter as active in the navbar-filters
                 if (URI(new_url).hasQuery('{{ $filter->name }}', true)) {
-                    $('li[filter-key={{ $filter->key }}]').removeClass('active').addClass('active');
+                    $li.addClass('active');
+                    $('#remove_filters_button').removeClass('invisible');
                 } else {
-                    $('li[filter-key={{ $filter->key }}]').trigger('filter:clear');
-                }
-
-                if(value) {
-                    $(".text-filter-{{ $filter->key }}-button").removeClass('d-none');
-                } else {
-                    $(".text-filter-{{ $filter->key }}-button").addClass('d-none');
+                    $li.removeClass('active');
                 }
             }
 
-            $('#text-filter-{{ $filter->key }}').on('change', search);
+            // "search" fires on Enter and when the native clear (x) is clicked; "change" on blur
+            $input.on('search change', search);
 
-            $('li[filter-key={{ $filter->key }}]').on('filter:clear', function(e) {
-                $('li[filter-key={{ $filter->key }}]').removeClass('active');
-                $('#text-filter-{{ $filter->key }}').val('');
-
-                $(".text-filter-{{ $filter->key }}-button").addClass('d-none');
+            $li.on('filter:clear', function() {
+                $li.removeClass('active');
+                $input.val('');
             });
-
-            // datepicker clear button
-            $(".text-filter-{{ $filter->key }}-button").click(function(e) {
-                e.preventDefault();
-                $('li[filter-key={{ $filter->key }}]').trigger('filter:clear');
-                $('#text-filter-{{ $filter->key }}').val('');
-                $('#text-filter-{{ $filter->key }}').trigger('change');
-
-                $(".text-filter-{{ $filter->key }}-button").addClass('d-none');
-            })
         });
-  </script>
+    </script>
 @endpush
 {{-- End of Extra CSS and JS --}}
 {{-- ########################################## --}}

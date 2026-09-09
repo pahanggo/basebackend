@@ -150,8 +150,8 @@
 
                                 return '<tr data-dt-row="' + col.rowIndex + '" data-dt-column="' + col
                                     .columnIndex + '">' +
-                                    '<td style="vertical-align:top; border:none;"><strong>' + col.title
-                                    .trim() + ':' + '<strong></td> ' +
+                                    '<td style="vertical-align:top; border:none; width:1%; white-space:nowrap;"><strong>' + col.title
+                                    .trim() + ':' + '</strong></td> ' +
                                     '<td style="padding-left:10px;padding-bottom:10px; border:none;">' +
                                     col.data + '</td>' +
                                     '</tr>';
