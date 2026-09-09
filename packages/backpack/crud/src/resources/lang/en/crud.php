@@ -168,6 +168,11 @@ return [
     'table_cant_add'    => 'Cannot add new :entity',
     'table_max_reached' => 'Maximum number of :max reached',
     'latlng_search_placeholder' => 'Search a location...',
+    'ajax_upload_choose_files' => 'Choose files',
+    'ajax_upload_drop' => 'or drag and drop files here',
+    'ajax_upload_too_large' => 'File exceeds the :max MB limit',
+    'ajax_upload_failed' => 'Upload failed',
+    'ajax_upload_session_expired' => 'Your session has expired. Reload the page and try again.',
 
     // File manager
     'file_manager' => 'File Manager',

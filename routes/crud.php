@@ -20,6 +20,8 @@ Route::group([
 ], function () { // custom admin routes
     // Cached static map images for the latlng_map column
     Route::get('static-map', 'StaticMapController@show')->name('static-map');
+    // Immediate uploads for the ajax_upload / ajax_multi_upload fields
+    Route::post('ajax-upload', 'AjaxUploadController@store')->name('ajax-upload');
 
     if (config('app.kitchensink')) {
         Route::crud('kitchensink', 'KitchenSinkCrudController');

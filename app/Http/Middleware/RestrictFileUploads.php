@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class RestrictFileUploads
@@ -45,7 +46,7 @@ class RestrictFileUploads
 
     public function handle(Request $request, Closure $next): Response
     {
-        foreach ($this->flattenFiles($request->allFiles()) as $file) {
+        foreach ($this->flattenFiles($request->allFiles()) as $inputName => $file) {
             if (!$file->isValid()) {
                 continue;
             }
@@ -82,7 +83,12 @@ class RestrictFileUploads
                     'route' => $request->path(),
                 ]);
 
-                abort(422, 'Jenis fail ini tidak dibenarkan untuk dimuat naik.');
+                // Behaves like a failed validation rule: JSON/ajax callers get a 422 with an
+                // `errors` map keyed by the input, regular forms are redirected back with the
+                // message attached to the offending field instead of a bare error page.
+                throw ValidationException::withMessages([
+                    $inputName => __('Jenis fail ini tidak dibenarkan untuk dimuat naik.'),
+                ]);
             }
         }
 
@@ -91,17 +97,23 @@ class RestrictFileUploads
 
     /**
      * Recursively flatten the (possibly nested) array returned by $request->allFiles()
-     * into a flat list of UploadedFile instances.
+     * into [dot.notation.input.name => UploadedFile].
+     *
+     * @return array<string, UploadedFile>
      */
-    protected function flattenFiles(array $files): array
+    protected function flattenFiles(array $files, string $prefix = ''): array
     {
         $flat = [];
 
-        array_walk_recursive($files, function ($file) use (&$flat) {
+        foreach ($files as $key => $file) {
+            $name = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
             if ($file instanceof UploadedFile) {
-                $flat[] = $file;
+                $flat[$name] = $file;
+            } elseif (is_array($file)) {
+                $flat += $this->flattenFiles($file, $name);
             }
-        });
+        }
 
         return $flat;
     }

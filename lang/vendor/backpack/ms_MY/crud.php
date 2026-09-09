@@ -168,6 +168,11 @@ return [
     'table_cant_add'    => 'Tidak dapat menambah :entity baharu',
     'table_max_reached' => 'Had maksimum :max telah dicapai',
     'latlng_search_placeholder' => 'Cari lokasi...',
+    'ajax_upload_choose_files' => 'Pilih fail',
+    'ajax_upload_drop' => 'atau seret dan lepaskan fail di sini',
+    'ajax_upload_too_large' => 'Fail melebihi had :max MB',
+    'ajax_upload_failed' => 'Muat naik gagal',
+    'ajax_upload_session_expired' => 'Sesi anda telah tamat. Sila muat semula halaman dan cuba lagi.',
 
     // File manager
     'file_manager' => 'File Manager',
