@@ -37,8 +37,8 @@ class KitchenSinkSeeder extends Seeder
 
         $disk = Storage::disk('public');
 
-        foreach (range(1, 3) as $i) {
-            $image = $this->sampleImage($disk, "kitchensink/images/sample-{$i}.png", "Item {$i}", ['#5f0461', '#269740', '#467fd0'][$i - 1]);
+        foreach (range(1, 10) as $i) {
+            $image = $this->sampleImage($disk, "kitchensink/images/sample-{$i}.png", "Item {$i}", ['#5f0461', '#269740', '#467fd0'][($i - 1) % 3]);
             $avatar = $this->sampleImage($disk, "kitchensink/avatars/avatar-{$i}.png", "A{$i}", '#fd9644');
             $attachments = [
                 $this->sampleFile($disk, "kitchensink/attachments/notes-{$i}.txt", "Notes for sample item {$i}\n"),
@@ -59,9 +59,9 @@ class KitchenSinkSeeder extends Seeder
                 'is_active' => $i % 2 === 1,
                 'agreed' => true,
                 'is_featured' => $i === 1,
-                'status' => ['draft', 'published', 'archived'][$i - 1],
+                'status' => ['draft', 'published', 'archived'][($i - 1) % 3],
                 'gender' => $i % 2 ? 'male' : 'female',
-                'size' => ['S', 'M', 'L'][$i - 1],
+                'size' => ['S', 'M', 'L'][($i - 1) % 3],
                 'sizes' => ['S', 'M'],
                 'published_on' => now()->subDays($i),
                 'published_at' => now()->subHours($i),
@@ -87,10 +87,10 @@ class KitchenSinkSeeder extends Seeder
                 'lines' => [['sku' => 'SKU-'.$i, 'qty' => $i, 'note' => 'first'], ['sku' => 'SKU-'.($i + 10), 'qty' => $i * 2, 'note' => 'second']],
                 'ordered_sizes' => ['M', 'S'],
                 'metadata' => ['author' => ['name' => 'Zulfa', 'role' => 'admin'], 'flags' => ['beta' => true]],
-                'location' => [['lat' => 3.8077, 'lng' => 103.326], ['lat' => 3.1390, 'lng' => 101.6869], ['lat' => 4.1793, 'lng' => 102.0500]][$i - 1],
+                'location' => [['lat' => 3.8077, 'lng' => 103.326], ['lat' => 3.1390, 'lng' => 101.6869], ['lat' => 4.1793, 'lng' => 102.0500]][($i - 1) % 3],
                 'price_money' => 1999.9 * $i,
-                'phone_my' => '+6012345678'.$i,
-                'identity_number' => '900101-06-500'.$i,
+                'phone_my' => '+60123456'.sprintf('%03d', $i),
+                'identity_number' => '900101-06-'.sprintf('%04d', 5000 + $i),
                 'identity_type' => 'mykad',
                 'parent_category_id' => KitchenSinkCategory::where('name', 'Laptops')->value('id'),
                 'child_category_id' => KitchenSinkCategory::where('name', $i % 2 ? 'Ultrabook' : 'Gaming')->value('id'),
@@ -98,7 +98,7 @@ class KitchenSinkSeeder extends Seeder
                 'event_date' => now()->addDays($i),
                 'opens_from' => '09:00',
                 'opens_to' => '17:30',
-                'kitchen_sink_category_id' => $categories[$i - 1]->id,
+                'kitchen_sink_category_id' => $categories[($i - 1) % 4]->id,
                 'ajax_category_id' => $categories[$i % 4]->id,
                 'nested_category_id' => $categories[($i + 1) % 4]->id,
                 'grouped_category_id' => $categories[($i + 2) % 4]->id,
