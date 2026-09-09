@@ -16,3 +16,4 @@ yarn-error.log
 frankenphp
 frankenphp-worker.php
 /database/kitchensink.sqlite
+/database/workflow.sqlite

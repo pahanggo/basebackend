@@ -65,7 +65,8 @@
             "Database\\Seeders\\": "database/seeders/",
             "Backpack\\CRUD\\": "packages/backpack/crud/src",
             "Backpack\\Generators\\": "packages/backpack/generators/src",
-            "Backpack\\PermissionManager\\": "packages/backpack/permissionmanager/src"
+            "Backpack\\PermissionManager\\": "packages/backpack/permissionmanager/src",
+            "Workflow\\": "packages/workflow/src"
         },
         "files": [
             "app/helpers.php"

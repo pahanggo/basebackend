@@ -50,6 +50,15 @@ return [
             'foreign_key_constraints' => true,
         ],
 
+        // Isolated store for the packages/workflow engine — kept separate from the app's
+        // main database so the engine's tables never mix with a downstream project's schema.
+        'workflow' => [
+            'driver' => 'sqlite',
+            'database' => env('WORKFLOW_DB_DATABASE', database_path('workflow.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),

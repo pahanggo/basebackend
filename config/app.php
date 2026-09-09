@@ -5,6 +5,7 @@ use App\Services\WidgetService;
 use Backpack\CRUD\BackpackServiceProvider;
 use Backpack\Generators\GeneratorsServiceProvider;
 use Backpack\PermissionManager\PermissionManagerServiceProvider;
+use Workflow\WorkflowServiceProvider;
 
 return [
 
@@ -185,6 +186,7 @@ return [
         BackpackServiceProvider::class,
         GeneratorsServiceProvider::class,
         PermissionManagerServiceProvider::class,
+        WorkflowServiceProvider::class,
 
         /*
          * Package Service Providers...
