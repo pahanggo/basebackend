@@ -127,10 +127,27 @@
                 function moveTo(latlng, zoom) {
                     marker.setLatLng(latlng);
                     map.setView(latlng, zoom || map.getZoom());
-                    store(latlng);
                 }
 
-                marker.on('dragend', function () { store(marker.getLatLng()); });
+                // The pin always sits at the map centre: panning the map moves the pin,
+                // and dropping the pin pans the map so it is centred again.
+                var panningToMarker = false;
+
+                map.on('move', function () {
+                    if (! panningToMarker) {
+                        marker.setLatLng(map.getCenter());
+                    }
+                });
+                map.on('moveend', function () {
+                    panningToMarker = false;
+                    marker.setLatLng(map.getCenter());
+                    store(map.getCenter());
+                });
+                marker.on('dragend', function () {
+                    panningToMarker = true;
+                    map.panTo(marker.getLatLng());
+                });
+
                 $coords.text(position.lat + ', ' + position.lng);
 
                 // a map drawn inside a hidden tab or modal needs a size refresh once visible
