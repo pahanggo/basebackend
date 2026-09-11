@@ -25,6 +25,24 @@ class WorkflowDefinition extends Model
         return $this->belongsTo(WorkflowDefinitionVersion::class, 'published_version_id');
     }
 
+    /**
+     * The unpublished draft row, if one exists — there's at most one per
+     * definition; a version number is only assigned on publish.
+     */
+    public function draftVersion(): ?WorkflowDefinitionVersion
+    {
+        return $this->versions()->whereNull('version')->first();
+    }
+
+    /**
+     * What the designer resumes editing from: the draft if one is in
+     * progress, otherwise whatever was last published.
+     */
+    public function latestVersion(): ?WorkflowDefinitionVersion
+    {
+        return $this->draftVersion() ?? $this->publishedVersion;
+    }
+
     public function instances(): HasMany
     {
         return $this->hasMany(WorkflowInstance::class);

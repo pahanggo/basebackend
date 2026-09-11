@@ -3,19 +3,22 @@
 namespace Workflow\Support;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 
 /**
- * Evaluates an edge's actor_rule — {roles, permissions, users, match} — against
- * a specific user. Built into the engine rather than a registered type, since
- * every workflow needs this, unlike the genuinely extensible precondition/action
- * types.
+ * Evaluates an edge's actor_rule — {roles, permissions, users, model_callback,
+ * match} — against a specific user. Built into the engine rather than a
+ * registered type, since every workflow needs this, unlike the genuinely
+ * extensible precondition/action types.
  */
 class ActorRuleResolver
 {
     /**
      * @param  array<string, mixed>|null  $rule
+     * @param  Model|null  $model  the workflowable the edge belongs to — only
+     *                             needed when the rule declares a model_callback.
      */
-    public function allows(?array $rule, ?Authenticatable $user): bool
+    public function allows(?array $rule, ?Authenticatable $user, ?Model $model = null): bool
     {
         if (empty($rule)) {
             // No actor_rule declared: anyone may trigger it.
@@ -38,6 +41,10 @@ class ActorRuleResolver
 
         if (! empty($rule['permissions']) && method_exists($user, 'hasAnyPermission')) {
             $checks[] = $user->hasAnyPermission($rule['permissions']);
+        }
+
+        if (! empty($rule['model_callback']) && $model && method_exists($model, $rule['model_callback'])) {
+            $checks[] = (bool) $model->{$rule['model_callback']}($user);
         }
 
         if (empty($checks)) {

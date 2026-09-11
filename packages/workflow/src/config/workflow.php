@@ -28,13 +28,13 @@ return [
         'send_notification' => \Workflow\Actions\SendNotification::class,
         'start_timer' => \Workflow\Actions\StartTimer::class,
         'call_webhook' => \Workflow\Actions\CallWebhook::class,
-        'custom_callback' => \Workflow\Actions\CustomCallback::class,
+        'model_callback' => \Workflow\Actions\ModelCallback::class,
     ],
 
     'preconditions' => [
         'field_equals' => \Workflow\Preconditions\FieldEquals::class,
         'field_in' => \Workflow\Preconditions\FieldIn::class,
         'field_compare' => \Workflow\Preconditions\FieldCompare::class,
-        'custom_callback' => \Workflow\Preconditions\CustomCallback::class,
+        'model_callback' => \Workflow\Preconditions\ModelCallback::class,
     ],
 ];

@@ -29,7 +29,7 @@
                 if (! in_array('record_button', $edge['surfaces'] ?? ['record_button'])) {
                     continue;
                 }
-                if (! $actorRules->allows($edge['actor_rule'] ?? null, $currentUser)) {
+                if (! $actorRules->allows($edge['actor_rule'] ?? null, $currentUser, $entry)) {
                     continue;
                 }
                 if (! $preconditions->passes($edge['preconditions'] ?? null, $entry)) {
@@ -61,7 +61,7 @@
             <input type="hidden" name="workflowable_type" value="{{ get_class($entry) }}">
             <input type="hidden" name="workflowable_id" value="{{ $entry->getKey() }}">
             <input type="hidden" name="edge_id" value="{{ $edge['id'] }}">
-            <button type="submit" class="btn btn-xs btn-outline-secondary">{{ $edge['id'] }}</button>
+            <button type="submit" class="btn btn-xs btn-outline-secondary">{{ $edge['button_label'] ?? $edge['name'] ?? $edge['id'] }}</button>
         </form>
     @endforeach
 </div>

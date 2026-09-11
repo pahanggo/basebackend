@@ -93,7 +93,7 @@ class TransitionEngine
             throw new RuntimeException('Workflow instance has no resolvable workflowable model.');
         }
 
-        if (! $skipActorCheck && ! $this->actorRules->allows($edge['actor_rule'] ?? null, $actor)) {
+        if (! $skipActorCheck && ! $this->actorRules->allows($edge['actor_rule'] ?? null, $actor, $workflowable)) {
             return null;
         }
 

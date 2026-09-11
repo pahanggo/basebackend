@@ -106,6 +106,26 @@ it('requires every check to pass with an all match', function () {
     expect($this->resolver->allows(['roles' => ['hod'], 'permissions' => ['approve'], 'match' => 'all'], $actor))->toBeTrue();
 });
 
+it('matches via a model_callback method on the workflowable', function () {
+    $model = new class extends \Illuminate\Database\Eloquent\Model
+    {
+        protected $table = 'irrelevant';
+
+        public $timestamps = false;
+
+        public function callbackFunctionIsRequester($actor): bool
+        {
+            return $actor->getAuthIdentifier() === 42;
+        }
+    };
+
+    expect($this->resolver->allows(['model_callback' => 'callbackFunctionIsRequester'], fakeActor(42), $model))->toBeTrue();
+    expect($this->resolver->allows(['model_callback' => 'callbackFunctionIsRequester'], fakeActor(1), $model))->toBeFalse();
+    // No model given (e.g. a caller that can't resolve one): the check is
+    // simply skipped rather than denying everyone.
+    expect($this->resolver->allows(['model_callback' => 'callbackFunctionIsRequester'], fakeActor(42)))->toBeTrue();
+});
+
 it('builds pending actor rows for the my tasks widget', function () {
     $rows = $this->resolver->pendingActorRows(['roles' => [1, 2], 'permissions' => [5], 'users' => [9]]);
 

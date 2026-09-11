@@ -59,8 +59,8 @@ class WorkflowDefinitionCrudController extends CrudController
         CRUD::setValidation(WorkflowDefinitionRequest::class);
 
         CRUD::addField(['name' => 'name', 'type' => 'text']);
-        CRUD::addField(['name' => 'slug', 'type' => 'text', 'hint' => 'Used by HasWorkflow::workflowDefinitionSlug() on the target model.']);
-        CRUD::addField(['name' => 'model', 'type' => 'text', 'label' => 'Target model', 'hint' => 'Fully-qualified class name, e.g. App\\Models\\Invoice.']);
+        CRUD::addField(['name' => 'slug', 'type' => 'slug', 'target' => 'name', 'hint' => 'Used by HasWorkflow::workflowDefinitionSlug() on the target model.']);
+        CRUD::addField(['name' => 'model', 'type' => 'model_picker', 'label' => 'Target model', 'hint' => 'Any concrete Eloquent model under app/Models.']);
         CRUD::addField(['name' => 'description', 'type' => 'textarea']);
     }
 

@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 abstract class TestCase extends BaseTestCase
@@ -18,12 +19,16 @@ abstract class TestCase extends BaseTestCase
     {
         // Deliberately not `artisan migrate`: the migration-tracking table
         // lives on the main app's default connection, so a second `migrate`
-        // call would see this migration as "already run" and skip it even
+        // call would see these migrations as "already run" and skip them even
         // after dropAllTables() below wipes the actual workflow schema.
-        // Instead, drop the workflow connection's tables and re-run its one
-        // migration file directly, bypassing tracking entirely.
+        // Instead, drop the workflow connection's tables and re-run every
+        // migration file directly, in filename order, bypassing tracking.
         Schema::connection('workflow')->dropAllTables();
 
-        (require base_path('packages/workflow/src/database/migrations/2026_09_10_000000_create_workflow_tables.php'))->up();
+        $migrationsPath = base_path('packages/workflow/src/database/migrations');
+        $files = collect(File::files($migrationsPath))->sortBy(fn ($file) => $file->getFilename());
+        foreach ($files as $file) {
+            (require $file->getPathname())->up();
+        }
     }
 }

@@ -4,6 +4,7 @@ use App\Models\User;
 use Workflow\Preconditions\FieldCompare;
 use Workflow\Preconditions\FieldEquals;
 use Workflow\Preconditions\FieldIn;
+use Workflow\Preconditions\ModelCallback;
 use Workflow\Registries\WorkflowPreconditionRegistry;
 use Workflow\Support\PreconditionEvaluator;
 
@@ -12,6 +13,7 @@ beforeEach(function () {
     $this->registry->register('field_equals', FieldEquals::class);
     $this->registry->register('field_in', FieldIn::class);
     $this->registry->register('field_compare', FieldCompare::class);
+    $this->registry->register('model_callback', ModelCallback::class);
     $this->evaluator = new PreconditionEvaluator($this->registry);
     $this->model = new User(['name' => 'Ada', 'email' => 'ada@example.com']);
 });
@@ -93,3 +95,26 @@ it('compares fields with every operator', function (string $operator, int $left,
     ['gt', 6, 5, true],
     ['gte', 5, 5, true],
 ]);
+
+it('evaluates a model_callback leaf by calling the named method on the model', function () {
+    $model = new class extends \Illuminate\Database\Eloquent\Model
+    {
+        protected $table = 'irrelevant';
+
+        public $timestamps = false;
+
+        public function callbackFunctionIsBudgetOk(): bool
+        {
+            return true;
+        }
+
+        public function callbackFunctionIsBudgetExceeded(): bool
+        {
+            return false;
+        }
+    };
+
+    expect($this->evaluator->passes(['type' => 'model_callback', 'method' => 'callbackFunctionIsBudgetOk'], $model))->toBeTrue();
+    expect($this->evaluator->passes(['type' => 'model_callback', 'method' => 'callbackFunctionIsBudgetExceeded'], $model))->toBeFalse();
+    expect($this->evaluator->passes(['type' => 'model_callback', 'method' => 'methodThatDoesNotExist'], $model))->toBeFalse();
+});

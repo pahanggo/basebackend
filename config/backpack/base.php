@@ -73,7 +73,7 @@ return [
     // `npm run build` needed. The defaults below match the colors currently
     // compiled into resources/scss/_variables.scss.
     'theme_colors' => [
-        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#480049'),
+        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#7c3aed'),
         'secondary' => env('BACKPACK_COLOR_SECONDARY', '#D9E2EF'),
         'success'   => env('BACKPACK_COLOR_SUCCESS', '#269740'),
         'info'      => env('BACKPACK_COLOR_INFO', '#467FD0'),
