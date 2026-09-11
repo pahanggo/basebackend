@@ -44,7 +44,7 @@ return [
     ],
 
     'google_places' => [
-        'key' => env('GOOGLE_PLACES_KEY', 'AIzaSyCsW71wapMGVt1VXrSN7hpfyiawR4mhng4'),
+        'key' => env('GOOGLE_PLACES_KEY'),
     ],
 
     'github' => [
