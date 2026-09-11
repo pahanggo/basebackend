@@ -5,7 +5,12 @@
     @php
         $entity_model = $crud->model;
         $possible_values = $entity_model::getPossibleEnumValues($field['name']);
+        $readonly = (bool) ($field['readonly'] ?? false);
+        $selectedEnumValue = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? '';
     @endphp
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $selectedEnumValue])
+    @else
     <select
         name="{{ $field['name'] }}"
         @include('crud::fields.inc.attributes')
@@ -25,6 +30,7 @@
                 @endforeach
             @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

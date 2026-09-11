@@ -1,13 +1,20 @@
 <!-- configurable color picker -->
 {{-- https://farbelous.io/bootstrap-colorpicker/ --}}
+@php
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $colorPickerValue = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '';
+@endphp
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['raw' => true, 'value' => ($colorPickerValue !== '' ? '<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:middle;margin-right:.4em;border:1px solid #ccc;background:'.e($colorPickerValue).'"></span>' : '').e($colorPickerValue)])
+    @else
     <div class="input-group colorpicker-component">
         <input
         	type="text"
         	name="{{ $field['name'] }}"
-            value="{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}"
+            value="{{ $colorPickerValue }}"
             data-init-function="bpFieldInitColorPickerElement"
             @include('crud::fields.inc.attributes')
         	>
@@ -15,6 +22,7 @@
             <span class="input-group-text colorpicker-input-addon"><i></i></span>
         </span>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

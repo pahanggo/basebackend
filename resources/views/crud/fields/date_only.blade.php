@@ -13,6 +13,7 @@
        - autoclose    => true           close the picker after choosing a date
        - language     => app locale     bootstrap-datepicker locale key (resolved with frontend_locale())
        - attributes   => []             extra attributes for the visible input
+       - readonly     => false          when true, show the value as plain text with no form control and no name attribute (not submitted)
        - hint / default / wrapper as usual
 
      Accepts Carbon/DateTime instances, 'Y-m-d' and 'Y-m-d H:i:s' strings as the existing value. --}}
@@ -36,6 +37,7 @@
     };
 
     $value = $normaliseDateOnlyValue(old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '');
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $language = frontend_locale('packages/bootstrap-datepicker/dist/locales/bootstrap-datepicker.%s.min.js', $field['language'] ?? null) ?? 'en';
 
@@ -60,22 +62,26 @@
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
-    <input type="hidden" class="date-only-value" name="{{ $field['name'] }}" value="{{ $value }}">
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
-    <div class="input-group date">
-        <input
-            type="text"
-            data-init-function="bpFieldInitDateOnlyElement"
-            data-date-only-config="{{ json_encode($config) }}"
-            @include('crud::fields.inc.attributes')
-            >
-        <div class="input-group-append">
-            <span class="input-group-text">
-                <span class="la la-calendar"></span>
-            </span>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $value])
+    @else
+        <input type="hidden" class="date-only-value" name="{{ $field['name'] }}" value="{{ $value }}">
+        <div class="input-group date">
+            <input
+                type="text"
+                data-init-function="bpFieldInitDateOnlyElement"
+                data-date-only-config="{{ json_encode($config) }}"
+                @include('crud::fields.inc.attributes')
+                >
+            <div class="input-group-append">
+                <span class="input-group-text">
+                    <span class="la la-calendar"></span>
+                </span>
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

@@ -4,7 +4,10 @@
   $field['wrapper']['class'] = $field['wrapper']['class'] ?? 'form-group col-sm-12';
   $field['wrapper']['class'] = $field['wrapper']['class'].' checklist_dependency';
   $field['wrapper']['data-entity'] = $field['wrapper']['data-entity'] ?? $field['field_unique_name'];
-  $field['wrapper']['data-init-function'] = $field['wrapper']['init-function'] ?? 'bpFieldInitChecklistDependencyElement';
+  $readonly = (bool) ($field['readonly'] ?? false);
+  if (! $readonly) {
+      $field['wrapper']['data-init-function'] = $field['wrapper']['init-function'] ?? 'bpFieldInitChecklistDependencyElement';
+  }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
@@ -63,8 +66,21 @@
 
         //json encode of dependency matrix
         $dependencyJson = json_encode($dependencyArray);
+
+        // best effort readonly display: the stored $field['value'] collections already carry the
+        // related models, so their labels can be read directly without re-walking the dependency matrix
+        if ($readonly) {
+            $primaryLabels = isset($field['value'][0]) ? $field['value'][0]->pluck($primary_dependency['attribute'])->implode(', ') : '';
+            $secondaryLabels = isset($field['value'][1]) ? $field['value'][1]->pluck($secondary_dependency['attribute'])->implode(', ') : '';
+        }
     ?>
 
+    @if ($readonly)
+        <p class="form-control-plaintext readonly-field-value mb-0">
+            <strong>{{ $primary_dependency['label'] }}:</strong> {{ $primaryLabels }}<br>
+            <strong>{{ $secondary_dependency['label'] }}:</strong> {{ $secondaryLabels }}
+        </p>
+    @else
     <div class="container">
 
       <div class="row">
@@ -170,6 +186,7 @@
           @endforeach
       </div>
     </div><!-- /.container -->
+    @endif
 
 
     {{-- HINT --}}

@@ -9,17 +9,22 @@
     ];
 
     $field['options'] = array_merge($defaultOptions, $field['options'] ?? []);
+    $readonly = (bool) ($field['readonly'] ?? false);
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['raw' => true, 'value' => old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? ''])
+    @else
     <textarea
         name="{{ $field['name'] }}"
         data-init-function="bpFieldInitCKEditorElement"
         data-options="{{ trim(json_encode($field['options'])) }}"
         @include('crud::fields.inc.attributes', ['default_class' => 'form-control'])
     	>{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}</textarea>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

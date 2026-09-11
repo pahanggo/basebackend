@@ -12,6 +12,7 @@
        - allow_negative      => false  accept a leading minus sign
        - attributes          => []     extra attributes for the visible input (class defaults to form-control);
                                        `disabled` is mirrored onto the hidden input so nothing is submitted
+       - readonly            => false  when true, show the formatted value as plain text with no form control and no name attribute (not submitted)
        - hint
 
      Typing accepts digits and one decimal separator and is reformatted on every keystroke (caret preserved);
@@ -30,6 +31,7 @@
     // normalise whatever came from the model/old() into a canonical decimal string for the hidden input
     $value = is_numeric($value) ? number_format((float) $value, $decimals, '.', '') : '';
     $display = $value === '' ? '' : number_format((float) $value, $decimals, $decimalSeparator, $thousandsSeparator);
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'money';
@@ -40,32 +42,36 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    <input
-        type="hidden"
-        name="{{ $field['name'] }}"
-        value="{{ $value }}"
-        data-init-function="bpFieldInitMoneyElement"
-        data-decimals="{{ $decimals }}"
-        data-thousands-separator="{{ $thousandsSeparator }}"
-        data-decimal-separator="{{ $decimalSeparator }}"
-        data-min="{{ isset($field['min']) && is_numeric($field['min']) ? $field['min'] : '' }}"
-        data-max="{{ isset($field['max']) && is_numeric($field['max']) ? $field['max'] : '' }}"
-        data-allow-negative="{{ $allowNegative ? 1 : 0 }}"
-        @if(isset($field['attributes']['disabled'])) disabled @endif
-    >
-
-    @if($hasAddon) <div class="input-group"> @endif
-        @if($prefix !== null && $prefix !== '') <div class="input-group-prepend"><span class="input-group-text">{!! $prefix !!}</span></div> @endif
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => trim(($prefix ? $prefix.' ' : '').$display.($suffix ? ' '.$suffix : ''))])
+    @else
         <input
-            type="text"
-            data-money-display="1"
-            inputmode="{{ $allowNegative ? 'text' : 'decimal' }}"
-            autocomplete="off"
-            value="{{ $display }}"
-            @include('crud::fields.inc.attributes')
+            type="hidden"
+            name="{{ $field['name'] }}"
+            value="{{ $value }}"
+            data-init-function="bpFieldInitMoneyElement"
+            data-decimals="{{ $decimals }}"
+            data-thousands-separator="{{ $thousandsSeparator }}"
+            data-decimal-separator="{{ $decimalSeparator }}"
+            data-min="{{ isset($field['min']) && is_numeric($field['min']) ? $field['min'] : '' }}"
+            data-max="{{ isset($field['max']) && is_numeric($field['max']) ? $field['max'] : '' }}"
+            data-allow-negative="{{ $allowNegative ? 1 : 0 }}"
+            @if(isset($field['attributes']['disabled'])) disabled @endif
         >
-        @if($suffix !== null && $suffix !== '') <div class="input-group-append"><span class="input-group-text">{!! $suffix !!}</span></div> @endif
-    @if($hasAddon) </div> @endif
+
+        @if($hasAddon) <div class="input-group"> @endif
+            @if($prefix !== null && $prefix !== '') <div class="input-group-prepend"><span class="input-group-text">{!! $prefix !!}</span></div> @endif
+            <input
+                type="text"
+                data-money-display="1"
+                inputmode="{{ $allowNegative ? 'text' : 'decimal' }}"
+                autocomplete="off"
+                value="{{ $display }}"
+                @include('crud::fields.inc.attributes')
+            >
+            @if($suffix !== null && $suffix !== '') <div class="input-group-append"><span class="input-group-text">{!! $suffix !!}</span></div> @endif
+        @if($hasAddon) </div> @endif
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

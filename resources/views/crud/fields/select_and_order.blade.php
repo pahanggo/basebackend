@@ -3,11 +3,15 @@
     $values = old($field['name']) ?? $field['value'] ?? $field['default'] ?? [];
     $values = array_values(array_filter((array) $values, fn ($value) => $value !== '' && $value !== null && $value !== ' '));
     $options = collect($field['options'])->map(fn ($label, $value) => ['value' => (string) $value, 'label' => $label])->values();
+    $readonly = (bool) ($field['readonly'] ?? false);
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $options->whereIn('value', array_map('strval', $values))->pluck('label')->implode(', ')])
+    @else
     {{-- x-ignore until Backpack's init pipeline calls bpFieldInitSelectAndOrderElement, so repeatable clones
          are taken from an un-rendered template (same approach as the table field) --}}
     <div class="row select-and-order"
@@ -54,12 +58,13 @@
                 </template>
             </select>
         </div>
-
-        {{-- HINT --}}
-        @if (isset($field['hint']))
-            <p class="help-block">{!! $field['hint'] !!}</p>
-        @endif
     </div>
+    @endif
+
+    {{-- HINT --}}
+    @if (isset($field['hint']))
+        <p class="help-block">{!! $field['hint'] !!}</p>
+    @endif
 @include('crud::fields.inc.wrapper_end')
 
 

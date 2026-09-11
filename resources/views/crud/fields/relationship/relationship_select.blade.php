@@ -48,6 +48,9 @@
 
 
 
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $readonlyDisplay = is_iterable($current_value) ? implode(', ', is_array($current_value) ? $current_value : $current_value->all()) : (string) $current_value;
+
     $field['value'] = json_encode($current_value);
 
 @endphp
@@ -55,6 +58,9 @@
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+    @else
     <select
         style="width:100%"
         name="{{ $field['name'].($field['multiple']?'[]':'') }}"
@@ -87,6 +93,7 @@
             @endforeach
         @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

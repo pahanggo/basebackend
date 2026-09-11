@@ -12,11 +12,20 @@
 
     $field['multiple'] = $field['multiple'] ?? true;
     $field['allows_null'] = $field['allows_null'] ?? $crud->model::isColumnNullable($field['name']);
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    if ($readonly) {
+        $selectedKeys = old(square_brackets_to_dots($field["name"])) ?? (isset($field['value']) ? $field['value']->pluck($model_instance->getKeyName())->toArray() : []);
+        $readonlyDisplay = $field['options']->filter(fn ($option) => in_array($option->getKey(), $selectedKeys ?? []))->pluck($field['attribute'])->implode(', ');
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+    @else
     <select
         name="{{ $field['name'] }}[]"
         style="width: 100%"
@@ -46,6 +55,7 @@
     @if(isset($field['select_all']) && $field['select_all'])
         <a class="btn btn-xs btn-default select_all" style="margin-top: 5px;"><i class="la la-check-square-o"></i> {{ trans('backpack::crud.select_all') }}</a>
         <a class="btn btn-xs btn-default clear" style="margin-top: 5px;"><i class="la la-times"></i> {{ trans('backpack::crud.clear') }}</a>
+    @endif
     @endif
 
     {{-- HINT --}}

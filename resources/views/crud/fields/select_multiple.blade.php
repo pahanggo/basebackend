@@ -6,6 +6,12 @@
         $options = call_user_func($field['options'], $field['model']::query());
     }
     $field['allows_null'] = $field['allows_null'] ?? true;
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    if ($readonly) {
+        $selectedKeys = old(square_brackets_to_dots($field["name"])) ?? (isset($field['value']) ? $field['value']->pluck($field['model']::make()->getKeyName())->toArray() : []);
+        $readonlyDisplay = $options->filter(fn ($option) => in_array($option->getKey(), $selectedKeys ?? []))->pluck($field['attribute'])->implode(', ');
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
@@ -13,6 +19,9 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+    @else
     <select
     	class="form-control"
         name="{{ $field['name'] }}[]"
@@ -34,6 +43,7 @@
     	@endif
 
 	</select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

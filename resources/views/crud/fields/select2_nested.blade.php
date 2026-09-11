@@ -36,12 +36,22 @@
     $entity_model = $crud->getRelationModel($field['entity'], -1);
 
     $field['allows_null'] = $field['allows_null'] ?? $entity_model::isColumnNullable($field['name']);
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    // best effort: the tree is walked recursively to build the <select>, so for readonly we just
+    // resolve the selected entry directly instead of re-walking the whole tree for its label
+    if ($readonly && isset($field['model']) && $current_value !== '' && $current_value !== null) {
+        $readonlyEntry = (new $field['model'])->find($current_value);
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => optional($readonlyEntry ?? null)->{$field['attribute']} ?? $current_value])
+    @else
     <select
         name="{{ $field['name'] }}"
         style="width: 100%"
@@ -69,6 +79,7 @@
             @endforeach
         @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

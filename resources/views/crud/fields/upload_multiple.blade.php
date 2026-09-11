@@ -1,7 +1,11 @@
 @php
+    $readonly = (bool) ($field['readonly'] ?? false);
+
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
-    $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitUploadMultipleElement';
-    $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
+    if (! $readonly) {
+        $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitUploadMultipleElement';
+        $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
+    }
 @endphp
 
 <!-- upload multiple input -->
@@ -27,7 +31,9 @@
 		        @else
 		            <a target="_blank" href="{{ isset($field['disk'])?asset(\Storage::disk($field['disk'])->url($file_path)):asset($file_path) }}">{{ $file_path }}</a>
 		        @endif
+		    	@if (! $readonly)
 		    	<a href="#" class="btn btn-light btn-sm float-right file-clear-button" title="Clear file" data-filename="{{ $file_path }}"><i class="la la-remove"></i></a>
+		    	@endif
 		    	<div class="clearfix"></div>
 	    	</div>
     	@endforeach
@@ -35,6 +41,7 @@
     @endif
     @endif
 	{{-- Show the file picker on CREATE form. --}}
+	@if (! $readonly)
 	<input name="{{ $field['name'] }}[]" type="hidden" value="">
 	<div class="backstrap-file mt-2">
 		<input
@@ -46,6 +53,7 @@
 	    >
         <label class="backstrap-file-label" for="customFile"></label>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

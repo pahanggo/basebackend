@@ -1,7 +1,11 @@
 @php
+    $readonly = (bool) ($field['readonly'] ?? false);
+
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
-    $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitUploadElement';
-    $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
+    if (! $readonly) {
+        $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitUploadElement';
+        $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
+    }
 @endphp
 
 <!-- text input -->
@@ -23,12 +27,15 @@
         @endif
             {{ $field['value'] }}
         </a>
-    	<a href="#" class="file_clear_button btn btn-light btn-sm float-right" title="Clear file"><i class="la la-remove"></i></a>
+        @if (! $readonly)
+        <a href="#" class="file_clear_button btn btn-light btn-sm float-right" title="Clear file"><i class="la la-remove"></i></a>
+        @endif
     	<div class="clearfix"></div>
     </div>
     @endif
 
 	{{-- Show the file picker on CREATE form. --}}
+    @if (! $readonly)
     <div class="backstrap-file {{ isset($field['value']) && $field['value']!=null?'d-none':'' }}">
         <input
             type="file"
@@ -38,6 +45,7 @@
         >
         <label class="backstrap-file-label" for="customFile"></label>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

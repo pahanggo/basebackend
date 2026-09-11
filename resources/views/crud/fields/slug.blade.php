@@ -3,11 +3,13 @@
      Options:
        - target    => 'title'   name of the field to slugify (required)
        - separator => '-'
+       - readonly  => false     when true, show the value as plain text with no form control and no name attribute (not submitted)
        - hint / prefix / suffix / attributes as for the text field
 
      Typing into the slug itself stops the automatic sync; clearing it resumes the sync. --}}
 @php
     $value = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '';
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'slug';
@@ -18,19 +20,23 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    @if(isset($field['prefix']) || isset($field['suffix'])) <div class="input-group"> @endif
-        @if(isset($field['prefix'])) <div class="input-group-prepend"><span class="input-group-text">{!! $field['prefix'] !!}</span></div> @endif
-        <input
-            type="text"
-            name="{{ $field['name'] }}"
-            value="{{ $value }}"
-            data-init-function="bpFieldInitSlugElement"
-            data-target="{{ $field['target'] }}"
-            data-separator="{{ $field['separator'] ?? '-' }}"
-            @include('crud::fields.inc.attributes')
-        >
-        @if(isset($field['suffix'])) <div class="input-group-append"><span class="input-group-text">{!! $field['suffix'] !!}</span></div> @endif
-    @if(isset($field['prefix']) || isset($field['suffix'])) </div> @endif
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $value])
+    @else
+        @if(isset($field['prefix']) || isset($field['suffix'])) <div class="input-group"> @endif
+            @if(isset($field['prefix'])) <div class="input-group-prepend"><span class="input-group-text">{!! $field['prefix'] !!}</span></div> @endif
+            <input
+                type="text"
+                name="{{ $field['name'] }}"
+                value="{{ $value }}"
+                data-init-function="bpFieldInitSlugElement"
+                data-target="{{ $field['target'] }}"
+                data-separator="{{ $field['separator'] ?? '-' }}"
+                @include('crud::fields.inc.attributes')
+            >
+            @if(isset($field['suffix'])) <div class="input-group-append"><span class="input-group-text">{!! $field['suffix'] !!}</span></div> @endif
+        @if(isset($field['prefix']) || isset($field['suffix'])) </div> @endif
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

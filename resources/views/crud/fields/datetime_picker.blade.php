@@ -8,23 +8,28 @@ if (isset($field['value']) && ($field['value'] instanceof \Carbon\CarbonInterfac
 }
 
     $field_language = isset($field['datetime_picker_options']['language']) ? $field['datetime_picker_options']['language'] : \App::getLocale();
+    $readonly = (bool) ($field['readonly'] ?? false);
 ?>
 
 @include('crud::fields.inc.wrapper_start')
-    <input type="hidden" class="form-control" name="{{ $field['name'] }}" value="{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}">
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
-    <div class="input-group date">
-        <input
-            type="text"
-            data-bs-datetimepicker="{{ isset($field['datetime_picker_options']) ? json_encode($field['datetime_picker_options']) : '{}'}}"
-            data-init-function="bpFieldInitDateTimePickerElement"
-            @include('crud::fields.inc.attributes')
-            >
-        <div class="input-group-append">
-            <span class="input-group-text"><span class="la la-calendar"></span></span>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? ''])
+    @else
+        <input type="hidden" class="form-control" name="{{ $field['name'] }}" value="{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}">
+        <div class="input-group date">
+            <input
+                type="text"
+                data-bs-datetimepicker="{{ isset($field['datetime_picker_options']) ? json_encode($field['datetime_picker_options']) : '{}'}}"
+                data-init-function="bpFieldInitDateTimePickerElement"
+                @include('crud::fields.inc.attributes')
+                >
+            <div class="input-group-append">
+                <span class="input-group-text"><span class="la la-calendar"></span></span>
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

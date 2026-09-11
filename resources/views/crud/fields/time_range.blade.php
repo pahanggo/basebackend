@@ -11,6 +11,7 @@
        - allow_overnight => false          when false, an inline hint is shown while end <= start (submit is not blocked)
        - attributes      => []             extra attributes for both inputs
        - default         => [start, end]   used when the entry has no value
+       - readonly        => false          when true, show both values as plain text with no form controls and no name attributes (not submitted)
        - hint / wrapper as usual
 
      Accepts 'H:i' / 'H:i:s' strings, Carbon/DateTime instances and null as existing values. --}}
@@ -55,38 +56,43 @@
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'time_range';
     $field['wrapper']['data-field-name'] = implode(',', $names);
+    $readonly = (bool) ($field['readonly'] ?? false);
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    <div class="form-row time-range-row">
-        @foreach ($names as $index => $name)
-            @php
-                $field['attributes']['class'] = $inputClass.' time-range-'.($index === 0 ? 'start' : 'end');
-            @endphp
-            <div class="col">
-                <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text small">{{ __($labels[$index] ?? ($index === 0 ? 'From' : 'To')) }}</span>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => trim(($values[0] ?? '').' - '.($values[1] ?? ''), ' -')])
+    @else
+        <div class="form-row time-range-row">
+            @foreach ($names as $index => $name)
+                @php
+                    $field['attributes']['class'] = $inputClass.' time-range-'.($index === 0 ? 'start' : 'end');
+                @endphp
+                <div class="col">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text small">{{ __($labels[$index] ?? ($index === 0 ? 'From' : 'To')) }}</span>
+                        </div>
+                        <input
+                            type="time"
+                            name="{{ $name }}"
+                            value="{{ $values[$index] }}"
+                            @if ($index === 0)
+                                data-init-function="bpFieldInitTimeRangeElement"
+                                data-allow-overnight="{{ $allowOvernight ? 1 : 0 }}"
+                            @endif
+                            @include('crud::fields.inc.attributes')
+                            >
                     </div>
-                    <input
-                        type="time"
-                        name="{{ $name }}"
-                        value="{{ $values[$index] }}"
-                        @if ($index === 0)
-                            data-init-function="bpFieldInitTimeRangeElement"
-                            data-allow-overnight="{{ $allowOvernight ? 1 : 0 }}"
-                        @endif
-                        @include('crud::fields.inc.attributes')
-                        >
                 </div>
-            </div>
-        @endforeach
-    </div>
+            @endforeach
+        </div>
 
-    <p class="help-block text-warning time-range-overnight-hint mb-0" hidden>{{ __('End time must be after start time') }}</p>
+        <p class="help-block text-warning time-range-overnight-hint mb-0" hidden>{{ __('End time must be after start time') }}</p>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

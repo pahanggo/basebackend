@@ -20,6 +20,7 @@
        - reset_on_change => true         clear the value when the parent changes; false keeps the
                                           current value when it still exists in the new options
        - attributes      => []           extra HTML attributes for the <select>
+       - readonly        => false        when true, show the value as plain text with no form control and no name attribute (not submitted)
        - hint
 
      Behaviour: the select is disabled and shows only the placeholder while the parent is empty; on
@@ -60,12 +61,23 @@
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'dependent_select';
     $field['wrapper']['data-field-name'] = $field['name'];
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    // best effort: options come from an AJAX endpoint, so only a value present in the already-resolved
+    // $initialOptions (built above from the `options` callback) gets its label; otherwise show the raw value
+    if ($readonly) {
+        $readonlyMatch = collect($initialOptions)->first(fn ($option) => (string) $option['id'] === (string) $value);
+        $readonlyDisplay = $readonlyMatch['text'] ?? $value;
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+    @else
     {{-- The container starts as x-ignore so Alpine does not initialise it on its own;
          bpFieldInitDependentSelectElement (called by Backpack's field init pipeline, including
          for repeatable clones) lifts the ignore and initialises the tree. The <select> is rendered
@@ -104,6 +116,7 @@
 
         <p class="help-block text-danger mb-0" style="display: none;" x-show="error" x-text="error"></p>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

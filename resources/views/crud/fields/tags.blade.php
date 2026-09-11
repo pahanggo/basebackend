@@ -13,6 +13,9 @@
        - placeholder      => __('Add a tag...')
        - attributes       => []          extra attributes for the text input; `disabled` or `readonly` here also
                                          locks the pills (no add / remove)
+       - readonly         => false       when true, show the tags as plain text with no form control and no
+                                         name attribute at all (not submitted) — stronger than attributes.readonly,
+                                         which still submits the hidden input
        - hint --}}
 @php
     $tags = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? [];
@@ -33,6 +36,7 @@
     $suggestions = $field['suggestions'] ?? null;
     $separators = array_values((array) ($field['separators'] ?? [',', 'Enter']));
     $disabled = isset($field['attributes']['disabled']) || isset($field['attributes']['readonly']);
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $field['attributes'] = $field['attributes'] ?? [];
     $field['attributes']['class'] = $field['attributes']['class'] ?? 'tags-field-input';
@@ -48,6 +52,9 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => implode(', ', $tags)])
+    @else
     {{-- x-ignore keeps Alpine from initialising this on its own; bpFieldInitTagsElement lifts it
          (this also covers repeatable clones, whose hidden input is filled before the init call). --}}
     <div class="tags-field"
@@ -106,6 +113,7 @@
 
         <div class="invalid-feedback d-block" x-show="error" x-text="error" x-cloak></div>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

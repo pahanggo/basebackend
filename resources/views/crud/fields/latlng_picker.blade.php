@@ -27,12 +27,16 @@
 
     $search = $field['search'] ?? true;
     $apiKey = $field['api_key'] ?? config('services.google_places.key');
+    $readonly = (bool) ($field['readonly'] ?? false);
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $value ? number_format((float) $value['lat'], 6).', '.number_format((float) $value['lng'], 6) : ''])
+    @else
     <input type="hidden"
            name="{{ $field['name'] }}"
            value="{{ $value ? json_encode(['lat' => (float) $value['lat'], 'lng' => (float) $value['lng']]) : '' }}"
@@ -51,6 +55,7 @@
 
     <div class="latlng-map" style="height: {{ $field['height'] ?? '300px' }}; border-radius: 3px; border: 1px solid rgba(0,40,100,.12);"></div>
     <small class="form-text text-muted latlng-coords"></small>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

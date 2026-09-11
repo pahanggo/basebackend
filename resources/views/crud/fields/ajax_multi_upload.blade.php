@@ -7,6 +7,7 @@
         $value = json_decode($value, true) ?: [];
     }
     $disk = $field['disk'] ?? config('ajax_upload.default_disk');
+    $readonly = (bool) ($field['readonly'] ?? false);
     $initialFiles = collect((array) $value)
         ->filter(fn ($path) => is_string($path) && $path !== '')
         ->map(fn (string $path) => ['path' => $path, 'url' => Storage::disk($disk)->url($path), 'name' => basename($path)])
@@ -16,14 +17,20 @@
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'ajax_multi_upload';
     $field['wrapper']['data-field-name'] = $field['name'];
-    $field['wrapper']['data-init-function'] = 'bpFieldInitAjaxUploadElement';
+    if (! $readonly) {
+        $field['wrapper']['data-init-function'] = 'bpFieldInitAjaxUploadElement';
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['raw' => true, 'value' => collect($initialFiles)->map(fn ($file) => '<a href="'.e($file['url']).'" target="_blank">'.e($file['name']).'</a>')->implode(', ')])
+    @else
     @include('crud::fields.inc.ajax_upload_markup', ['multiple' => true, 'initialFiles' => $initialFiles])
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

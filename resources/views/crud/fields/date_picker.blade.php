@@ -10,27 +10,32 @@
     $field['value'] = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '';
     $field['attributes']['style'] = $field['attributes']['style'] ?? 'background-color: white!important;';
     $field['attributes']['readonly'] = $field['attributes']['readonly'] ?? 'readonly';
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $field_language = frontend_locale('packages/bootstrap-datepicker/dist/locales/bootstrap-datepicker.%s.min.js', $field['date_picker_options']['language'] ?? null) ?? 'en';
 ?>
 
 @include('crud::fields.inc.wrapper_start')
-    <input type="hidden" class="form-control" name="{{ $field['name'] }}" value="{{ $field['value'] }}">
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
-    <div class="input-group date">
-        <input
-            data-bs-datepicker="{{ isset($field['date_picker_options']) ? json_encode($field['date_picker_options']) : '{}'}}"
-            data-init-function="bpFieldInitDatePickerElement"
-            type="text"
-            @include('crud::fields.inc.attributes')
-            >
-        <div class="input-group-append">
-            <span class="input-group-text">
-                <span class="la la-calendar"></span>
-            </span>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $field['value']])
+    @else
+        <input type="hidden" class="form-control" name="{{ $field['name'] }}" value="{{ $field['value'] }}">
+        <div class="input-group date">
+            <input
+                data-bs-datepicker="{{ isset($field['date_picker_options']) ? json_encode($field['date_picker_options']) : '{}'}}"
+                data-init-function="bpFieldInitDatePickerElement"
+                type="text"
+                @include('crud::fields.inc.attributes')
+                >
+            <div class="input-group-append">
+                <span class="input-group-text">
+                    <span class="la la-calendar"></span>
+                </span>
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

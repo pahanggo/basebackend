@@ -31,6 +31,8 @@
     }
 
     $field['font_icon_file_path'] = $field['font_icon_file_path'] ?? $fontIconFilePath;
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $iconValue = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '';
 
 @endphp
 
@@ -38,6 +40,9 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['raw' => true, 'value' => ($iconValue !== '' ? '<i class="'.e($iconValue).'"></i> ' : '').e($iconValue)])
+    @else
     <div>
         <button type="button" class="btn btn-light iconpicker btn-sm" role="icon-selector"></button>
         <input
@@ -45,10 +50,11 @@
             name="{{ $field['name'] }}"
             data-iconset="{{ $field['iconset'] }}"
             data-init-function="bpFieldInitIconPickerElement"
-            value="{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}"
+            value="{{ $iconValue }}"
             @include('crud::fields.inc.attributes')
         >
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

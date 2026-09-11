@@ -42,6 +42,9 @@
                 break;
         }
     }
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $readonlyDisplay = implode(', ', (array) $current_value);
+
     $field['value'] = json_encode($current_value);
 
 
@@ -99,6 +102,9 @@ if($activeInlineCreate) {
         <label>{!! $field['label'] !!}</label>
         @include('crud::fields.inc.translatable_icon')
 
+        @if ($readonly)
+            @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+        @else
         @if($activeInlineCreate)
             @include('crud::fields.relationship.inline_create_button', ['field' => $field])
         @endif
@@ -139,6 +145,7 @@ if($activeInlineCreate) {
         >
 
 </select>
+        @endif
  {{-- HINT --}}
  @if (isset($field['hint']))
  <p class="help-block">{!! $field['hint'] !!}</p>

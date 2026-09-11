@@ -14,12 +14,26 @@
     $entry_link = $field['name']['link'] ?? 'link';
     $entry_type = $field['name']['type'] ?? 'type';
     $entry_page_id = $field['name']['page_id'] ?? 'page_id';
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    if ($readonly) {
+        $currentType = isset($entry) ? $entry->$entry_type : null;
+        if ($currentType === 'page_link') {
+            $currentPage = isset($entry->$entry_page_id) ? $active_pages->firstWhere('id', $entry->$entry_page_id) : null;
+            $readonlyDisplay = optional($currentPage)->name;
+        } else {
+            $readonlyDisplay = isset($entry) ? ($entry->$entry_link ?? '') : '';
+        }
+    }
 ?>
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyDisplay])
+    @else
     <div class="row" data-init-function="bpFieldInitPageOrLinkElement">
         <div class="col-sm-3">
             <select
@@ -106,6 +120,7 @@
               </div>
         </div>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

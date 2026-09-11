@@ -1,4 +1,8 @@
-{{-- REPEATABLE FIELD TYPE --}}
+{{-- REPEATABLE FIELD TYPE
+
+     - readonly => false   when true, render each stored row's subfields as plain text with no form
+                           controls and no name attributes (not submitted); subfields also receive
+                           readonly => true individually. --}}
 
 @php
   $field['value'] = old($field['name']) ? old($field['name']) : (isset($field['value']) ? $field['value'] : (isset($field['default']) ? $field['default'] : '' ));
@@ -8,11 +12,14 @@
   $field['init_rows'] = $field['init_rows'] ?? $field['min_rows'] ?? 1;
   $field['max_rows'] = $field['max_rows'] ?? 0;
   $field['min_rows'] =  $field['min_rows'] ?? 0;
+  $readonly = (bool) ($field['readonly'] ?? false);
+  $readonlyRows = $readonly ? (json_decode($field['value'], true) ?: []) : [];
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
   <label>{!! $field['label'] !!}</label>
   @include('crud::fields.inc.translatable_icon')
+  @if (! $readonly)
   <input
       type="hidden"
       name="{{ $field['name'] }}"
@@ -20,6 +27,7 @@
       value="{{ $field['value'] }}"
       @include('crud::fields.inc.attributes')
   >
+  @endif
 
   {{-- HINT --}}
   @if (isset($field['hint']))
@@ -28,6 +36,26 @@
 
 
 
+@if ($readonly)
+  {{-- readonly: render each stored row's subfields as plain text, no controls, no submitted inputs --}}
+  @if (isset($field['fields']) && is_array($field['fields']) && count($readonlyRows))
+    @foreach ($readonlyRows as $row)
+      <div class="col-md-12 well repeatable-element row m-1 p-2">
+        @foreach ($field['fields'] as $subfield)
+          @php
+              $subfield = $crud->makeSureFieldHasNecessaryAttributes($subfield);
+              $subfield['readonly'] = true;
+              $subfield['value'] = $row[$subfield['name']] ?? null;
+              $fieldViewNamespace = $subfield['view_namespace'] ?? 'crud::fields';
+              $fieldViewPath = $fieldViewNamespace.'.'.$subfield['type'];
+          @endphp
+
+          @include($fieldViewPath, ['field' => $subfield])
+        @endforeach
+      </div>
+    @endforeach
+  @endif
+@else
 <div class="container-repeatable-elements">
     <div
         data-repeatable-holder="{{ $field['name'] }}"
@@ -66,6 +94,7 @@
 
 
   <button type="button" class="btn btn-outline-primary btn-sm ml-1 add-repeatable-element-button">+ {{ $field['new_item_label'] ?? trans('backpack::crud.new_item') }}</button>
+@endif
 
 @include('crud::fields.inc.wrapper_end')
 

@@ -10,6 +10,7 @@
                                                  ('mykad' | 'passport'); when null the type is not submitted
        - default_type => 'mykad'                 type pre-selected when nothing else decides it
        - mask         => true                    format MyKad as 000000-00-0000 while typing
+       - readonly     => false                   when true, show the number as plain text with no form control and no name attribute (not submitted)
        - hint / attributes as for the text field
 
      The number is submitted in $field['name']: MyKad WITH dashes (YYMMDD-PB-####), passport as
@@ -35,6 +36,7 @@
     $mask = (bool) ($field['mask'] ?? true);
     $selectDisabled = array_key_exists('disabled', $field['attributes'] ?? []);
     $selectReadonly = ! $selectDisabled && array_key_exists('readonly', $field['attributes'] ?? []);
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     // with an array 'name' Backpack's own value lookup only yields the last column, so read both
     // columns from the entry directly (same approach as the date_range field)
@@ -76,34 +78,38 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    <div class="input-group">
-        <div class="input-group-prepend identity-type-wrapper {{ count($types) > 1 ? '' : 'd-none' }}">
-            <select class="custom-select identity-type"
-                    @if ($typeField) name="{{ $typeField }}" @endif
-                    @if ($selectDisabled) disabled @endif
-                    @if ($selectReadonly) tabindex="-1" style="pointer-events: none; background-color: #e9ecef;" @endif
-                    aria-label="{{ __('Identity type') }}">
-                @foreach ($types as $type)
-                    <option value="{{ $type }}" @if ($type === $typeValue) selected @endif>{{ $allTypes[$type] }}</option>
-                @endforeach
-            </select>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $value.(count($types) > 1 ? ' ('.$allTypes[$typeValue].')' : '')])
+    @else
+        <div class="input-group">
+            <div class="input-group-prepend identity-type-wrapper {{ count($types) > 1 ? '' : 'd-none' }}">
+                <select class="custom-select identity-type"
+                        @if ($typeField) name="{{ $typeField }}" @endif
+                        @if ($selectDisabled) disabled @endif
+                        @if ($selectReadonly) tabindex="-1" style="pointer-events: none; background-color: #e9ecef;" @endif
+                        aria-label="{{ __('Identity type') }}">
+                    @foreach ($types as $type)
+                        <option value="{{ $type }}" @if ($type === $typeValue) selected @endif>{{ $allTypes[$type] }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <input
+                type="text"
+                name="{{ $field['name'] }}"
+                value="{{ $value }}"
+                data-init-function="bpFieldInitIdentityElement"
+                data-types="{{ implode(',', $types) }}"
+                data-default-type="{{ $defaultType }}"
+                data-mask="{{ $mask ? 1 : 0 }}"
+                autocomplete="off"
+                @include('crud::fields.inc.attributes')
+            >
         </div>
-        <input
-            type="text"
-            name="{{ $field['name'] }}"
-            value="{{ $value }}"
-            data-init-function="bpFieldInitIdentityElement"
-            data-types="{{ implode(',', $types) }}"
-            data-default-type="{{ $defaultType }}"
-            data-mask="{{ $mask ? 1 : 0 }}"
-            autocomplete="off"
-            @include('crud::fields.inc.attributes')
-        >
-    </div>
-    <small class="identity-feedback form-text text-danger"
-           data-mykad="{{ __('Invalid MyKad number') }}"
-           data-passport="{{ __('Invalid passport number') }}"
-           hidden></small>
+        <small class="identity-feedback form-text text-danger"
+               data-mykad="{{ __('Invalid MyKad number') }}"
+               data-passport="{{ __('Invalid passport number') }}"
+               hidden></small>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

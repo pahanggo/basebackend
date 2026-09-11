@@ -1,23 +1,32 @@
 <!-- checkbox field -->
+@php
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $checked = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? false;
+@endphp
 
 @include('crud::fields.inc.wrapper_start')
     @include('crud::fields.inc.translatable_icon')
     <div class="checkbox">
-        <input type="hidden" name="{{ $field['name'] }}" value="{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? 0 }}">
-    	  <input type="checkbox"
-          data-init-function="bpFieldInitCheckbox"
+        @if ($readonly)
+            <label class="form-check-label font-weight-normal">{!! $field['label'] !!}</label>
+            @include('crud::fields.inc.readonly_value', ['value' => $checked ? __('Yes') : __('No')])
+        @else
+            <input type="hidden" name="{{ $field['name'] }}" value="{{ $checked ?: 0 }}">
+        	  <input type="checkbox"
+              data-init-function="bpFieldInitCheckbox"
 
-          @if (old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? false)
-                 checked="checked"
-          @endif
+              @if ($checked)
+                     checked="checked"
+              @endif
 
-          @if (isset($field['attributes']))
-              @foreach ($field['attributes'] as $attribute => $value)
-    			{{ $attribute }}="{{ $value }}"
-        	  @endforeach
-          @endif
-          >
-    	<label class="form-check-label font-weight-normal">{!! $field['label'] !!}</label>
+              @if (isset($field['attributes']))
+                  @foreach ($field['attributes'] as $attribute => $value)
+        			{{ $attribute }}="{{ $value }}"
+            	  @endforeach
+              @endif
+              >
+        	<label class="form-check-label font-weight-normal">{!! $field['label'] !!}</label>
+        @endif
 
         {{-- HINT --}}
         @if (isset($field['hint']))

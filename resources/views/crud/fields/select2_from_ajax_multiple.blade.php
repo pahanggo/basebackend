@@ -7,11 +7,19 @@
     // by default set ajax query delay to 500ms
     // this is the time we wait before send the query to the search endpoint, after the user as stopped typing.
     $field['delay'] = $field['delay'] ?? 500;
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    if ($readonly) {
+        $readonlyItems = collect($old_value ?: [])->map(fn ($item) => is_object($item) ? $item : $connected_entity->find($item))->filter();
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $readonlyItems->pluck($field['attribute'])->implode(', ')])
+    @else
     <select
         name="{{ $field['name'] }}[]"
         style="width: 100%"
@@ -43,6 +51,7 @@
             @endforeach
         @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

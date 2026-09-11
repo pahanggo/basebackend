@@ -15,14 +15,19 @@
     }
 
     $field['store_as_json'] = $field['store_as_json'] ?? false;
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $googleAddressValue = old($field['name']) ? old($field['name']) : (isset($field['value']) ? $field['value'] : (isset($field['default']) ? $field['default'] : '' ));
 
 ?>
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $googleAddressValue])
+    @else
     <input type="hidden"
-           value="{{ old($field['name']) ? old($field['name']) : (isset($field['value']) ? $field['value'] : (isset($field['default']) ? $field['default'] : '' )) }}"
+           value="{{ $googleAddressValue }}"
            name="{{ $field['name'] }}">
 
     @if(isset($field['prefix']) || isset($field['suffix']))
@@ -39,6 +44,7 @@
             @if(isset($field['suffix']))
                 <div class="input-group-addon">{!! $field['suffix'] !!}</div> @endif
             @if(isset($field['prefix']) || isset($field['suffix'])) </div> @endif
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

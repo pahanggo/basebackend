@@ -16,7 +16,19 @@
         if (isset($field['model'])) {
             $categorylessEntries = $related_model::doesnthave($field['group_by'])->get();
         }
+
+        $readonly = (bool) ($field['readonly'] ?? false);
+        $selectedGroupedEntry = null;
+        if ($readonly && isset($field['model']) && isset($field['group_by'])) {
+            foreach ($categories as $category) {
+                $selectedGroupedEntry = $selectedGroupedEntry ?? $category->{$field['group_by_relationship_back']}->first(fn ($subEntry) => $subEntry->getKey() == $current_value);
+            }
+            $selectedGroupedEntry = $selectedGroupedEntry ?? ($categorylessEntries ?? collect())->first(fn ($subEntry) => $subEntry->getKey() == $current_value);
+        }
     @endphp
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => optional($selectedGroupedEntry)->{$field['attribute']}])
+    @else
     <select
         name="{{ $field['name'] }}"
         style="width: 100%"
@@ -54,6 +66,7 @@
                 @endif
             @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

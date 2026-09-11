@@ -56,14 +56,17 @@
     }
 
     $max_image_size_in_bytes = $field['max_file_size'] ?? (int)maximumServerUploadSizeInBytes();
+    $readonly = (bool) ($field['readonly'] ?? false);
 
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['class'] = $field['wrapper']['class'] ?? "form-group col-sm-12";
     $field['wrapper']['class'] = $field['wrapper']['class'].' cropperImage';
     $field['wrapper']['data-aspectRatio'] = $field['aspect_ratio'] ?? 0;
     $field['wrapper']['data-crop'] = $field['crop'] ?? false;
-    $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
-    $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitCropperImageElement';
+    if (! $readonly) {
+        $field['wrapper']['data-field-name'] = $field['wrapper']['data-field-name'] ?? $field['name'];
+        $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitCropperImageElement';
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
@@ -71,6 +74,11 @@
         <label>{!! $field['label'] !!}</label>
         @include('crud::fields.inc.translatable_icon')
     </div>
+    @if ($readonly)
+        @if ($value)
+            <img src="{{ $value }}" style="max-width: 100%;">
+        @endif
+    @else
     {{-- Wrap the image or canvas element with a block element (container) --}}
     <div class="row">
         <div class="col-sm-6" data-handle="previewArea" style="margin-bottom: 20px;">
@@ -100,6 +108,7 @@
         @endif
         <button class="btn btn-light btn-sm" data-handle="remove" type="button"><i class="la la-trash"></i></button>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

@@ -7,10 +7,19 @@
     // this is the time we wait before send the query to the search endpoint, after the user as stopped typing.
     $field['delay'] = $field['delay'] ?? 500;
     $field['allows_null'] = $field['allows_null'] ?? $crud->model::isColumnNullable($field['name']);
+    $readonly = (bool) ($field['readonly'] ?? false);
+
+    if ($readonly) {
+        // the related model is resolved server-side, so its label is available without hitting the AJAX endpoint
+        $readonlyItem = $old_value ? (is_object($old_value) ? $old_value : $connected_entity->find($old_value)) : null;
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => optional($readonlyItem)->{$field['attribute']}])
+    @else
     <select
         name="{{ $field['name'] }}"
         style="width: 100%"
@@ -53,6 +62,7 @@
             @endif
         @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

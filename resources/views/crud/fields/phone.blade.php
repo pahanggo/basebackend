@@ -12,6 +12,7 @@
        - allowed      => 'any'      'any' | 'mobile' | 'landline' — numbers of another kind show the invalid hint
        - placeholder  => '+60 12-345 6789'
        - attributes   => []         HTML attributes for the visible input
+       - readonly     => false      when true, show the value as plain text with no form control and no name attribute (not submitted)
        - hint / prefix / suffix as for the text field
 
      The invalid hint (__('Enter a valid phone number')) shows when the digit count is outside the Malaysian
@@ -20,6 +21,7 @@
      Numbers typed with a foreign country code are stored as +digits without formatting. --}}
 @php
     $value = old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '';
+    $readonly = (bool) ($field['readonly'] ?? false);
     $countryCode = '+'.(preg_replace('/\D/', '', (string) ($field['country_code'] ?? '+60')) ?: '60');
     $format = in_array($field['format'] ?? 'my', ['my', 'raw'], true) ? $field['format'] ?? 'my' : 'my';
     $store = in_array($field['store'] ?? 'e164', ['e164', 'national', 'display'], true) ? $field['store'] ?? 'e164' : 'e164';
@@ -40,30 +42,34 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
-    {{-- the submitted value; repeatable writes restored values here before calling the init function --}}
-    <input
-        type="hidden"
-        name="{{ $field['name'] }}"
-        value="{{ $value }}"
-        data-init-function="bpFieldInitPhoneElement"
-        data-country-code="{{ $countryCode }}"
-        data-format="{{ $format }}"
-        data-store="{{ $store }}"
-        data-allowed="{{ $allowed }}"
-    >
-
-    @if(isset($field['prefix']) || isset($field['suffix'])) <div class="input-group"> @endif
-        @if(isset($field['prefix'])) <div class="input-group-prepend"><span class="input-group-text">{!! $field['prefix'] !!}</span></div> @endif
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $value])
+    @else
+        {{-- the submitted value; repeatable writes restored values here before calling the init function --}}
         <input
-            type="text"
+            type="hidden"
+            name="{{ $field['name'] }}"
             value="{{ $value }}"
-            data-phone-display
-            @include('crud::fields.inc.attributes')
+            data-init-function="bpFieldInitPhoneElement"
+            data-country-code="{{ $countryCode }}"
+            data-format="{{ $format }}"
+            data-store="{{ $store }}"
+            data-allowed="{{ $allowed }}"
         >
-        @if(isset($field['suffix'])) <div class="input-group-append"><span class="input-group-text">{!! $field['suffix'] !!}</span></div> @endif
-    @if(isset($field['prefix']) || isset($field['suffix'])) </div> @endif
 
-    <small class="form-text text-danger phone-invalid-hint" hidden>{{ __('Enter a valid phone number') }}</small>
+        @if(isset($field['prefix']) || isset($field['suffix'])) <div class="input-group"> @endif
+            @if(isset($field['prefix'])) <div class="input-group-prepend"><span class="input-group-text">{!! $field['prefix'] !!}</span></div> @endif
+            <input
+                type="text"
+                value="{{ $value }}"
+                data-phone-display
+                @include('crud::fields.inc.attributes')
+            >
+            @if(isset($field['suffix'])) <div class="input-group-append"><span class="input-group-text">{!! $field['suffix'] !!}</span></div> @endif
+        @if(isset($field['prefix']) || isset($field['suffix'])) </div> @endif
+
+        <small class="form-text text-danger phone-invalid-hint" hidden>{{ __('Enter a valid phone number') }}</small>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

@@ -1,9 +1,21 @@
+{{-- browse server input.
+
+     Note: `text_readonly` (default true) is this field's own long-standing option that puts a native
+     HTML `readonly` on the visible text input so the path can only be set via the elfinder popup, not
+     typed by hand. That is unrelated to the shared `readonly` option (default false) used by every
+     other field to fully replace the control with a plain-text, non-submitted display. --}}
+@php
+    $readonly = (bool) ($field['readonly'] ?? false);
+@endphp
 <!-- browse server input -->
 
 @include('crud::fields.inc.wrapper_start')
 
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? ''])
+    @else
 	<div class="input-group">
 		<input
 			type="text"
@@ -13,7 +25,7 @@
 			data-elfinder-trigger-url="{{ url(config('elfinder.route.prefix').'/popup') }}"
 			@include('crud::fields.inc.attributes')
 
-			@if(!isset($field['readonly']) || $field['readonly']) readonly @endif
+			@if(!isset($field['text_readonly']) || $field['text_readonly']) readonly @endif
 		>
 
 		<span class="input-group-append">
@@ -21,6 +33,7 @@
 			<button type="button" data-inputid="{{ $field['name'] }}-filemanager" class="btn btn-light btn-sm clear_elfinder_picker"><i class="la la-eraser"></i> {{ trans('backpack::crud.clear') }}</button>
 		</span>
 	</div>
+	@endif
 	@if (isset($field['hint']))
         <p class="help-block">{!! $field['hint'] !!}</p>
     @endif

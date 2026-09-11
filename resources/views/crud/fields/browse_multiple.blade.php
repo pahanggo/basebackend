@@ -7,9 +7,13 @@ if (!$multiple && is_array($value)) {
     $value = Arr::first($value);
 }
 
+$readonly = (bool) ($field['readonly'] ?? false);
+
 $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
-$field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitBrowseMultipleElement';
-$field['wrapper']['data-elfinder-trigger-url'] = $field['wrapper']['data-elfinder-trigger-url'] ?? url(config('elfinder.route.prefix').'/popup/'.$field['name'].'?multiple=1');
+if (! $readonly) {
+    $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitBrowseMultipleElement';
+    $field['wrapper']['data-elfinder-trigger-url'] = $field['wrapper']['data-elfinder-trigger-url'] ?? url(config('elfinder.route.prefix').'/popup/'.$field['name'].'?multiple=1');
+}
 
 if (isset($field['mime_types'])) {
     $field['wrapper']['data-elfinder-trigger-url'] .= '&mimes='.urlencode(serialize($field['mime_types']));
@@ -30,7 +34,9 @@ if($sortable){
 
     <div><label>{!! $field['label'] !!}</label></div>
     @include('crud::fields.inc.translatable_icon')
-    @if ($multiple)
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => implode(', ', array_values(array_filter((array) $value, fn ($path) => $path !== '' && $path !== null)))])
+    @elseif ($multiple)
         {{-- x-ignore until Backpack's init pipeline calls bpFieldInitBrowseMultipleElement (keeps repeatable clones clean) --}}
         <div class="list" data-field-name="{{ $field['name'] }}"
              x-ignore

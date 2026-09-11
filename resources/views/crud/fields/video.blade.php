@@ -13,17 +13,25 @@ if (is_array($value)) {
 }
 
 $field['youtube_api_key'] = $field['youtube_api_key'] ?? 'AIzaSyBLRoVYovRmbIf_BH3X12IcTCudAEDRlCE';
+$readonly = (bool) ($field['readonly'] ?? false);
 
 $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
-$field['wrapper']['data-init-function'] = 'bpFieldInitVideoElement';
-$field['wrapper']['data-youtube-api-key'] = $field['youtube_api_key'];
-$field['wrapper']['data-video'] = '';
+if (! $readonly) {
+    $field['wrapper']['data-init-function'] = 'bpFieldInitVideoElement';
+    $field['wrapper']['data-youtube-api-key'] = $field['youtube_api_key'];
+    $field['wrapper']['data-video'] = '';
+}
+
+$videoDecoded = $value ? json_decode($value, true) : null;
 ?>
 
 
 @include('crud::fields.inc.wrapper_start')
     <label for="{{ $field['name'] }}_link">{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['raw' => true, 'value' => $videoDecoded['url'] ?? null ? '<a href="'.e($videoDecoded['url']).'" target="_blank">'.e($videoDecoded['title'] ?? $videoDecoded['url']).'</a>' : ''])
+    @else
     <input class="video-json" type="hidden" name="{{ $field['name'] }}" value="{{ $value }}">
     <div class="input-group">
         <input @include('crud::fields.inc.attributes', ['default_class' => 'video-link form-control']) type="url" id="{{ $field['name'] }}_link">
@@ -44,6 +52,7 @@ $field['wrapper']['data-video'] = '';
             </div>
         </div>
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

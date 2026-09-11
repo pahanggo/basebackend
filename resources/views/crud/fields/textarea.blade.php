@@ -1,12 +1,19 @@
 <!-- textarea -->
+@php
+    $readonly = (bool) ($field['readonly'] ?? false);
+@endphp
 @include('crud::fields.inc.wrapper_start')
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
-    <textarea
-    	name="{{ $field['name'] }}"
-        @include('crud::fields.inc.attributes')
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? ''])
+    @else
+        <textarea
+        	name="{{ $field['name'] }}"
+            @include('crud::fields.inc.attributes')
 
-    	>{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}</textarea>
+        	>{{ old(square_brackets_to_dots($field['name'])) ?? $field['value'] ?? $field['default'] ?? '' }}</textarea>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

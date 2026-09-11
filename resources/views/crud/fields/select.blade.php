@@ -14,6 +14,7 @@
     } else {
         $options = call_user_func($field['options'], $field['model']::query());
     }
+    $readonly = (bool) ($field['readonly'] ?? false);
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
@@ -21,6 +22,9 @@
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => optional($options->first(fn ($option) => $option->getKey() == $current_value))->{$field['attribute']}])
+    @else
     <select
         name="{{ $field['name'] }}"
         @include('crud::fields.inc.attributes')
@@ -40,6 +44,7 @@
             @endforeach
         @endif
     </select>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

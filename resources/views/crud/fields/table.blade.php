@@ -24,15 +24,41 @@
         $field['columns'] = ['value' => 'Value'];
     }
 
+    $readonly = (bool) ($field['readonly'] ?? false);
+
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
     $field['wrapper']['data-field-type'] = 'table';
     $field['wrapper']['data-field-name'] = $field['name'];
+
+    if ($readonly) {
+        $readonlyRows = json_decode($items, true) ?: [];
+    }
 ?>
 @include('crud::fields.inc.wrapper_start')
 
     <label>{!! $field['label'] !!}</label>
     @include('crud::fields.inc.translatable_icon')
 
+    @if ($readonly)
+        <table class="table table-sm table-striped m-b-0">
+            <thead>
+                <tr>
+                    @foreach ($field['columns'] as $column)
+                        <th style="font-weight: 600!important;">{{ $column }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($readonlyRows as $row)
+                    <tr>
+                        @foreach ($field['columns'] as $key => $label)
+                            <td>{{ $row[$key] ?? '' }}</td>
+                        @endforeach
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @else
     {{-- The container starts as x-ignore so Alpine does not initialise it on its own;
          bpFieldInitTableElement (called by Backpack's field init pipeline, including
          for repeatable clones) lifts the ignore and initialises the tree. --}}
@@ -98,6 +124,7 @@
         </div>
 
     </div>
+    @endif
 
     {{-- HINT --}}
     @if (isset($field['hint']))

@@ -13,8 +13,13 @@
         $field['attributes']['class'] = 'radio';
     }
 
+    $readonly = (bool) ($field['readonly'] ?? false);
+    $options = isset($field['options']) ? (array) $field['options'] : [];
+
     $field['wrapper'] = $field['wrapper'] ?? $field['wrapperAttributes'] ?? [];
-    $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitRadioElement';
+    if (! $readonly) {
+        $field['wrapper']['data-init-function'] = $field['wrapper']['data-init-function'] ?? 'bpFieldInitRadioElement';
+    }
 @endphp
 
 @include('crud::fields.inc.wrapper_start')
@@ -24,23 +29,27 @@
         @include('crud::fields.inc.translatable_icon')
     </div>
 
-    <input type="hidden" value="{{ $optionValue }}" name="{{$field['name']}}" />
+    @if ($readonly)
+        @include('crud::fields.inc.readonly_value', ['value' => $options[$optionValue] ?? $optionValue])
+    @else
+        <input type="hidden" value="{{ $optionValue }}" name="{{$field['name']}}" />
 
-    @if( isset($field['options']) && $field['options'] = (array)$field['options'] )
+        @if (count($options))
 
-        @foreach ($field['options'] as $value => $label )
+            @foreach ($options as $value => $label )
 
-            <div class="form-check {{ isset($field['inline']) && $field['inline'] ? 'form-check-inline' : '' }}">
-                <input  type="radio"
-                        class="form-check-input"
-                        value="{{$value}}"
-                        @include('crud::fields.inc.attributes')
-                        >
-                <label class="{{ isset($field['inline']) && $field['inline'] ? 'radio-inline' : '' }} form-check-label font-weight-normal">{!! $label !!}</label>
-            </div>
+                <div class="form-check {{ isset($field['inline']) && $field['inline'] ? 'form-check-inline' : '' }}">
+                    <input  type="radio"
+                            class="form-check-input"
+                            value="{{$value}}"
+                            @include('crud::fields.inc.attributes')
+                            >
+                    <label class="{{ isset($field['inline']) && $field['inline'] ? 'radio-inline' : '' }} form-check-label font-weight-normal">{!! $label !!}</label>
+                </div>
 
-        @endforeach
+            @endforeach
 
+        @endif
     @endif
 
     {{-- HINT --}}
