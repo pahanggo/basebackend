@@ -17,6 +17,7 @@
                 this.graph.nodes = (this.initialGraph.nodes || []).map(n => ({
                     id: n.id, name: n.name || n.id, type: n.type || 'state', field_policy: n.field_policy || [],
                     header_view: n.header_view || '', footer_view: n.footer_view || '',
+                    row_actions: n.row_actions || {},
                     x: n.x, y: n.y,
                 }));
                 this.graph.edges = (this.initialGraph.edges || []).map(e => this.normalizeEdge(e));
@@ -166,6 +167,7 @@
                     field_policy: JSON.parse(JSON.stringify(source.field_policy || [])),
                     header_view: source.header_view || '',
                     footer_view: source.footer_view || '',
+                    row_actions: JSON.parse(JSON.stringify(source.row_actions || {})),
                 };
                 this.graph.nodes.push(node);
 
@@ -367,7 +369,16 @@
 
             onNodeSelected(dfId) {
                 const nodeId = this.drawflowIdToNodeId[dfId];
-                if (nodeId) this.selected = { kind: 'node', id: nodeId };
+                if (nodeId) {
+                    this.selected = { kind: 'node', id: nodeId };
+                    // A state node's row_actions pickers are select2 widgets
+                    // just like an edge's actor_rule (see onConnectionSelected)
+                    // — without this they render as plain unstyled <select
+                    // multiple> listboxes until something else happens to
+                    // call reinitSelect2Widgets() first (e.g. editing a
+                    // field elsewhere triggers a rerender).
+                    this.$nextTick(() => this.reinitSelect2Widgets());
+                }
                 this.redrawOrthogonalConnections();
             },
 

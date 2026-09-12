@@ -39,12 +39,25 @@ it('seeds sample purchase requests already sitting in draft with an active insta
     expect($sample->workflowInstance()->activeTokens()->first()->node_id)->toBe('draft');
 });
 
+it('renders the sample header_view/footer_view wired onto pending_hod_review on the show-workflow page', function () {
+    $request = PurchaseRequest::create(['requester_id' => $this->users['employee']->id, 'amount' => 6000, 'purpose' => 'Header/footer demo test']);
+    $token = $request->workflowInstance()->activeTokens()->first();
+    $this->engine->transition($token, 'submit', [], $this->users['employee']);
+
+    $this->actingAs($this->users['hod'])
+        ->get(route('workflow.show', ['workflowable_type' => PurchaseRequest::class, 'workflowable_id' => $request->id]))
+        ->assertOk()
+        ->assertSee($this->users['employee']->name, false)
+        ->assertSee('RM 6,000.00', false)
+        ->assertSee('this one qualifies', false);
+});
+
 it('runs the skip-feedback happy path from draft to approved, enforcing each role\'s actor_rule', function () {
     Notification::fake();
 
+    // HasWorkflow::bootHasWorkflow() starts the instance automatically on create.
     $request = PurchaseRequest::create(['requester_id' => $this->users['employee']->id, 'amount' => 100, 'purpose' => 'Test happy path']);
-    $definition = WorkflowDefinition::where('slug', 'purchase-request-demo')->first();
-    $instance = $this->engine->start($request, $definition);
+    $instance = $request->workflowInstance();
 
     $token = $instance->activeTokens()->first();
     expect($this->engine->transition($token, 'submit', [], $this->users['hod']))->toBeNull(); // wrong role
@@ -67,8 +80,7 @@ it('runs the skip-feedback happy path from draft to approved, enforcing each rol
 
 it('forks into three department-feedback branches and only proceeds once all three submit, mapping feedback via store_as', function () {
     $request = PurchaseRequest::create(['requester_id' => $this->users['employee']->id, 'amount' => 5000, 'purpose' => 'Test fork/join path']);
-    $definition = WorkflowDefinition::where('slug', 'purchase-request-demo')->first();
-    $instance = $this->engine->start($request, $definition);
+    $instance = $request->workflowInstance();
 
     $token = $instance->activeTokens()->first();
     $this->engine->transition($token, 'submit', [], $this->users['employee']);

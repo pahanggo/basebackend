@@ -6,6 +6,7 @@ use Backpack\CRUD\app\Models\Traits\CrudTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class WorkflowDefinition extends Model
 {
@@ -46,5 +47,16 @@ class WorkflowDefinition extends Model
     public function instances(): HasMany
     {
         return $this->hasMany(WorkflowInstance::class);
+    }
+
+    /**
+     * The target model's human-facing name — used before any instance
+     * exists to pull it from an effective version's graph (see
+     * WorkflowDefinitionVersion::displayName()). Falls back to the
+     * humanized model class name when there's no version at all yet.
+     */
+    public function displayName(): string
+    {
+        return $this->latestVersion()?->displayName() ?? Str::headline(class_basename($this->model));
     }
 }

@@ -80,7 +80,7 @@ class TransitionEngine
         bool $skipActorCheck = false,
     ): ?WorkflowInstanceHistory {
         $instance = $token->instance;
-        $version = $instance->version;
+        $version = $instance->effectiveVersion();
         $edge = $version->edge($edgeId);
 
         if (! $edge || $edge['from'] !== $token->node_id) {

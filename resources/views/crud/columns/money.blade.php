@@ -18,7 +18,7 @@
     $column['thousands_sep'] = $column['thousands_sep'] ?? ',';
     $column['wrapper'] = $column['wrapper'] ?? [];
     $column['wrapper']['element'] = $column['wrapper']['element'] ?? 'span';
-    $column['wrapper']['class'] = trim(($column['wrapper']['class'] ?? '').' d-block text-right text-nowrap');
+    $column['wrapper']['class'] = trim(($column['wrapper']['class'] ?? '').' d-block text-nowrap');
     $column['text'] = '-';
 
     if (! is_null($value) && $value !== '' && is_numeric($value)) {

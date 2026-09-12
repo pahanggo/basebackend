@@ -39,9 +39,26 @@ class CrudController extends Controller
             $this->setupDefaults();
             $this->setup();
             $this->setupConfigurationForCurrentOperation();
+            $this->afterOperationSetup();
 
             return $next($request);
         });
+    }
+
+    /**
+     * Runs once per request, after both the queued operation() closures and
+     * the controller's own setupXxxOperation() have already run — the only
+     * point in the request lifecycle where a package can see (and adjust)
+     * the FINAL configuration for the current operation, since operation()
+     * closures always run before setupXxxOperation() (see
+     * setupConfigurationForCurrentOperation()'s own docblock). A no-op by
+     * default; a trait can override this to make a change that has to see
+     * everything a downstream CrudController's own setupXxxOperation() adds
+     * (e.g. reordering a column to always be last, regardless of what the
+     * developer's own method adds afterward).
+     */
+    protected function afterOperationSetup()
+    {
     }
 
     /**

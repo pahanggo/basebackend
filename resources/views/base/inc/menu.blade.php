@@ -24,17 +24,17 @@
         </a>
     </li>
     @endif
+    @if (config('app.workflow_demo') && class_exists("\\WorkflowDemo\\PurchaseRequest\\Http\\Controllers\\PurchaseRequestCrudController") && backpack_auth()->check() && config('app.env') === 'local')
+    <li class="nav-item">
+        <a class="nav-link" href="{{ backpack_url('purchase-requests') }}" title="{{ __('Purchase Request Demo') }}">
+            <i class="la la-file-invoice-dollar"></i>
+        </a>
+    </li>
+    @endif
     @if (config('app.kitchensink') && backpack_auth()->check())
     <li class="nav-item">
         <a class="nav-link" href="{{ backpack_url('kitchensink') }}" title="{{ __('Kitchen Sink') }}">
             <i class="la la-flask"></i>
-        </a>
-    </li>
-    @endif
-    @if (config('app.workflow_demo') && class_exists("\\WorkflowDemo\\PurchaseRequest\\Http\\Controllers\\PurchaseRequestCrudController") && backpack_auth()->check())
-    <li class="nav-item">
-        <a class="nav-link" href="{{ backpack_url('purchase-requests') }}" title="{{ __('Purchase Request Demo') }}">
-            <i class="la la-file-invoice-dollar"></i>
         </a>
     </li>
     @endif

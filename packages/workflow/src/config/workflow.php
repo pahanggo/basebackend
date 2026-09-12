@@ -14,6 +14,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Versioning
+    |--------------------------------------------------------------------------
+    |
+    | When true (the default), publishing a new graph version never affects
+    | an in-flight instance — it stays pinned to whichever version it started
+    | on (see WorkflowDefinitionVersion, WorkflowInstance::effectiveVersion()).
+    |
+    | When false, EVERY instance — in-flight ones included, with no data
+    | migration needed — always runs against its definition's current
+    | published version instead of the one it started on. A specific model
+    | can override this default via HasWorkflow::setEnableVersioning() on
+    | its own class.
+    |
+    */
+    'enable_versioning' => true,
+
+    /*
+    |--------------------------------------------------------------------------
     | Registered action & precondition types
     |--------------------------------------------------------------------------
     |
@@ -28,7 +46,6 @@ return [
         'send_notification' => \Workflow\Actions\SendNotification::class,
         'start_timer' => \Workflow\Actions\StartTimer::class,
         'call_webhook' => \Workflow\Actions\CallWebhook::class,
-        'model_callback' => \Workflow\Actions\ModelCallback::class,
     ],
 
     'preconditions' => [

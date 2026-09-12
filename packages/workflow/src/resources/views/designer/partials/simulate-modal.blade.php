@@ -21,6 +21,12 @@
                     <select class="wf-simulate-record-select2" style="width:100%"></select>
                 </div>
 
+                <div class="form-group">
+                    <label class="mb-0 small">Simulate as</label>
+                    <select class="wf-simulate-actor-select2" style="width:100%"></select>
+                    <small class="form-text text-muted">Defaults to you — most transitions are gated by actor_rule (role/permission/model_callback), so testing as yourself alone will often show everything as unavailable unless you hold every role the graph checks.</small>
+                </div>
+
                 <div id="wf-simulate-body" style="display:none">
                     <hr>
                     <p class="mb-1">

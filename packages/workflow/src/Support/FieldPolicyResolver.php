@@ -23,7 +23,7 @@ class FieldPolicyResolver
             return $fields;
         }
 
-        $version = $instance->version;
+        $version = $instance->effectiveVersion();
         $token = $instance->activeTokens()->first();
 
         if (! $token) {

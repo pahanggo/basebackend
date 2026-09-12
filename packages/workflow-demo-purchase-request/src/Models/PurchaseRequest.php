@@ -23,6 +23,11 @@ class PurchaseRequest extends Model
 
     protected $connection = 'purchase_request_demo';
 
+    public static function versioningEnabled(): bool
+    {
+        return false;
+    }
+
     protected $fillable = [
         'requester_id',
         'amount',
@@ -67,5 +72,20 @@ class PurchaseRequest extends Model
     public function routeNotificationForMail(): ?string
     {
         return $this->requester()?->email;
+    }
+
+    /**
+     * A model_callback actor_rule check — Workflow\Support\ActorRuleResolver
+     * calls this with the actor actually being checked (the user attempting
+     * the transition, or the row-action request), not the currently
+     * web-authenticated session, so this must use the passed-in `$user`
+     * rather than the `user()`/backpack_user() helper — that helper reflects
+     * whoever is logged into the browser right now, which is only ever
+     * correct by coincidence (e.g. it silently broke a programmatic
+     * transitionTo() call made with a different/no web session at all).
+     */
+    public function callbackFunctionIsRequester(?User $user = null): bool
+    {
+        return $user !== null && $user->id == $this->requester_id;
     }
 }

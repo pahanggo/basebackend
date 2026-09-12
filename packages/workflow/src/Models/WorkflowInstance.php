@@ -58,4 +58,35 @@ class WorkflowInstance extends Model
 
         return $class::find($this->workflowable_id);
     }
+
+    /**
+     * The graph version this instance actually runs against right now. With
+     * versioning enabled (the default — see config('workflow.enable_versioning')
+     * and HasWorkflow::setEnableVersioning()) this is just the pinned version
+     * relation: whichever version was published when the instance started,
+     * untouched by later publishes. With versioning disabled for this
+     * instance's model, it's always the definition's current published
+     * version instead — so disabling versioning takes effect on every
+     * existing instance immediately, with no data migration, the next time
+     * anything reads its graph.
+     */
+    public function effectiveVersion(): ?WorkflowDefinitionVersion
+    {
+        if ($this->versioningEnabledForWorkflowable()) {
+            return $this->version;
+        }
+
+        return $this->definition->publishedVersion ?? $this->version;
+    }
+
+    protected function versioningEnabledForWorkflowable(): bool
+    {
+        $class = $this->workflowable_type;
+
+        if (class_exists($class) && in_array(\Workflow\HasWorkflow::class, class_uses_recursive($class), true)) {
+            return $class::versioningEnabled();
+        }
+
+        return config('workflow.enable_versioning', true);
+    }
 }

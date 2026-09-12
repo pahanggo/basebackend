@@ -5,6 +5,7 @@ namespace Workflow\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Workflow\Models\WorkflowDefinition;
 
@@ -23,7 +24,12 @@ use Workflow\Models\WorkflowDefinition;
  * - "Publish" promotes that draft into a real, immutable, numbered version
  *   (assigning the next version number and a published_at timestamp) and
  *   makes it the published one, in one step. Existing instances stay pinned
- *   to whichever version they started on either way.
+ *   to whichever version they started on — but only while versioning is
+ *   enabled for the target model (config('workflow.enable_versioning'), or
+ *   its per-model HasWorkflow::setEnableVersioning() override). With
+ *   versioning disabled, every in-flight instance immediately follows
+ *   whatever is currently published instead (see
+ *   WorkflowInstance::effectiveVersion()).
  */
 class WorkflowDesignerController
 {
@@ -38,7 +44,23 @@ class WorkflowDesignerController
             'definition' => $workflowDefinition,
             'graph' => $graph,
             'latestVersion' => $version,
+            'versioningEnabled' => $this->versioningEnabledFor($workflowDefinition),
+            // Seeds the settings modal's "Name" field the first time a
+            // definition is opened, before any display_name has ever been
+            // saved into the graph — see WorkflowDefinitionVersion::displayName().
+            'modelDisplayNameDefault' => Str::headline(class_basename($workflowDefinition->model)),
         ]);
+    }
+
+    protected function versioningEnabledFor(WorkflowDefinition $workflowDefinition): bool
+    {
+        $model = $workflowDefinition->model;
+
+        if (! is_string($model) || ! class_exists($model) || ! in_array(\Workflow\HasWorkflow::class, class_uses_recursive($model), true)) {
+            return config('workflow.enable_versioning', true);
+        }
+
+        return $model::versioningEnabled();
     }
 
     public function update(Request $request, WorkflowDefinition $workflowDefinition): RedirectResponse|JsonResponse
@@ -65,7 +87,9 @@ class WorkflowDesignerController
             $version->save();
 
             $workflowDefinition->update(['published_version_id' => $version->id]);
-            $message = "Saved and published version {$version->version}. In-flight instances on earlier versions are unaffected.";
+            $message = $this->versioningEnabledFor($workflowDefinition)
+                ? "Saved and published version {$version->version}. In-flight instances on earlier versions are unaffected."
+                : "Saved and published version {$version->version}. Versioning is disabled for this model, so in-flight instances now follow this version too.";
         } else {
             $version->save();
         }

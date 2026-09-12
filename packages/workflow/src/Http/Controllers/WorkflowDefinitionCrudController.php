@@ -40,13 +40,8 @@ class WorkflowDefinitionCrudController extends CrudController
             'label' => 'Published version',
             'function' => fn (WorkflowDefinition $entry) => $entry->publishedVersion?->version ?? '—',
         ]);
-        CRUD::addColumn([
-            'name' => 'design',
-            'type' => 'closure',
-            'label' => 'Designer',
-            'escaped' => false,
-            'function' => fn (WorkflowDefinition $entry) => '<a href="'.route('workflow.designer.edit', $entry).'" class="btn btn-sm btn-outline-primary"><i class="la la-project-diagram"></i> Design</a>',
-        ]);
+
+        CRUD::addButton('line', 'design', 'view', 'workflow::buttons.designer')->makeFirst();
     }
 
     protected function setupShowOperation(): void
@@ -60,7 +55,10 @@ class WorkflowDefinitionCrudController extends CrudController
 
         CRUD::addField(['name' => 'name', 'type' => 'text']);
         CRUD::addField(['name' => 'slug', 'type' => 'slug', 'target' => 'name', 'hint' => 'Used by HasWorkflow::workflowDefinitionSlug() on the target model.']);
-        CRUD::addField(['name' => 'model', 'type' => 'model_picker', 'label' => 'Target model', 'hint' => 'Any concrete Eloquent model under app/Models.']);
+        // 'view_namespace' resolves this field's view from the package's own
+        // `workflow::fields` namespace (see resources/views/fields/model_picker.blade.php)
+        // instead of the app's `crud::fields.model_picker`.
+        CRUD::addField(['name' => 'model', 'type' => 'model_picker', 'view_namespace' => 'workflow::fields', 'label' => 'Target model', 'hint' => 'Any concrete Eloquent model under app/Models.']);
         CRUD::addField(['name' => 'description', 'type' => 'textarea']);
     }
 

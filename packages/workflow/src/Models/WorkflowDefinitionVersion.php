@@ -4,6 +4,7 @@ namespace Workflow\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * An immutable snapshot of a definition's graph. Instances pin to a specific
@@ -25,6 +26,25 @@ class WorkflowDefinitionVersion extends Model
     public function definition(): BelongsTo
     {
         return $this->belongsTo(WorkflowDefinition::class, 'workflow_definition_id');
+    }
+
+    /**
+     * The human-facing name for the target model, shown on the
+     * show-workflow page header — the graph's own settings-modal
+     * `display_name` (set by the designer, defaulting there to the
+     * humanized model class name too) if configured, otherwise humanized on
+     * the fly here so older/unset graphs still get a readable name instead
+     * of a raw class name.
+     */
+    public function displayName(): string
+    {
+        $name = $this->graph['display_name'] ?? null;
+
+        if (is_string($name) && trim($name) !== '') {
+            return $name;
+        }
+
+        return Str::headline(class_basename($this->definition->model));
     }
 
     public function node(string $nodeId): ?array

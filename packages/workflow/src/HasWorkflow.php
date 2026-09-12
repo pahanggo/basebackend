@@ -12,7 +12,47 @@ use Workflow\Models\WorkflowInstance;
  */
 trait HasWorkflow
 {
+    /**
+     * Per-class override of config('workflow.enable_versioning'). null (the
+     * default) means "defer to config" — each class using this trait gets
+     * its own copy of this static property, so overriding it on one
+     * HasWorkflow model never affects another.
+     */
+    protected static ?bool $workflowVersioningEnabled = null;
+
     abstract public function workflowDefinitionSlug(): string;
+
+    /**
+     * Enables (the default) or disables versioning for this model. With
+     * versioning disabled, every instance of this model — in-flight ones
+     * included, with no data migration needed — always runs against its
+     * definition's current published version instead of staying pinned to
+     * whichever version it started on (see
+     * WorkflowInstance::effectiveVersion()).
+     */
+    public static function setEnableVersioning(bool $enabled = true): void
+    {
+        static::$workflowVersioningEnabled = $enabled;
+    }
+
+    public static function versioningEnabled(): bool
+    {
+        return static::$workflowVersioningEnabled ?? config('workflow.enable_versioning', true);
+    }
+
+    /**
+     * Laravel's trait-boot convention: Eloquent calls bootHasWorkflow()
+     * automatically for any model using this trait. Starting the workflow
+     * the moment a record is created means a downstream CrudController (or
+     * any other creation path — a job, a seeder, tinker) gets this for free,
+     * without remembering to call startWorkflow() itself.
+     */
+    public static function bootHasWorkflow(): void
+    {
+        static::created(function (self $model) {
+            $model->startWorkflow();
+        });
+    }
 
     public function workflowInstance(): ?WorkflowInstance
     {
@@ -48,7 +88,7 @@ trait HasWorkflow
         $engine = app(Support\TransitionEngine::class);
 
         foreach ($instance->activeTokens as $token) {
-            $version = $instance->version;
+            $version = $instance->effectiveVersion();
             $edge = $version->edge($edgeId);
 
             if ($edge && $edge['from'] === $token->node_id) {
@@ -72,7 +112,7 @@ trait HasWorkflow
             return [];
         }
 
-        $version = $instance->version;
+        $version = $instance->effectiveVersion();
 
         return $instance->activeTokens
             ->flatMap(fn ($token) => $version->edgesFrom($token->node_id))

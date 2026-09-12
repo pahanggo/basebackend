@@ -17,6 +17,13 @@ class PurchaseRequestDemoServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // Registered under its own namespace so the sample header_view/
+        // footer_view wired onto the 'pending_hod_review' node in
+        // PurchaseRequestDemoSeeder::graph() (proving out that node
+        // inspector field on a real downstream model) resolve regardless of
+        // whether the demo itself is installed/enabled.
+        $this->loadViewsFrom(__DIR__.'/resources/views', 'purchase-request-demo');
+
         // Deliberately NOT loadMigrationsFrom() — same reason as
         // Workflow\WorkflowServiceProvider: this connection's migrations must
         // stay off the main app's default `migrate`/`migrate:fresh` cycle,

@@ -36,7 +36,7 @@ class WorkflowStatusPresenter
             return ['instance' => null, 'tokens' => [], 'transitions' => []];
         }
 
-        $version = $instance->version;
+        $version = $instance->effectiveVersion();
         $tokens = $instance->activeTokens;
 
         $tokenLabels = $tokens

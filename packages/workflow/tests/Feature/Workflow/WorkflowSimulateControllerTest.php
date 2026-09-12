@@ -96,3 +96,38 @@ it('reports an edge the actor is not permitted to trigger, without executing it'
     expect($response['ok'])->toBeFalse();
     expect($response['error'])->toContain('not permitted');
 });
+
+it('checks actor_rule against actor_user_id instead of the logged-in designer, when given', function () {
+    // The logged-in $admin holds no roles at all — without a way to pick a
+    // different actor, a role-gated edge would always read as "unavailable"
+    // to whoever happens to be building the graph.
+    $sample = User::factory()->create();
+
+    $roleModel = config('backpack.permissionmanager.models.role');
+    $roleModel::firstOrCreate(['name' => 'hod', 'guard_name' => 'web']);
+    $hod = User::factory()->create();
+    $hod->assignRole('hod');
+
+    $asAdmin = $this->actingAs($this->admin)
+        ->postJson(route('workflow.designer.simulate', $this->definition), [
+            'graph' => simulateGraph(['actor_rule' => ['roles' => ['hod'], 'match' => 'any']]),
+            'workflowable_id' => $sample->id,
+            'node_id' => 'draft',
+        ])
+        ->assertOk()
+        ->json();
+
+    expect($asAdmin['edges'][0]['available'])->toBeFalse();
+
+    $asHod = $this->actingAs($this->admin)
+        ->postJson(route('workflow.designer.simulate', $this->definition), [
+            'graph' => simulateGraph(['actor_rule' => ['roles' => ['hod'], 'match' => 'any']]),
+            'workflowable_id' => $sample->id,
+            'node_id' => 'draft',
+            'actor_user_id' => $hod->id,
+        ])
+        ->assertOk()
+        ->json();
+
+    expect($asHod['edges'][0]['available'])->toBeTrue();
+});

@@ -8,7 +8,9 @@ use Workflow\Http\Controllers\WorkflowModelCallbackSearchController;
 use Workflow\Http\Controllers\WorkflowModelFieldsController;
 use Workflow\Http\Controllers\WorkflowModelSearchController;
 use Workflow\Http\Controllers\WorkflowSampleRecordSearchController;
+use Workflow\Http\Controllers\WorkflowShowController;
 use Workflow\Http\Controllers\WorkflowSimulateController;
+use Workflow\Http\Controllers\WorkflowTimelineController;
 use Workflow\Http\Controllers\WorkflowTransitionController;
 
 /*
@@ -37,6 +39,8 @@ Route::group([
         ->name('workflow.designer.update');
 
     Route::post('transition', WorkflowTransitionController::class)->name('workflow.transition');
+    Route::get('show', WorkflowShowController::class)->name('workflow.show');
+    Route::get('timeline', WorkflowTimelineController::class)->name('workflow.timeline');
 
     Route::get('models/search', WorkflowModelSearchController::class)->name('workflow.models.search');
     Route::get('actors/search', WorkflowActorSearchController::class)->name('workflow.actors.search');

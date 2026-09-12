@@ -14,10 +14,13 @@
 
 @section('content')
 <div x-data="workflowDesigner(@js($graph))" x-init="init()">
-    <form method="POST" action="{{ route('workflow.designer.update', $definition) }}" @submit="beforeSubmit" id="workflow-designer-form">
+    {{-- No longer a real submittable form — saveDraft()/confirmPublish() are
+         both fetch()-based now (see scripts/save.blade.php), so the designer
+         never navigates away or reloads. Kept only as the CSRF token source
+         those (and the field-policy/simulate modals') fetch() calls read
+         from. --}}
+    <div id="workflow-designer-form">
         @csrf
-        <input type="hidden" name="graph" x-ref="graphInput">
-        <input type="hidden" name="action" value="publish" x-ref="actionInput">
 
         <div id="workflow-canvas-wrap">
             <div id="workflow-canvas">
@@ -25,10 +28,11 @@
             </div>
             @include('workflow::designer.partials.inspector-panel')
         </div>
-    </form>
+    </div>
 
     @include('workflow::designer.partials.field-policy-modal')
     @include('workflow::designer.partials.simulate-modal')
+    @include('workflow::designer.partials.settings-modal')
 </div>
 
 @include('workflow::designer.partials.svg-defs')
@@ -56,6 +60,7 @@
 @include('workflow::designer.scripts.inspector')
 @include('workflow::designer.scripts.field-policy')
 @include('workflow::designer.scripts.simulate')
+@include('workflow::designer.scripts.settings')
 @include('workflow::designer.scripts.save')
 
 <script>
@@ -68,7 +73,52 @@
                 // scripts/canvas.blade.php's WF_CANVAS_MIXIN, outside this
                 // closure — can still read the graph the server passed in.
                 initialGraph: initialGraph,
-                graph: { start: initialGraph.start || '', nodes: [], edges: [] },
+                graph: {
+                    start: initialGraph.start || '',
+                    // Human-facing name for the target model, shown on the
+                    // show-workflow page header — see
+                    // WorkflowDefinitionVersion::displayName(). Defaults to
+                    // the server-humanized model class name the first time
+                    // a definition is opened.
+                    display_name: initialGraph.display_name || @js($modelDisplayNameDefault),
+                    nodes: [],
+                    edges: [],
+                    // Definition-level settings (start state now lives here
+                    // too, moved off the toolbar into the settings modal) —
+                    // gates the target model's own Backpack create/show/update/delete
+                    // operations, independent of which node a record is on
+                    // ('create' has no node yet, so it's the one operation
+                    // with no per-node row_actions override — just this
+                    // definition-level actor_rule). See
+                    // WorkflowOperation::applyWorkflowOperationAccess().
+                    operation_settings: (() => {
+                        const saved = initialGraph.operation_settings || {};
+                        const settings = {};
+                        ['create', 'show', 'update', 'delete'].forEach(op => {
+                            settings[op] = {
+                                enabled: saved[op]?.enabled !== false,
+                                actor_rule: saved[op]?.actor_rule || null,
+                            };
+                        });
+                        return settings;
+                    })(),
+                },
+                // Drives the toolbar's "Editing version N — published (currently
+                // live)" / "Editing draft — not yet published" caption.
+                // Seeded from the server-rendered state, then updated in place
+                // after a successful saveDraft()/confirmPublish() — both are
+                // AJAX now, so nothing about the page (this included) reloads
+                // to pick up a fresh value from the server on its own.
+                versionCaption: {
+                    hasVersion: @js((bool) $latestVersion),
+                    number: @js($latestVersion?->version),
+                    isLive: @js($latestVersion !== null && $definition->published_version_id === $latestVersion->id),
+                },
+                // Whether in-flight instances stay pinned to their starting
+                // version on publish, or immediately follow it instead — see
+                // WorkflowDesignerController::versioningEnabledFor(). Drives
+                // the publish confirm dialog's wording in WF_SAVE_MIXIN.
+                versioningEnabled: @js($versioningEnabled),
                 editor: null,
                 selected: null, // {kind: 'node'|'edge', id: string}
                 // Per-browser UI preference, not workflow data — kept in
@@ -94,7 +144,7 @@
                 fieldEditor: { nodeId: null, rows: [], tableMap: {} },
                 // "Test with a sample record" dry-run modal state — see
                 // scripts/simulate.blade.php. Never saved with the graph.
-                simulator: { recordId: null, currentNodeId: null, log: [] },
+                simulator: { recordId: null, actorUserId: null, currentNodeId: null, log: [] },
                 nodeIdToDrawflowId: {},
                 drawflowIdToNodeId: {},
                 suppressEvents: false,
@@ -105,6 +155,7 @@
             WF_INSPECTOR_MIXIN,
             WF_FIELD_POLICY_MIXIN,
             WF_SIMULATE_MIXIN,
+            WF_SETTINGS_MIXIN,
             WF_SAVE_MIXIN,
         );
     }

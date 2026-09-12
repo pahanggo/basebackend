@@ -12,7 +12,7 @@
 @endphp
 
 @section('header')
-    <section class="container-fluid d-print-none">
+    <section class="container-fluid d-print-none mb-3">
         <a href="javascript: window.print();" class="btn float-right"><i class="la la-print"></i></a>
         <h2>
             <span class="text-capitalize">{!! $crud->getHeading() ?? $crud->entity_name_plural !!}</span>
@@ -25,9 +25,13 @@
     </section>
 @endsection
 
+@php
+    $workflowTimeline = app(\Workflow\Support\WorkflowTimeline::class)->build($entry);
+@endphp
+
 @section('content')
     <div class="row">
-        <div class="{{ $crud->getShowContentClass() }}">
+        <div class="{{ $workflowTimeline ? 'col-md-8' : $crud->getShowContentClass() }}">
 
             <!-- Default box -->
             <div class="">
@@ -91,6 +95,12 @@
             </div><!-- /.box -->
 
         </div>
+
+        @if ($workflowTimeline)
+            <div class="col-md-4">
+                @include('workflow::inc.workflow_timeline')
+            </div>
+        @endif
     </div>
 @endsection
 

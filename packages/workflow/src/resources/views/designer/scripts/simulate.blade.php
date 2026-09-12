@@ -7,6 +7,7 @@
     const WF_SIMULATE_MIXIN = {
         openSimulateModal() {
             this.simulator.recordId = null;
+            this.simulator.actorUserId = null;
             this.simulator.currentNodeId = this.graph.start || (this.graph.nodes[0] && this.graph.nodes[0].id) || null;
             this.simulator.log = [];
 
@@ -15,7 +16,52 @@
             document.getElementById('wf-simulate-edges').innerHTML = '';
 
             $('#wf-simulate-modal').modal('show');
-            this.$nextTick(() => this.initSimulateRecordSelect2());
+            this.$nextTick(() => {
+                this.initSimulateRecordSelect2();
+                this.initSimulateActorSelect2();
+            });
+        },
+
+        /** A plain "who am I testing as" user picker — reuses the same
+         *  workflow.actors.search endpoint the actor_rule pickers use
+         *  (roles/permissions/users/callbacks grouped), but only the "Users"
+         *  group applies here: this needs one concrete Authenticatable to
+         *  check actor_rule against, not a rule of its own. */
+        initSimulateActorSelect2() {
+            const el = document.querySelector('.wf-simulate-actor-select2');
+            if (! el) return;
+
+            const $el = $(el);
+            if ($el.hasClass('select2-hidden-accessible')) {
+                $el.select2('destroy');
+            }
+
+            $el.val(null).trigger('change');
+            $el.select2({
+                theme: 'bootstrap',
+                dropdownParent: $('#wf-simulate-modal'),
+                placeholder: 'Defaults to you…',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: @js(route('workflow.actors.search')),
+                    dataType: 'json',
+                    delay: 300,
+                    data: params => ({ q: params.term }),
+                    processResults: data => {
+                        const usersGroup = (data.results || []).find(g => g.text === 'Users');
+
+                        return { results: usersGroup ? usersGroup.children : [] };
+                    },
+                    cache: true,
+                },
+            });
+
+            $el.on('change', () => {
+                const value = $el.val(); // "user:123" or null/empty
+                this.simulator.actorUserId = value ? value.split(':')[1] : null;
+                if (this.simulator.recordId) this.loadSimulateNode(this.simulator.currentNodeId);
+            });
         },
 
         initSimulateRecordSelect2() {
@@ -137,6 +183,7 @@
                     body: JSON.stringify({
                         graph: this.buildGraphPayload(),
                         workflowable_id: this.simulator.recordId,
+                        actor_user_id: this.simulator.actorUserId,
                         ...payload,
                     }),
                 });

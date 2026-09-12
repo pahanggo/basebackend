@@ -2,9 +2,11 @@
 
 namespace Workflow;
 
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Workflow\Registries\WorkflowActionRegistry;
 use Workflow\Registries\WorkflowPreconditionRegistry;
+use Workflow\Support\FieldPolicyResolver;
 
 class WorkflowServiceProvider extends ServiceProvider
 {
@@ -48,5 +50,41 @@ class WorkflowServiceProvider extends ServiceProvider
             \Workflow\Console\ProcessTimersCommand::class,
             \Workflow\Console\WorkflowInstallCommand::class,
         ]);
+
+        $this->applyFieldPolicyToEditForm();
+    }
+
+    /**
+     * Wires FieldPolicyResolver into every HasWorkflow model's own Backpack
+     * update form — "free" for any downstream CrudController, no per-
+     * controller code needed. This has to be a view composer rather than an
+     * operation() closure registered from WorkflowOperation: those closures
+     * run BEFORE the controller's own setupUpdateOperation() adds its
+     * fields (see CrudController::setupConfigurationForCurrentOperation()),
+     * so there'd be nothing yet to reorder/mark at that point. A composer
+     * on the actual edit view fires only once the fields are fully built
+     * and about to render, which is the first point field policy can
+     * meaningfully apply.
+     */
+    protected function applyFieldPolicyToEditForm(): void
+    {
+        View::composer('crud::edit', function ($view) {
+            $data = $view->getData();
+            $crud = $data['crud'] ?? null;
+            $entry = $data['entry'] ?? null;
+
+            if (! $crud || ! $entry || ! in_array(HasWorkflow::class, class_uses_recursive($entry), true)) {
+                return;
+            }
+
+            $instance = $entry->workflowInstance();
+
+            if (! $instance) {
+                return;
+            }
+
+            $fields = $this->app->make(FieldPolicyResolver::class)->apply($crud->fields(), $instance);
+            $crud->setOperationSetting('fields', $fields);
+        });
     }
 }

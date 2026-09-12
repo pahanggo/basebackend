@@ -23,9 +23,60 @@
                     html += `<label class="mt-3 mb-1 d-block small">Form header/footer</label>`;
                     html += this.textField('node.header_view', 'header_view', node.header_view);
                     html += this.textField('node.footer_view', 'footer_view', node.footer_view);
+
+                    html += `<hr><label class="mb-1 d-block small">Row actions while a record is in this state</label>`;
+                    html += `<p class="text-muted small mb-2">Overrides the definition-level Show/Update/Delete settings (see the toolbar's gear icon) just for records currently sitting here — leave a row unchecked to fall back to that global default instead of hiding it here.</p>`;
+                    html += this.renderRowActionsFields(node);
                 }
                 html += `<div class="mt-3"><button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedNode()">Delete node</button></div>`;
                 return html;
+            },
+
+            /**
+             * A node's row_actions: {show, update, delete}, each either
+             * absent (fall back to the definition-level operation_settings
+             * — the common case) or {enabled, actor_rule} to override it
+             * just for records in this state (e.g. hide Delete once a
+             * request reaches 'approved'). Auto-vivifies node.row_actions
+             * itself (but leaves each operation absent/undefined until its
+             * own checkbox is first ticked) so actorRuleField's path-based
+             * writes always have somewhere to land.
+             */
+            renderRowActionsFields(node) {
+                node.row_actions = node.row_actions || {};
+                const labels = { show: 'Show', update: 'Update', delete: 'Delete' };
+                let html = '';
+
+                ['show', 'update', 'delete'].forEach(op => {
+                    const override = node.row_actions[op];
+                    const path = `node.row_actions.${op}`;
+                    html += `<div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="wf-row-action-${op}" ${override ? 'checked' : ''}
+                            onchange="Alpine.$data(document.querySelector('[x-data]')).toggleRowActionOverride('${op}', this.checked)">
+                        <label class="form-check-label small" for="wf-row-action-${op}">Override ${labels[op]}</label>
+                    </div>`;
+
+                    if (override) {
+                        html += `<div class="ml-4 mb-2">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="wf-row-action-enabled-${op}" ${override.enabled !== false ? 'checked' : ''}
+                                    onchange="Alpine.$data(document.querySelector('[x-data]')).setPath('${path}.enabled', this.checked)">
+                                <label class="form-check-label small" for="wf-row-action-enabled-${op}">Visible here</label>
+                            </div>
+                            <label class="mb-1 small">Who (leave blank to allow anyone with the base permission)</label>
+                            ${this.actorRuleField(override.actor_rule, `${path}.actor_rule`)}
+                        </div>`;
+                    }
+                });
+
+                return html;
+            },
+
+            toggleRowActionOverride(op, checked) {
+                const node = this.findNode(this.selected.id);
+                node.row_actions = node.row_actions || {};
+                node.row_actions[op] = checked ? { enabled: true, actor_rule: null } : undefined;
+                this.rerenderInspector();
             },
 
             renderEdgeInspector() {
@@ -39,9 +90,8 @@
                 html += this.selectField('edge.trigger', 'trigger', edge.trigger, ['manual', 'automatic', 'webhook', 'timer']);
 
                 if (edge.trigger === 'manual') {
-                    html += `<label class="mt-2 mb-1 d-block small">Who can trigger this</label>`;
-                    html += this.actorRuleField(edge);
-                    html += this.modelCallbackField('edge.actor_rule.model_callback', edge.actor_rule.model_callback || '', 'Model callback (optional — combined with roles/permissions/users below)');
+                    html += `<label class="mt-2 mb-1 d-block small">Who can trigger this (roles, permissions, users, or a model callback)</label>`;
+                    html += this.actorRuleField(edge.actor_rule, 'edge.actor_rule');
                     html += this.selectField('edge.actor_rule.match', 'match', edge.actor_rule.match, ['any', 'all']);
 
                     html += `<div class="form-check mt-2">
@@ -127,7 +177,7 @@
 
             renderActionRow(action, i) {
                 const path = `edge.actions.${i}`;
-                const types = ['send_email', 'send_notification', 'start_timer', 'call_webhook', 'model_callback'];
+                const types = ['send_email', 'send_notification', 'start_timer', 'call_webhook'];
                 let html = `<div class="wf-repeatable-row">`;
                 html += this.selectField(`${path}.type`, 'type', action.type, types);
                 if (action.type === 'send_email' || action.type === 'send_notification') {
@@ -138,8 +188,6 @@
                     html += this.textField(`${path}.edge`, 'edge id to fire', action.edge || '');
                 } else if (action.type === 'call_webhook') {
                     html += this.textField(`${path}.url`, 'url', action.url || '');
-                } else if (action.type === 'model_callback') {
-                    html += this.modelCallbackField(`${path}.method`, action.method || '', 'callback method');
                 }
                 html += this.removeButton(`removeAt('edge.actions', ${i})`);
                 html += `</div>`;
@@ -157,70 +205,107 @@
                     <label class="form-check-label small" for="wf-input-required-${i}">required</label>
                 </div>`;
                 html += this.textField(`${path}.store_as`, 'store as column (optional)', input.store_as || '');
-                html += this.removeButton(`removeAt('edge.inputs', ${i})`);
+                html += `<div class="d-flex align-items-center justify-content-between mt-1">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="wf-input-timeline-${i}" ${input.show_in_timeline === true ? 'checked' : ''}
+                            onchange="Alpine.$data(document.querySelector('[x-data]')).setPath('${path}.show_in_timeline', this.checked)">
+                        <label class="custom-control-label small" for="wf-input-timeline-${i}">Show in timeline</label>
+                    </div>
+                    ${this.removeButton(`removeAt('edge.inputs', ${i})`)}
+                </div>`;
                 html += `</div>`;
                 return html;
             },
 
-            // -- single grouped ajax select2 combining roles/permissions/users --
-            actorRuleField(edge) {
-                const rule = edge.actor_rule || {};
+            /**
+             * Single grouped ajax select2 combining roles/permissions/users
+             * AND the target model's own `callbackFunction*` methods (a 4th
+             * "Callbacks" group, value-prefixed "callback:") — shared by
+             * every "who can do this" picker in the designer: the edge
+             * inspector's actor_rule, the definition-level settings modal's
+             * show/update/delete pickers, and a node's row_actions pickers.
+             * `path` is a setPath-style dot path to the *actor_rule object
+             * itself* (e.g. "edge.actor_rule", "graph.operation_settings.show.actor_rule",
+             * "node.row_actions.update.actor_rule") — resolveContainer()
+             * already handles the 'edge'/'node' virtual roots and arbitrary
+             * nested paths, so this works unmodified in all three contexts.
+             */
+            actorRuleField(rule, path) {
+                rule = rule || {};
                 const selected = [
                     ...(rule.roles || []).map(name => `<option value="role:${name}" selected>${name}</option>`),
                     ...(rule.permissions || []).map(name => `<option value="permission:${name}" selected>${name}</option>`),
                     ...(rule.users || []).map(id => `<option value="user:${id}" selected>User #${id}</option>`),
+                    ...(rule.model_callback ? [`<option value="callback:${rule.model_callback}" selected>${rule.model_callback}</option>`] : []),
                 ].join('');
 
                 return `<div class="form-group mb-2">
-                    <select multiple class="wf-actor-select2" style="width:100%">${selected}</select>
+                    <select multiple class="wf-actor-select2" data-actor-path="${path}" style="width:100%">${selected}</select>
                 </div>`;
             },
 
             initActorSelect2() {
-                const el = document.querySelector('.wf-actor-select2');
-                if (! el) return;
+                document.querySelectorAll('.wf-actor-select2').forEach(el => {
+                    const $el = $(el);
+                    if ($el.hasClass('select2-hidden-accessible')) {
+                        $el.select2('destroy');
+                    }
 
-                const $el = $(el);
-                if ($el.hasClass('select2-hidden-accessible')) {
-                    $el.select2('destroy');
-                }
+                    // Inside a Bootstrap modal (the settings modal; a node's
+                    // row_actions pickers render in the plain inspector
+                    // panel, not a modal, so this is a no-op there), select2
+                    // needs an explicit dropdownParent or its popup renders
+                    // behind the modal's own backdrop/stacking context.
+                    const modalParent = $el.closest('.modal');
 
-                $el.select2({
-                    theme: 'bootstrap',
-                    placeholder: 'Search roles, permissions, users…',
-                    minimumInputLength: 0,
-                    ajax: {
-                        url: '{{ route('workflow.actors.search') }}',
-                        dataType: 'json',
-                        delay: 300,
-                        data: params => ({ q: params.term }),
-                        processResults: data => data,
-                        cache: true,
-                    },
-                });
+                    $el.select2({
+                        theme: 'bootstrap',
+                        placeholder: 'Search roles, permissions, users, or a model callback…',
+                        minimumInputLength: 0,
+                        dropdownParent: modalParent.length ? modalParent : undefined,
+                        ajax: {
+                            url: '{{ route('workflow.actors.search') }}',
+                            dataType: 'json',
+                            delay: 300,
+                            data: params => ({ q: params.term, model: @js($definition->model) }),
+                            processResults: data => data,
+                            cache: true,
+                        },
+                    });
 
-                // Update the underlying data silently on change — no rerenderInspector()
-                // here, since that would destroy and recreate this very select2 mid-interaction.
-                $el.on('change', () => {
-                    const app = Alpine.$data(document.querySelector('[x-data]'));
-                    const currentEdge = app.findEdge(app.selected.id);
-                    if (! currentEdge) return;
-                    const values = $el.val() || [];
-                    currentEdge.actor_rule.roles = values.filter(v => v.startsWith('role:')).map(v => v.slice(5));
-                    currentEdge.actor_rule.permissions = values.filter(v => v.startsWith('permission:')).map(v => v.slice(11));
-                    currentEdge.actor_rule.users = values.filter(v => v.startsWith('user:')).map(v => v.slice(5));
-                    // Writing to these reactive properties makes Alpine re-evaluate
-                    // the x-html inspector (it tracks the read during render), which
-                    // destroys this very select2 instance — reinitialize it after.
-                    app.$nextTick(() => app.reinitSelect2Widgets());
+                    // Update the underlying data silently on change — no rerenderInspector()
+                    // here, since that would destroy and recreate this very select2 mid-interaction.
+                    $el.on('change', () => {
+                        const app = Alpine.$data(document.querySelector('[x-data]'));
+                        const { obj, last } = app.resolveContainer(el.dataset.actorPath);
+                        if (! obj) return;
+                        const values = $el.val() || [];
+                        const callbacks = values.filter(v => v.startsWith('callback:')).map(v => v.slice(9));
+                        obj[last] = {
+                            ...(obj[last] || {}),
+                            roles: values.filter(v => v.startsWith('role:')).map(v => v.slice(5)),
+                            permissions: values.filter(v => v.startsWith('permission:')).map(v => v.slice(11)),
+                            users: values.filter(v => v.startsWith('user:')).map(v => v.slice(5)),
+                            model_callback: callbacks[0] || '',
+                        };
+                        // Writing to these reactive properties makes Alpine re-evaluate
+                        // the x-html inspector (it tracks the read during render), which
+                        // destroys this very select2 instance — reinitialize it after.
+                        app.$nextTick(() => app.reinitSelect2Widgets());
+                    });
                 });
             },
 
             /** A single-select ajax picker of the target model's own public
-             *  `callbackFunction*` methods — used by the actor_rule's optional
-             *  model_callback, the model_callback precondition type, and the
-             *  model_callback action type. Never a freeform class/method name
-             *  typed into the editor: the ajax endpoint only ever reflects
+             *  `callbackFunction*` methods — used by the model_callback
+             *  precondition type (the actor_rule's own model_callback is
+             *  folded into the same grouped select2 as roles/permissions/
+             *  users instead, see actorRuleField(); there's no
+             *  model_callback action type at all — actions run real,
+             *  version-controlled code already, so a callback method adds
+             *  nothing an ordinary custom WorkflowActionType wouldn't
+             *  already cover). Never a freeform class/method name typed
+             *  into the editor: the ajax endpoint only ever reflects
              *  methods that already exist on the model (see "Rule & actor
              *  authoring UX"). */
             modelCallbackField(path, value, label) {

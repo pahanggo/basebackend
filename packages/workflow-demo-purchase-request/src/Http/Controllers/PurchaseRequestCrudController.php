@@ -9,7 +9,7 @@ use Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
 use Backpack\CRUD\app\Http\Controllers\Operations\ShowOperation;
 use Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
-use Workflow\Http\Controllers\Operations\WorkflowBulkTransitionOperation;
+use Workflow\Http\Controllers\Operations\WorkflowOperation;
 use WorkflowDemo\PurchaseRequest\Http\Requests\PurchaseRequestFormRequest;
 use WorkflowDemo\PurchaseRequest\Models\PurchaseRequest;
 
@@ -21,42 +21,17 @@ use WorkflowDemo\PurchaseRequest\Models\PurchaseRequest;
 class PurchaseRequestCrudController extends CrudController
 {
     use ListOperation;
-    // Aliased, not inherited: store() lives in this trait, not in an
-    // ancestor class, so a class-defined store() override below can't reach
-    // it via parent:: (traits don't participate in that resolution).
-    use CreateOperation {
-        store as protected traitStore;
-    }
+    use CreateOperation;
     use UpdateOperation;
     use ShowOperation;
     use DeleteOperation;
-    use WorkflowBulkTransitionOperation;
+    use WorkflowOperation;
 
     public function setup(): void
     {
         CRUD::setModel(PurchaseRequest::class);
         CRUD::setRoute(config('backpack.base.route_prefix').'/purchase-requests');
         CRUD::setEntityNameStrings('purchase request', 'purchase requests');
-
-        // Powers the 'workflow' column's transition-confirmation/input
-        // modal — see that button view's own docblock for why this can't
-        // just live inside the column itself. Buttons are scoped per
-        // operation (addButton() during setupListOperation() only ever
-        // registers it for 'list'), and the 'workflow' column also appears
-        // on the show page — so this registers it for both via an
-        // operation-closure here in setup(), which runs once regardless of
-        // which operation the current request is actually for.
-        //
-        // 'list' uses the 'top' stack (rendered once, above the table) —
-        // this app's resources/views/crud/show.blade.php, unlike list's,
-        // only ever includes the 'line' button stack, so 'show' needs the
-        // same asset view registered there instead for it to render at all.
-        $this->crud->operation('list', function () {
-            CRUD::addButton('top', 'workflow_transition_assets', 'view', 'crud::buttons.workflow_transition_assets');
-        });
-        $this->crud->operation('show', function () {
-            CRUD::addButton('line', 'workflow_transition_assets', 'view', 'crud::buttons.workflow_transition_assets');
-        });
     }
 
     protected function setupListOperation(): void
@@ -92,7 +67,6 @@ class PurchaseRequestCrudController extends CrudController
             ],
             ['name' => 'amount', 'type' => 'number', 'decimals' => 2, 'prefix' => 'RM '],
             ['name' => 'purpose', 'type' => 'text', 'limit' => 40],
-            ['name' => 'workflow', 'type' => 'workflow', 'label' => 'Workflow'],
         ];
     }
 
@@ -114,27 +88,15 @@ class PurchaseRequestCrudController extends CrudController
     {
         $this->setupCreateOperation();
 
-        CRUD::addField(['name' => 'workflow', 'type' => 'workflow', 'label' => 'Workflow']);
+        // 'view_namespace' resolves this field's view from the package's own
+        // `workflow::fields` namespace (see resources/views/fields/workflow.blade.php's
+        // own docblock) instead of the app's `crud::fields.workflow`.
+        CRUD::addField(['name' => 'workflow', 'type' => 'workflow', 'view_namespace' => 'workflow::fields', 'label' => 'Workflow']);
         CRUD::addField(['name' => 'hod_remarks', 'type' => 'textarea', 'readonly' => true]);
         CRUD::addField(['name' => 'marketing_feedback', 'type' => 'textarea', 'readonly' => true]);
         CRUD::addField(['name' => 'technical_feedback', 'type' => 'textarea', 'readonly' => true]);
         CRUD::addField(['name' => 'operations_feedback', 'type' => 'textarea', 'readonly' => true]);
         CRUD::addField(['name' => 'finance_remarks', 'type' => 'textarea', 'readonly' => true]);
         CRUD::addField(['name' => 'rejection_reason', 'type' => 'textarea', 'readonly' => true]);
-    }
-
-    /**
-     * A new purchase request enters the workflow at 'draft' the moment it's
-     * created — mirroring how a downstream project would call
-     * $model->startWorkflow() right after creation, rather than requiring a
-     * separate manual step.
-     */
-    public function store()
-    {
-        $response = $this->traitStore();
-
-        $this->crud->entry->startWorkflow();
-
-        return $response;
     }
 }

@@ -11,15 +11,17 @@ use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
 use Throwable;
-use Workflow\Support\EloquentModelFinder;
+use Workflow\Models\WorkflowDefinition;
 
 /**
  * Feeds the node inspector's field-policy editor: every column on the
  * workflow's target model, plus every column on models reachable through
  * one of its own relation methods (so a policy row can target e.g.
- * "requester.department"). Only ever reflects a class the app's own
- * EloquentModelFinder already recognizes as a concrete model under
- * app/Models — never an arbitrary attacker-supplied class name.
+ * "requester.department"). Only ever reflects a class that is already the
+ * `model` column of a real WorkflowDefinition row — never an arbitrary
+ * attacker-supplied class name — which, unlike restricting to app/Models,
+ * also covers downstream models shipped from their own packages (e.g. a
+ * demo package's model living outside app/Models entirely).
  */
 class WorkflowModelFieldsController
 {
@@ -48,11 +50,11 @@ class WorkflowModelFieldsController
 
     protected const SKIP_COLUMNS = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
-    public function __invoke(Request $request, EloquentModelFinder $finder): JsonResponse
+    public function __invoke(Request $request): JsonResponse
     {
         $model = (string) $request->query('model');
 
-        if ($model === '' || ! in_array($model, $finder->all(), true)) {
+        if ($model === '' || ! class_exists($model) || ! WorkflowDefinition::where('model', $model)->exists()) {
             return response()->json(['fields' => []]);
         }
 

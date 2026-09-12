@@ -54,6 +54,39 @@ it('renders the designer with the currently published graph', function () {
         ->assertSee('draft', false);
 });
 
+it('delivers a node\'s row_actions to the browser as part of the designer\'s embedded graph JSON', function () {
+    // Regression test for a real bug: the designer's own client-side node
+    // hydration (WF_CANVAS_MIXIN.init()'s initialGraph.nodes.map()) used to
+    // whitelist only {field_policy, header_view, footer_view} per node,
+    // silently dropping row_actions on every page load even though the
+    // server always sent it correctly — a saved row_actions override would
+    // vanish from the inspector (and from any subsequent save, since the
+    // in-memory node object never had it) the moment the designer was
+    // reopened. This can only assert the server half of that pipeline
+    // (Pest has no JS runtime), but it's the half a regression would also
+    // need to hold for the bug to be fixed.
+    $definition = WorkflowDefinition::create(['name' => 'Row Actions Test', 'slug' => 'row-actions-designer-test', 'model' => User::class]);
+    $version = $definition->versions()->create([
+        'version' => 1,
+        'graph' => [
+            'start' => 'draft',
+            'nodes' => [[
+                'id' => 'draft', 'type' => 'state',
+                'row_actions' => ['delete' => ['enabled' => false]],
+            ]],
+            'edges' => [],
+        ],
+        'published_at' => now(),
+    ]);
+    $definition->update(['published_version_id' => $version->id]);
+
+    $this->actingAs($this->admin)
+        ->get(route('workflow.designer.edit', $definition))
+        ->assertOk()
+        ->assertSee('row_actions', false)
+        ->assertSee('enabled', false);
+});
+
 it('saves a draft without touching what is published, and reuses the same draft row on repeat saves', function () {
     $definition = WorkflowDefinition::create(['name' => 'Simple Approval', 'slug' => 'simple-approval', 'model' => User::class]);
     $v1 = $definition->versions()->create([

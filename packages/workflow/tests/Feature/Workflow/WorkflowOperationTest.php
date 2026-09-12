@@ -7,7 +7,7 @@ use Backpack\CRUD\app\Library\CrudPanel\CrudPanelFacade as CRUD;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Workflow\HasWorkflow;
-use Workflow\Http\Controllers\Operations\WorkflowBulkTransitionOperation;
+use Workflow\Http\Controllers\Operations\WorkflowOperation;
 use Workflow\Models\WorkflowDefinition;
 
 uses(RefreshDatabase::class);
@@ -33,7 +33,7 @@ if (! class_exists('WorkflowBulkTransitionTestCrudController')) {
     class WorkflowBulkTransitionTestCrudController extends CrudController
     {
         use ListOperation;
-        use WorkflowBulkTransitionOperation;
+        use WorkflowOperation;
 
         public function setup(): void
         {

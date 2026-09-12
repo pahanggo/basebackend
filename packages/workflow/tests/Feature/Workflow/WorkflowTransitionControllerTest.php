@@ -77,3 +77,68 @@ it('transitions a real workflow-enabled record through the shared endpoint', fun
     $instance->refresh();
     expect($instance->activeTokens()->first()->node_id)->toBe('approved');
 });
+
+it('redirects to return_to (with a flashed Prologue Alert) instead of back() when given a local URL', function () {
+    $definition = definitionForTransitionEndpoint();
+    $subject = User::factory()->create();
+
+    $workflowableClass = new class extends User
+    {
+        use \Workflow\HasWorkflow;
+
+        protected $table = 'users';
+
+        public function workflowDefinitionSlug(): string
+        {
+            return 'unused';
+        }
+    };
+    $workflowable = $workflowableClass::find($subject->id);
+
+    $engine = app(TransitionEngine::class);
+    $engine->start($workflowable, $definition);
+
+    $this->actingAs($this->admin)
+        ->post(route('workflow.transition'), [
+            'workflowable_type' => $workflowable::class,
+            'workflowable_id' => $subject->id,
+            'edge_id' => 'approve',
+            'return_to' => url('/app/some-list-page'),
+        ])
+        ->assertRedirect(url('/app/some-list-page'));
+
+    expect(\Alert::getMessages())->toHaveKey('success');
+});
+
+it('ignores a return_to pointing at a different host, falling back to back() instead of an open redirect', function () {
+    $definition = definitionForTransitionEndpoint();
+    $subject = User::factory()->create();
+
+    $workflowableClass = new class extends User
+    {
+        use \Workflow\HasWorkflow;
+
+        protected $table = 'users';
+
+        public function workflowDefinitionSlug(): string
+        {
+            return 'unused';
+        }
+    };
+    $workflowable = $workflowableClass::find($subject->id);
+
+    $engine = app(TransitionEngine::class);
+    $engine->start($workflowable, $definition);
+
+    $response = $this->actingAs($this->admin)
+        ->from(url('/app/somewhere-safe'))
+        ->post(route('workflow.transition'), [
+            'workflowable_type' => $workflowable::class,
+            'workflowable_id' => $subject->id,
+            'edge_id' => 'approve',
+            'return_to' => 'https://evil.example.com/phishing',
+        ])
+        ->assertRedirect(url('/app/somewhere-safe'));
+
+    expect($response->headers->get('Location'))->not->toContain('evil.example.com');
+});
