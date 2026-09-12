@@ -20,50 +20,53 @@
                 const container = document.getElementById('wf-settings-body');
                 if (! container) return;
 
-                let html = `<div class="form-group">
+                let html = `<div class="row"><div class="col-sm-6"><div class="form-group">
                     <label class="mb-1 small font-weight-bold">Name</label>
                     <input type="text" class="form-control form-control-sm" value="${this.graph.display_name ?? ''}"
                         onchange="Alpine.$data(document.querySelector('[x-data]')).setDisplayName(this.value)">
                     <small class="form-text text-muted">Shown on the show-workflow page header. Defaults to the model name.</small>
-                </div>
+                </div></div><div class="col-sm-6">
                 <div class="form-group">
                     <label class="mb-1 small font-weight-bold">Start state</label>
-                    <select class="form-control form-control-sm" style="width: auto" onchange="Alpine.$data(document.querySelector('[x-data]')).setStartState(this.value)">
+                    <select class="form-control form-control-sm" onchange="Alpine.$data(document.querySelector('[x-data]')).setStartState(this.value)">
                         <option value="">— none —</option>
                         ${this.graph.nodes.map(n => `<option value="${n.id}" ${n.id === this.graph.start ? 'selected' : ''}>${n.name || n.id}</option>`).join('')}
                     </select>
                 </div>
-                <hr>`;
+                </div>
+                </div>
+                <hr>
+                <label class="mb-1 small font-weight-bold">Actions</label>
+                <p class="text-muted small mb-2">
+                    Who can create, show, update, or delete records. Enable and leave blank to allow anyone with the base permission.
+                </p>
+                <div class="row">`;
 
                 const labels = { create: 'Create', show: 'Show', update: 'Update', delete: 'Delete' };
 
                 ['create', 'show', 'update', 'delete'].forEach(op => {
                     const setting = this.graph.operation_settings[op];
-                    html += `<div class="mb-3">
+                    html += `<div class="col-sm-6"><div class="mb-3">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="wf-op-enabled-${op}" ${setting.enabled ? 'checked' : ''}
                                 onchange="Alpine.$data(document.querySelector('[x-data]')).toggleOperationEnabled('${op}', this.checked)">
-                            <label class="form-check-label" for="wf-op-enabled-${op}">${labels[op]}</label>
+                            <label class="mb-1 small font-weight-bold" for="wf-op-enabled-${op}">${labels[op]}</label>
                         </div>`;
 
                     if (setting.enabled) {
                         html += `<div class="ml-4 mt-1">
-                            <label class="mb-1 small">Who can ${labels[op].toLowerCase()} (leave blank to allow anyone with the base permission)</label>
+                            <label class="mb-1 small text-muted">Who can ${labels[op].toLowerCase()}</label>
                             ${this.actorRuleField(setting.actor_rule, `graph.operation_settings.${op}.actor_rule`)}
                         </div>`;
                     }
 
-                    html += `</div>`;
+                    html += `</div></div>`;
                 });
 
-                html += `<hr>
+                html += `</div><hr>
                     <label class="mb-1 small font-weight-bold">List visibility</label>
                     <p class="text-muted small mb-2">
-                        Who can see which records in the list at all — independent of Show/Update/Delete
-                        above (those gate acting on a record you can already see, not seeing it in the
-                        first place). Evaluated top to bottom; the first matching rule wins. Leave empty
-                        to leave the list unrestricted (today's default). Once any rule exists here,
-                        though, an actor matching none of them sees nothing.
+                        Who sees which records in the list — separate from Show/Update/Delete above. First matching rule wins; empty means no restriction. Once a rule exists, unmatched actors see nothing.
                     </p>`;
 
                 (this.graph.visibility_rules || []).forEach((rule, i) => {

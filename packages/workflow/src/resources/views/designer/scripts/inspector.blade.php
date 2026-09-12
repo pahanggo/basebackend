@@ -25,7 +25,7 @@
                     html += this.textField('node.footer_view', 'footer_view', node.footer_view);
 
                     html += `<hr><label class="mb-1 d-block small">Row actions while a record is in this state</label>`;
-                    html += `<p class="text-muted small mb-2">Overrides the definition-level Show/Update/Delete settings (see the toolbar's gear icon) just for records currently sitting here — leave a row unchecked to fall back to that global default instead of hiding it here.</p>`;
+                    html += `<p class="text-muted small mb-2">Overrides the global Show/Update/Delete settings for records sitting here. Leave a row unchecked to use the global default.</p>`;
                     html += this.renderRowActionsFields(node);
                 }
                 html += `<div class="mt-3"><button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedNode()">Delete node</button></div>`;
@@ -90,7 +90,7 @@
                 html += this.selectField('edge.trigger', 'trigger', edge.trigger, ['manual', 'automatic', 'webhook', 'timer']);
 
                 if (edge.trigger === 'manual') {
-                    html += `<label class="mt-2 mb-1 d-block small">Who can trigger this (roles, permissions, users, or a model callback)</label>`;
+                    html += `<label class="mt-2 mb-1 d-block small text-muted">Who can trigger this (roles, permissions, users, or a model callback)</label>`;
                     html += this.actorRuleField(edge.actor_rule, 'edge.actor_rule');
                     html += this.selectField('edge.actor_rule.match', 'match', edge.actor_rule.match, ['any', 'all']);
 

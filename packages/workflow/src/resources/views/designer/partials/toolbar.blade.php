@@ -6,12 +6,12 @@
     <button type="button" class="btn btn-sm btn-light" data-toggle="tooltip" title="Fullscreen" @click="toggleFullscreen()"><i class="la la-expand-arrows-alt"></i></button>
     <a href="{{ url(config('backpack.base.route_prefix').'/workflows/definitions') }}" class="btn btn-sm btn-light" data-toggle="tooltip" title="Back to workflows"><i class="la la-times"></i></a>
     <span class="border-left mx-1" style="height: 20px"></span>
-    <button type="button" class="btn btn-sm btn-primary" @click="addNode('state')"><i class="la la-plus"></i> State</button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" @click="addNode('fork')"><i class="la la-plus"></i> Fork / Join</button>
+    <button type="button" class="btn btn-sm btn-primary" data-toggle="tooltip" title="Add a state — a step a record can sit in, with its own field policy and row_actions" @click="addNode('state')"><i class="la la-plus"></i> State</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="tooltip" title="Add a fork/join pair — splits into parallel branches that all fire at once, then waits for every branch before continuing" @click="addNode('fork')"><i class="la la-plus"></i> Fork / Join</button>
     <span class="border-left mx-1" style="height: 20px"></span>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="tooltip" title="Workflow settings — start state, and who can show/edit/delete this model's records" @click="openSettingsModal()"><i class="la la-cog"></i></button>
     <span class="border-left mx-1" style="height: 20px"></span>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="tooltip" title="Save without affecting what's currently live, without leaving the page" @click="saveDraft()" :disabled="savingDraft">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="tooltip" title="Save without affecting what's currently live" @click="saveDraft()" :disabled="savingDraft">
         <i class="la la-save"></i>
     </button>
     <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" title="Save and make this version live" @click="confirmPublish()" :disabled="savingDraft"><i class="la la-cloud-upload-alt"></i></button>
