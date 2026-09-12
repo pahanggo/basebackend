@@ -49,6 +49,9 @@ class WorkflowServiceProvider extends ServiceProvider
         $this->commands([
             \Workflow\Console\ProcessTimersCommand::class,
             \Workflow\Console\WorkflowInstallCommand::class,
+            \Workflow\Console\WorkflowExportCommand::class,
+            \Workflow\Console\WorkflowImportCommand::class,
+            \Workflow\Console\WorkflowValidateGraphCommand::class,
         ]);
 
         $this->applyFieldPolicyToEditForm();
