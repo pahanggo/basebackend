@@ -4,7 +4,7 @@
      convention as the node/edge inspector), not real Alpine bindings — see
      that mixin's own docblock for why. --}}
 <div class="modal" id="wf-settings-modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Workflow settings</h5>
