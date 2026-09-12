@@ -3,6 +3,7 @@
 namespace Workflow;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\URL;
 use Workflow\Models\WorkflowDefinition;
 use Workflow\Models\WorkflowInstance;
 
@@ -97,6 +98,33 @@ trait HasWorkflow
         }
 
         return false;
+    }
+
+    /**
+     * A stable URL an external system (a payment gateway, an ERP, ...) can
+     * POST to advance this record's workflow itself — see
+     * Workflow\Http\Controllers\WorkflowWebhookController and
+     * packages/workflow/docs/webhooks.md for the full contract. Only edges
+     * declared `trigger: 'webhook'` in the designer can be fired this way.
+     * Returns null when the record has no active instance to target.
+     *
+     * @param  \DateTimeInterface|\DateInterval|int|null  $expiration  Passed straight to
+     *         URL::signedRoute() — omit for a URL that never expires (fine to hand to an
+     *         integrator to store on their side), or pass e.g. now()->addDays(7) for a
+     *         one-off, time-boxed link.
+     */
+    public function signedWebhookUrl(string $edgeId, $expiration = null): ?string
+    {
+        $instance = $this->workflowInstance();
+
+        if (! $instance) {
+            return null;
+        }
+
+        return URL::signedRoute('workflow.webhook', [
+            'workflowInstance' => $instance->id,
+            'edgeId' => $edgeId,
+        ], $expiration);
     }
 
     /**

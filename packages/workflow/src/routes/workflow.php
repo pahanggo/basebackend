@@ -12,6 +12,7 @@ use Workflow\Http\Controllers\WorkflowShowController;
 use Workflow\Http\Controllers\WorkflowSimulateController;
 use Workflow\Http\Controllers\WorkflowTimelineController;
 use Workflow\Http\Controllers\WorkflowTransitionController;
+use Workflow\Http\Controllers\WorkflowWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,3 +54,24 @@ Route::group([
     Route::post('definitions/{workflowDefinition}/simulate', WorkflowSimulateController::class)
         ->name('workflow.designer.simulate');
 });
+
+/*
+| The inbound webhook is deliberately its OWN route group, outside the admin
+| prefix/auth/'web' middleware above — an external system calling it has no
+| Backpack session (so no CSRF token to send either; 'web' is what applies
+| VerifyCsrfToken, hence not included here) and is verified entirely by
+| Laravel's own 'signed' middleware instead. See HasWorkflow::signedWebhookUrl()
+| for how the URL itself gets generated, and docs/webhooks.md for the full
+| integrator-facing contract.
+|
+| SubstituteBindings is normally pulled in for free by the 'web'/'api'
+| middleware groups — since this route deliberately skips both, it has to be
+| listed explicitly, or {workflowInstance} never resolves to a real model at
+| all (it's what performs implicit route-model binding) and, worse, the
+| controller's OTHER parameters silently resolve against the wrong route
+| segments entirely (Illuminate\Routing\ResolvesRouteDependencies falls back
+| to positional matching for whichever parameters binding didn't handle).
+*/
+Route::post('workflows/webhook/{workflowInstance}/{edgeId}', WorkflowWebhookController::class)
+    ->middleware(['signed', 'throttle:60,1', \Illuminate\Routing\Middleware\SubstituteBindings::class])
+    ->name('workflow.webhook');

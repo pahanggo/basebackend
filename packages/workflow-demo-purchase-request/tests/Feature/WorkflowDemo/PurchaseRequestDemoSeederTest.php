@@ -109,3 +109,37 @@ it('forks into three department-feedback branches and only proceeds once all thr
     expect($request->technical_feedback)->toBe('Technical OK');
     expect($request->operations_feedback)->toBe('Operations OK');
 });
+
+it('lets an external system confirm payment via the signed webhook edge, once approved', function () {
+    // The webhook showcase (see the seeder's own graph() comment on
+    // 'payment_confirmed'): drive a request all the way to 'approved' the
+    // normal way, then advance it the rest of the way exactly as an outside
+    // system would — a real HTTP POST to a URL the app generated, with no
+    // Backpack session at all. See docs/webhooks.md for the integrator-facing
+    // contract this is demonstrating.
+    $request = PurchaseRequest::create(['requester_id' => $this->users['employee']->id, 'amount' => 250, 'purpose' => 'Test webhook path']);
+    $instance = $request->workflowInstance();
+
+    $token = $instance->activeTokens()->first();
+    $this->engine->transition($token, 'submit', [], $this->users['employee']);
+    $token = $instance->fresh()->activeTokens()->first();
+    $this->engine->transition($token, 'hod_skip_feedback', [], $this->users['hod']);
+    $token = $instance->fresh()->activeTokens()->first();
+    $this->engine->transition($token, 'finance_approve', [], $this->users['finance']);
+    $token = $instance->fresh()->activeTokens()->first();
+    $this->engine->transition($token, 'ceo_approve', [], $this->users['ceo']);
+    expect($instance->fresh()->activeTokens()->first()->node_id)->toBe('approved');
+
+    // No actingAs() — this is deliberately an unauthenticated request, the
+    // same as any real external caller would make.
+    $url = $request->signedWebhookUrl('payment_confirmed');
+    expect($url)->not->toBeNull();
+
+    $response = $this->postJson($url, ['inputs' => ['payment_reference' => 'ERP-REF-42']])
+        ->assertOk()
+        ->json();
+
+    expect($response['ok'])->toBeTrue();
+    expect($response['to'])->toBe('payment_processed');
+    expect($instance->fresh()->activeTokens()->first()->node_id)->toBe('payment_processed');
+});

@@ -145,6 +145,9 @@ class PurchaseRequestDemoSeeder extends Seeder
                 ['id' => 'pending_ceo_review', 'name' => 'Pending CEO review', 'type' => 'state'],
                 ['id' => 'approved', 'name' => 'Approved', 'type' => 'state'],
                 ['id' => 'rejected', 'name' => 'Rejected', 'type' => 'state'],
+                // The webhook showcase: reached only via the external-callback
+                // edge below, never a button a person clicks.
+                ['id' => 'payment_processed', 'name' => 'Payment processed', 'type' => 'state'],
             ],
             'edges' => [
                 [
@@ -238,6 +241,21 @@ class PurchaseRequestDemoSeeder extends Seeder
                     'id' => 'ceo_return', 'name' => 'Return for revision', 'from' => 'pending_ceo_review', 'to' => 'draft',
                     'trigger' => 'manual', 'actor_rule' => ['roles' => ['ceo'], 'permissions' => [], 'users' => [], 'model_callback' => '', 'match' => 'any'],
                     'surfaces' => ['record_button'], 'requires_confirmation' => $confirmReturnOrReject,
+                ],
+                // The webhook showcase: once a request is approved, this
+                // stands in for whatever external system actually pays out
+                // (an ERP, a banking API, ...) confirming back that it did.
+                // Nobody clicks this — it only ever fires via the signed URL
+                // HasWorkflow::signedWebhookUrl('payment_confirmed') returns
+                // for the record (see WorkflowWebhookControllerTest and
+                // PurchaseRequestDemoSeederTest's own webhook test for a
+                // real, driven-through-HTTP example of getting and calling
+                // that URL). No actor_rule is possible on a webhook edge —
+                // there's no logged-in user to check one against.
+                [
+                    'id' => 'payment_confirmed', 'name' => 'Payment confirmed (external callback)', 'from' => 'approved', 'to' => 'payment_processed',
+                    'trigger' => 'webhook',
+                    'inputs' => [['name' => 'payment_reference', 'type' => 'text', 'required' => true]],
                 ],
             ],
         ];
