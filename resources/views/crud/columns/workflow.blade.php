@@ -4,101 +4,57 @@
     token (state) plus a button for each manual, record_button-surfaced
     transition available to the logged-in user (actor_rule- and
     precondition-checked). See packages/workflow's HasWorkflow trait and
-    Support\{ActorRuleResolver,PreconditionEvaluator}.
+    Support\WorkflowStatusPresenter.
 
     This Blade file lives at the app level (not inside packages/workflow)
     because this fork of Backpack CRUD always resolves a column/field's
     `type` against the app's own resources/views/crud — see
     BackpackServiceProvider::loadViewsWithFallbacks(). The file itself stays
-    a thin wrapper; all the actual logic below is package-provided.
+    a thin wrapper; all the actual logic lives in WorkflowStatusPresenter,
+    shared with fields/workflow.blade.php so the two never drift apart.
+
+    Confirmation and transition-time inputs are captured via a shared modal
+    (openWorkflowTransitionModal/submitWorkflowTransitionModal), not
+    window.confirm()/window.prompt() — those are silently blocked/dismissed
+    in some browser contexts. That modal + its JS deliberately do NOT live
+    in this file: Backpack renders every row (and therefore this column)
+    exclusively through DataTables' AJAX /search endpoint, and a <script>
+    tag inserted via innerHTML (how DataTables places cell content) never
+    executes — a column-embedded <script> here would silently never run,
+    which is exactly the bug this replaced. See
+    crud/buttons/workflow_transition_assets.blade.php (a real page-load
+    button-stack entry, not ajax-rendered row content) for where that JS
+    actually lives — register it once per CrudController alongside this
+    column:
+        CRUD::addButton('top', 'workflow_transition_assets', 'view', 'crud::buttons.workflow_transition_assets');
 --}}
 @php
-    $workflowInstance = method_exists($entry, 'workflowInstance') ? $entry->workflowInstance() : null;
-    $currentUser = backpack_auth()->user();
-    $actorRules = app(\Workflow\Support\ActorRuleResolver::class);
-    $preconditions = app(\Workflow\Support\PreconditionEvaluator::class);
-
-    $availableEdges = [];
-    if ($workflowInstance) {
-        $version = $workflowInstance->version;
-        foreach ($workflowInstance->activeTokens as $token) {
-            foreach ($version->edgesFrom($token->node_id) as $edge) {
-                if (($edge['trigger'] ?? 'manual') !== 'manual') {
-                    continue;
-                }
-                if (! in_array('record_button', $edge['surfaces'] ?? ['record_button'])) {
-                    continue;
-                }
-                if (! $actorRules->allows($edge['actor_rule'] ?? null, $currentUser, $entry)) {
-                    continue;
-                }
-                if (! $preconditions->passes($edge['preconditions'] ?? null, $entry)) {
-                    continue;
-                }
-                $availableEdges[] = $edge;
-            }
-        }
-    }
+    $workflowStatus = app(\Workflow\Support\WorkflowStatusPresenter::class)
+        ->present($entry, backpack_auth()->user(), 'record_button');
 @endphp
 
 <div class="workflow-column">
-    @if ($workflowInstance)
-        @foreach ($workflowInstance->activeTokens as $token)
-            <span class="badge badge-info">{{ $token->node_id }}</span>
-        @endforeach
-    @else
+    @forelse ($workflowStatus['tokens'] as $token)
+        <span class="badge badge-info">{{ $token['label'] }}</span>
+    @empty
         <span class="text-muted">—</span>
-    @endif
+    @endforelse
 
-    @foreach ($availableEdges as $edge)
+    @foreach ($workflowStatus['transitions'] as $transition)
         <form method="POST"
               action="{{ route('workflow.transition') }}"
               class="d-inline workflow-transition-form"
-              data-requires-confirmation="{{ $edge['requires_confirmation'] ?? false ? '1' : '0' }}"
-              data-inputs="{{ collect($edge['inputs'] ?? [])->pluck('name')->implode(',') }}"
-              data-edge-id="{{ $edge['id'] }}">
+              data-transition="{{ json_encode([
+                  'edge_id' => $transition['edge_id'],
+                  'label' => $transition['label'],
+                  'requires_confirmation' => $transition['requires_confirmation'],
+                  'inputs' => $transition['inputs'],
+              ]) }}">
             @csrf
             <input type="hidden" name="workflowable_type" value="{{ get_class($entry) }}">
             <input type="hidden" name="workflowable_id" value="{{ $entry->getKey() }}">
-            <input type="hidden" name="edge_id" value="{{ $edge['id'] }}">
-            <button type="submit" class="btn btn-xs btn-outline-secondary">{{ $edge['button_label'] ?? $edge['name'] ?? $edge['id'] }}</button>
+            <input type="hidden" name="edge_id" value="{{ $transition['edge_id'] }}">
+            <button type="button" class="btn btn-xs btn-outline-secondary" onclick="openWorkflowTransitionModal(this)">{{ $transition['label'] }}</button>
         </form>
     @endforeach
 </div>
-
-@if ($crud->fieldTypeNotLoaded('workflow-column-script'))
-    @php $crud->markFieldTypeAsLoaded('workflow-column-script'); @endphp
-    @push('crud_list_scripts')
-    <script>
-        if (typeof window.workflowTransitionFormsBound === 'undefined') {
-            window.workflowTransitionFormsBound = true;
-
-            document.addEventListener('submit', function (event) {
-                var form = event.target.closest('.workflow-transition-form');
-                if (! form) {
-                    return;
-                }
-
-                if (form.dataset.requiresConfirmation === '1' && ! window.confirm('Are you sure?')) {
-                    event.preventDefault();
-                    return;
-                }
-
-                var inputNames = (form.dataset.inputs || '').split(',').filter(Boolean);
-                for (var i = 0; i < inputNames.length; i++) {
-                    var value = window.prompt(inputNames[i] + ':');
-                    if (value === null) {
-                        event.preventDefault();
-                        return;
-                    }
-                    var hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    hidden.name = 'inputs[' + inputNames[i] + ']';
-                    hidden.value = value;
-                    form.appendChild(hidden);
-                }
-            });
-        }
-    </script>
-    @endpush
-@endif

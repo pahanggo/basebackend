@@ -59,6 +59,20 @@ return [
             'foreign_key_constraints' => true,
         ],
 
+        // The Purchase Request demo's own store — separate from both the main
+        // app's database and the engine's own "workflow" connection above, per
+        // the same isolation rationale (and mirroring the kitchen sink's
+        // dedicated connection). The demo's workflow_instance rows on the
+        // "workflow" connection reference this connection's records purely by
+        // class name + id (workflowable_type/workflowable_id), never a real
+        // foreign key, so the cross-connection boundary is safe.
+        'purchase_request_demo' => [
+            'driver' => 'sqlite',
+            'database' => env('PURCHASE_REQUEST_DEMO_DB_DATABASE', database_path('purchase_request_demo.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),

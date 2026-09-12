@@ -6,6 +6,7 @@ use Backpack\CRUD\BackpackServiceProvider;
 use Backpack\Generators\GeneratorsServiceProvider;
 use Backpack\PermissionManager\PermissionManagerServiceProvider;
 use Workflow\WorkflowServiceProvider;
+use WorkflowDemo\PurchaseRequest\PurchaseRequestDemoServiceProvider;
 
 return [
 
@@ -62,6 +63,23 @@ return [
     */
 
     'kitchensink' => true,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Purchase Request workflow demo
+    |--------------------------------------------------------------------------
+    |
+    | Enables the Purchase Request demo, a worked example proving the
+    | packages/workflow engine end to end (fork/join, actor_rule, bulk
+    | transitions, the workflow column) against a real downstream model. It
+    | lives in its own SQLite database (see the "purchase_request_demo"
+    | connection in config/database.php). Run
+    | `php artisan workflow-demo:install` once to create and seed it. Disable
+    | this on projects that do not need it; the route and header link go away.
+    |
+    */
+
+    'workflow_demo' => true,
 
     /*
     |--------------------------------------------------------------------------
@@ -187,6 +205,7 @@ return [
         GeneratorsServiceProvider::class,
         PermissionManagerServiceProvider::class,
         WorkflowServiceProvider::class,
+        PurchaseRequestDemoServiceProvider::class,
 
         /*
          * Package Service Providers...

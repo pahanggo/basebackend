@@ -101,6 +101,10 @@ class TransitionEngine
             return null;
         }
 
+        if (! $this->hasRequiredInputs($edge['inputs'] ?? [], $inputs)) {
+            return null;
+        }
+
         $out = new TransitioningOut($instance, $token, $edge, $workflowable, $actor, $inputs);
         event($out);
 
@@ -123,14 +127,29 @@ class TransitionEngine
             'created_at' => now(),
         ]);
 
+        $this->applyStoreAs($edge['inputs'] ?? [], $inputs, $workflowable);
+
         foreach ($edge['actions'] ?? [] as $action) {
-            $this->actions->resolve($action['type'])->execute($action, [
-                'instance' => $instance,
-                'token' => $token,
-                'edge' => $edge,
-                'actor' => $actor,
-                'inputs' => $inputs,
-            ]);
+            // A side effect (a misconfigured mailer, a webhook host that's
+            // down) failing must never corrupt the state transition itself
+            // — by this point the token is already consumed and the history
+            // row already written, so a thrown exception here would
+            // otherwise leave the instance with no active token at all
+            // (the arrival below never runs) and no way to recover except
+            // manual repair. Actions are logged-and-skipped on failure
+            // instead, same as the plan's dry-run mode treats them as
+            // best-effort side effects, not gating conditions.
+            try {
+                $this->actions->resolve($action['type'])->execute($action, [
+                    'instance' => $instance,
+                    'token' => $token,
+                    'edge' => $edge,
+                    'actor' => $actor,
+                    'inputs' => $inputs,
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         TransitionedOut::dispatch($instance, $token, $edge, $workflowable, $history, $actor, $inputs);
@@ -285,6 +304,52 @@ class TransitionEngine
                     ...$row,
                 ]);
             }
+        }
+    }
+
+    /**
+     * An edge's `inputs` schema can mark individual entries `required` — this
+     * is the enforcement point, checked before the transition commits.
+     *
+     * @param  array<int, array>  $inputSchema  the edge's declared `inputs`
+     * @param  array<string, mixed>  $inputs  what was actually submitted
+     */
+    protected function hasRequiredInputs(array $inputSchema, array $inputs): bool
+    {
+        foreach ($inputSchema as $input) {
+            if (! empty($input['required']) && ($inputs[$input['name']] ?? '') === '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Maps each captured input whose schema entry declares `store_as` onto
+     * that column of the workflowable model. Every input (mapped or not)
+     * already landed in `workflow_instance_history.payload` above —
+     * `store_as` is only for the subset a developer wants to also become a
+     * real, queryable column on the record itself.
+     *
+     * @param  array<int, array>  $inputSchema  the edge's declared `inputs`
+     * @param  array<string, mixed>  $inputs  what was actually submitted
+     */
+    protected function applyStoreAs(array $inputSchema, array $inputs, Model $workflowable): void
+    {
+        $dirty = false;
+
+        foreach ($inputSchema as $input) {
+            if (empty($input['store_as']) || ! array_key_exists($input['name'], $inputs)) {
+                continue;
+            }
+
+            $workflowable->{$input['store_as']} = $inputs[$input['name']];
+            $dirty = true;
+        }
+
+        if ($dirty) {
+            $workflowable->save();
         }
     }
 }

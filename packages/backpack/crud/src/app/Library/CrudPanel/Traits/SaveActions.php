@@ -47,7 +47,10 @@ trait SaveActions
      */
     public function getSaveActionByOrder($order)
     {
-        return array_filter($this->getOperationSetting('save_actions'), function ($arr) use ($order) {
+        // No save action has been registered for this operation yet (e.g. no
+        // ShowOperation-style addSaveAction() call ran) — treat as "none",
+        // same as every other accessor in this file, instead of crashing.
+        return array_filter($this->getOperationSetting('save_actions') ?? [], function ($arr) use ($order) {
             return $arr['order'] == $order;
         });
     }
@@ -261,6 +264,12 @@ trait SaveActions
         } else {
             $currentAction = Arr::first($saveOptions);
         }
+
+        // No save action is visible at all for this operation (e.g. a CRUD
+        // with 'list' access but no 'create'/'update' access ever reaches
+        // this code path in practice, but nothing here should hard-crash if
+        // it does) — fall back to an inert, non-null action.
+        $currentAction = $currentAction ?? ['name' => $saveAction, 'button_text' => $saveAction];
 
         return [
             'value' => $currentAction['name'],

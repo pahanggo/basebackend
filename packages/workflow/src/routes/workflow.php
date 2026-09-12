@@ -7,6 +7,8 @@ use Workflow\Http\Controllers\WorkflowFieldDefinitionValidateController;
 use Workflow\Http\Controllers\WorkflowModelCallbackSearchController;
 use Workflow\Http\Controllers\WorkflowModelFieldsController;
 use Workflow\Http\Controllers\WorkflowModelSearchController;
+use Workflow\Http\Controllers\WorkflowSampleRecordSearchController;
+use Workflow\Http\Controllers\WorkflowSimulateController;
 use Workflow\Http\Controllers\WorkflowTransitionController;
 
 /*
@@ -41,4 +43,9 @@ Route::group([
     Route::get('model-callbacks/search', WorkflowModelCallbackSearchController::class)->name('workflow.model-callbacks.search');
     Route::get('models/fields', WorkflowModelFieldsController::class)->name('workflow.models.fields');
     Route::post('field-policy/validate-definitions', WorkflowFieldDefinitionValidateController::class)->name('workflow.field-policy.validate-definitions');
+
+    Route::get('definitions/{workflowDefinition}/sample-records/search', WorkflowSampleRecordSearchController::class)
+        ->name('workflow.sample-records.search');
+    Route::post('definitions/{workflowDefinition}/simulate', WorkflowSimulateController::class)
+        ->name('workflow.designer.simulate');
 });

@@ -53,4 +53,21 @@ class WorkflowDefinitionVersion extends Model
     {
         return collect($this->graph['edges'] ?? [])->where('to', $nodeId)->count();
     }
+
+    /**
+     * Every manual edge in the graph (from any node) whose `surfaces` list
+     * declares the given surface — e.g. 'bulk_action' to populate the
+     * WorkflowBulkTransitionOperation edge picker, independent of which node
+     * any particular record currently sits on.
+     *
+     * @return array<int, array>
+     */
+    public function edgesWithSurface(string $surface): array
+    {
+        return collect($this->graph['edges'] ?? [])
+            ->filter(fn (array $edge) => ($edge['trigger'] ?? 'manual') === 'manual'
+                && in_array($surface, $edge['surfaces'] ?? ['record_button'], true))
+            ->values()
+            ->all();
+    }
 }

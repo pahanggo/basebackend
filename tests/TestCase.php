@@ -31,4 +31,21 @@ abstract class TestCase extends BaseTestCase
             (require $file->getPathname())->up();
         }
     }
+
+    /**
+     * Fresh-migrates the isolated "purchase_request_demo" sqlite connection
+     * (":memory:" in tests, per phpunit.xml) — same rationale as
+     * migrateWorkflowDatabase(). Call from a test that exercises the
+     * Purchase Request demo package.
+     */
+    protected function migratePurchaseRequestDemoDatabase(): void
+    {
+        Schema::connection('purchase_request_demo')->dropAllTables();
+
+        $migrationsPath = base_path('packages/workflow-demo-purchase-request/src/Database/migrations');
+        $files = collect(File::files($migrationsPath))->sortBy(fn ($file) => $file->getFilename());
+        foreach ($files as $file) {
+            (require $file->getPathname())->up();
+        }
+    }
 }

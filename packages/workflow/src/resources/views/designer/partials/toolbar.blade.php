@@ -23,6 +23,8 @@
     </button>
     <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" title="Save and make this version live" @click="confirmPublish()"><i class="la la-cloud-upload-alt"></i></button>
     <span class="border-left mx-1" style="height: 20px"></span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="tooltip" title="Test with a sample record — runs a real record through this graph as currently drawn, without persisting anything or firing real actions" @click="openSimulateModal()"><i class="la la-flask"></i> Test</button>
+    <span class="border-left mx-1" style="height: 20px"></span>
     <button type="button" class="btn btn-sm btn-light" data-toggle="tooltip" title="Show/hide the inspector panel" @click="toggleInspector()"><i class="la la-columns"></i></button>
 </div>
 

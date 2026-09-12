@@ -28,6 +28,7 @@
     </form>
 
     @include('workflow::designer.partials.field-policy-modal')
+    @include('workflow::designer.partials.simulate-modal')
 </div>
 
 @include('workflow::designer.partials.svg-defs')
@@ -54,6 +55,7 @@
 @include('workflow::designer.scripts.connections')
 @include('workflow::designer.scripts.inspector')
 @include('workflow::designer.scripts.field-policy')
+@include('workflow::designer.scripts.simulate')
 @include('workflow::designer.scripts.save')
 
 <script>
@@ -90,6 +92,9 @@
                 // model's own columns, 'roles' for a field like "roles.name") —
                 // used to display each row's real "table.column" path.
                 fieldEditor: { nodeId: null, rows: [], tableMap: {} },
+                // "Test with a sample record" dry-run modal state — see
+                // scripts/simulate.blade.php. Never saved with the graph.
+                simulator: { recordId: null, currentNodeId: null, log: [] },
                 nodeIdToDrawflowId: {},
                 drawflowIdToNodeId: {},
                 suppressEvents: false,
@@ -99,6 +104,7 @@
             WF_CONNECTIONS_MIXIN,
             WF_INSPECTOR_MIXIN,
             WF_FIELD_POLICY_MIXIN,
+            WF_SIMULATE_MIXIN,
             WF_SAVE_MIXIN,
         );
     }

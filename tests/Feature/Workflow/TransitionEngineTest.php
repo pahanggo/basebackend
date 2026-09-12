@@ -247,3 +247,76 @@ it('lets a TransitioningOut listener cancel the transition', function () {
     $instance->refresh();
     expect($instance->activeTokens()->first()->node_id)->toBe('draft');
 });
+
+it('blocks a transition when a required input is missing', function () {
+    $graph = [
+        'start' => 'draft',
+        'nodes' => [['id' => 'draft', 'type' => 'state'], ['id' => 'rejected', 'type' => 'state']],
+        'edges' => [[
+            'id' => 'reject', 'from' => 'draft', 'to' => 'rejected', 'trigger' => 'manual',
+            'inputs' => [['name' => 'reason', 'type' => 'textarea', 'required' => true]],
+        ]],
+    ];
+    $definition = WorkflowDefinition::create(['name' => 'required-input', 'slug' => 'required-input', 'model' => User::class]);
+    $version = $definition->versions()->create(['version' => 1, 'graph' => $graph, 'published_at' => now()]);
+    $definition->update(['published_version_id' => $version->id]);
+
+    $user = User::factory()->create();
+    $instance = $this->engine->start($user, $definition->fresh());
+    $token = $instance->activeTokens()->first();
+
+    expect($this->engine->transition($token, 'reject', [], null, true))->toBeNull();
+
+    $token->refresh();
+    expect($token->status)->toBe('active');
+
+    $history = $this->engine->transition($token, 'reject', ['reason' => 'Over budget'], null, true);
+    expect($history)->not->toBeNull();
+});
+
+it('maps a captured input onto the workflowable model\'s own column via store_as', function () {
+    $graph = [
+        'start' => 'draft',
+        'nodes' => [['id' => 'draft', 'type' => 'state'], ['id' => 'reviewed', 'type' => 'state']],
+        'edges' => [[
+            'id' => 'review', 'from' => 'draft', 'to' => 'reviewed', 'trigger' => 'manual',
+            'inputs' => [['name' => 'remarks', 'type' => 'textarea', 'store_as' => 'name']],
+        ]],
+    ];
+    $definition = WorkflowDefinition::create(['name' => 'store-as', 'slug' => 'store-as', 'model' => User::class]);
+    $version = $definition->versions()->create(['version' => 1, 'graph' => $graph, 'published_at' => now()]);
+    $definition->update(['published_version_id' => $version->id]);
+
+    $user = User::factory()->create(['name' => 'Original Name']);
+    $instance = $this->engine->start($user, $definition->fresh());
+    $token = $instance->activeTokens()->first();
+
+    $history = $this->engine->transition($token, 'review', ['remarks' => 'Looks good'], null, true);
+
+    expect($history->inputs)->toBe(['remarks' => 'Looks good']);
+    expect($user->fresh()->name)->toBe('Looks good');
+});
+
+it('completes the transition even when an action throws, instead of corrupting the instance', function () {
+    $graph = [
+        'start' => 'draft',
+        'nodes' => [['id' => 'draft', 'type' => 'state'], ['id' => 'approved', 'type' => 'state']],
+        'edges' => [[
+            'id' => 'approve', 'from' => 'draft', 'to' => 'approved', 'trigger' => 'manual',
+            'actions' => [['type' => 'call_webhook', 'url' => 'http://this-host-does-not-resolve.invalid']],
+        ]],
+    ];
+    $definition = WorkflowDefinition::create(['name' => 'failing-action', 'slug' => 'failing-action', 'model' => User::class]);
+    $version = $definition->versions()->create(['version' => 1, 'graph' => $graph, 'published_at' => now()]);
+    $definition->update(['published_version_id' => $version->id]);
+
+    $user = User::factory()->create();
+    $instance = $this->engine->start($user, $definition->fresh());
+    $token = $instance->activeTokens()->first();
+
+    $history = $this->engine->transition($token, 'approve', [], null, true);
+
+    expect($history)->not->toBeNull();
+    $instance->refresh();
+    expect($instance->activeTokens()->first()->node_id)->toBe('approved');
+});
