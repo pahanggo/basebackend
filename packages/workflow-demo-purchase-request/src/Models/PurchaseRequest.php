@@ -88,4 +88,33 @@ class PurchaseRequest extends Model
     {
         return $user !== null && $user->id == $this->requester_id;
     }
+
+    /**
+     * A `visibility_rules` model_callback scope — see
+     * Workflow\Support\WorkflowVisibilityScope and
+     * PurchaseRequestDemoSeeder::DEPARTMENTS. "Department" is deliberately
+     * not a column on this model (or on the app's own shared `users`
+     * table): it's derived purely from a `department_{name}` role on the
+     * requester, the same schema-free, role-driven approach the rest of
+     * this demo already uses for everything else. Sees nothing at all if
+     * the actor isn't tagged with a department role themselves — an HOD
+     * with no department can't fall back to seeing everyone's.
+     */
+    public function visibleToDepartment($query, ?User $actor): void
+    {
+        $departmentRoles = collect(\WorkflowDemo\PurchaseRequest\Database\Seeders\PurchaseRequestDemoSeeder::DEPARTMENTS)
+            ->map(fn (string $department) => "department_{$department}");
+
+        $actorDepartments = $actor ? collect($actor->getRoleNames())->intersect($departmentRoles) : collect();
+
+        if ($actorDepartments->isEmpty()) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $requesterIds = User::role($actorDepartments->values()->all())->pluck('id');
+
+        $query->whereIn('requester_id', $requesterIds);
+    }
 }

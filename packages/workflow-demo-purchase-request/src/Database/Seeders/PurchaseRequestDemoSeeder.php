@@ -40,6 +40,23 @@ class PurchaseRequestDemoSeeder extends Seeder
     /** @var array<int, string> */
     public const ROLES = ['employee', 'hod', 'marketing', 'technical', 'operations', 'finance', 'ceo'];
 
+    /**
+     * Department "tags" — separate roles from the department REVIEW-stage
+     * roles above (marketing/technical/operations, which gate the fork/join
+     * feedback edges) so tagging an employee or HOD with a department can
+     * never accidentally also grant them a reviewer's own transitions.
+     * Schema-free by design: rather than a `department` column on either
+     * `users` (the app's own shared table, not this demo's) or
+     * `purchase_requests`, a record's department is derived purely from its
+     * requester's own department role — see
+     * PurchaseRequest::visibleToDepartment(), the model_callback backing
+     * the "HOD sees only their department" example in
+     * PurchaseRequestVisibilityRulesTest.
+     *
+     * @var array<int, string>
+     */
+    public const DEPARTMENTS = ['marketing', 'technical', 'operations'];
+
     public function run(): void
     {
         $roleModel = config('backpack.permissionmanager.models.role');
@@ -56,6 +73,8 @@ class PurchaseRequestDemoSeeder extends Seeder
             $users[$roleName] = $user;
         }
 
+        $this->seedDepartmentUsers($roleModel);
+
         $definition = WorkflowDefinition::firstOrCreate(
             ['slug' => 'purchase-request-demo'],
             ['name' => 'Purchase Request', 'description' => 'Demo workflow — see the architecture plan\'s worked example.', 'model' => PurchaseRequest::class]
@@ -65,6 +84,31 @@ class PurchaseRequestDemoSeeder extends Seeder
         $definition->update(['published_version_id' => $version->id]);
 
         $this->seedSampleRequests($users);
+    }
+
+    /**
+     * One employee and one HOD per department (in addition to the flat,
+     * department-less 'employee'/'hod' demo users the ROLES loop above
+     * already seeds, which every *other* test/example in this package
+     * still uses unchanged) — enough to prove a department-scoped
+     * visibility rule actually excludes another department's records,
+     * not just pass trivially because there's only one of each to test
+     * with. Emails follow "{role}-{department}@purchase-request-demo.test".
+     */
+    protected function seedDepartmentUsers(string $roleModel): void
+    {
+        foreach (self::DEPARTMENTS as $department) {
+            $departmentRole = "department_{$department}";
+            $roleModel::firstOrCreate(['name' => $departmentRole, 'guard_name' => 'web']);
+
+            foreach (['employee', 'hod'] as $baseRole) {
+                $user = User::firstOrCreate(
+                    ['email' => "{$baseRole}-{$department}@purchase-request-demo.test"],
+                    ['name' => ucfirst($baseRole)." ({$department}, demo)", 'username' => "{$baseRole}-{$department}-demo", 'password' => bcrypt('password')]
+                );
+                $user->syncRoles([$baseRole, $departmentRole]);
+            }
+        }
     }
 
     /**

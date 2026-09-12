@@ -102,6 +102,18 @@
                         });
                         return settings;
                     })(),
+                    // Ordered list-visibility rules — see
+                    // Workflow\Support\WorkflowVisibilityScope. Unlike
+                    // operation_settings above (always exactly one object per
+                    // operation), this is a genuinely ordered array: first
+                    // actor_rule match wins, so row order is meaningful and
+                    // preserved exactly as saved.
+                    visibility_rules: (initialGraph.visibility_rules || []).map(r => ({
+                        actor_rule: r.actor_rule || null,
+                        scope: r.scope || 'all',
+                        owner_field: r.owner_field || '',
+                        model_callback: r.model_callback || '',
+                    })),
                 },
                 // Drives the toolbar's "Editing version N — published (currently
                 // live)" / "Editing draft — not yet published" caption.

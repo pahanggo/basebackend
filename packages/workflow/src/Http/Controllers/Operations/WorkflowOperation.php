@@ -37,6 +37,7 @@ trait WorkflowOperation
         $this->crud->operation('list', function () {
             // $this->crud->addColumn(['name' => 'workflow', 'type' => 'workflow', 'label' => 'Workflow']);
             $this->addWorkflowPendingActionsFilter();
+            $this->applyWorkflowVisibilityScope();
         });
 
         // Replaces Backpack's own show/update/delete buttons (same names,
@@ -104,6 +105,22 @@ trait WorkflowOperation
                 CRUD::addClause('whereIn', $this->crud->model->getKeyName(), $ids);
             }
         );
+    }
+
+    /**
+     * Applies the definition's `visibility_rules` (see
+     * Workflow\Support\WorkflowVisibilityScope) directly to the list
+     * query — not a toggle-able Filter like "Pending my action" above, since
+     * the whole point is that a viewer can never turn it off to see rows
+     * they shouldn't. A definition-level, list-visibility concern only:
+     * whether a *specific* record a request is actually about can be
+     * shown/updated/deleted once found is still entirely
+     * operation_settings/row_actions/actor_rule's job, unrelated to this.
+     */
+    protected function applyWorkflowVisibilityScope(): void
+    {
+        app(\Workflow\Support\WorkflowVisibilityScope::class)
+            ->apply($this->crud->query, get_class($this->crud->model), backpack_auth()->user());
     }
 
     /**

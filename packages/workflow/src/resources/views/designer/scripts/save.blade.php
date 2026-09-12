@@ -14,6 +14,7 @@
                     start: this.graph.start,
                     display_name: this.graph.display_name,
                     operation_settings: this.buildOperationSettingsPayload(),
+                    visibility_rules: this.buildVisibilityRulesPayload(),
                     // So a designer reopening this definition lands back where
                     // they left off instead of the default top-left/100% view.
                     view: { x: this.editor.canvas_x, y: this.editor.canvas_y, zoom: this.editor.zoom },
@@ -86,6 +87,24 @@
                 });
 
                 return settings;
+            },
+
+            /** List-visibility rules (see Workflow\Support\WorkflowVisibilityScope)
+             *  — an ORDERED array, unlike operation_settings above, so unlike
+             *  every other "don't persist an empty default" spot in this
+             *  file, a rule with no actor_rule at all is still saved: it's a
+             *  meaningful catch-all ("match anyone"), not a blank default. */
+            buildVisibilityRulesPayload() {
+                return (this.graph.visibility_rules || []).map(rule => {
+                    const entry = { scope: rule.scope || 'all' };
+                    const actorRule = rule.actor_rule || {};
+                    if ((actorRule.roles || []).length || (actorRule.permissions || []).length || (actorRule.users || []).length || actorRule.model_callback) {
+                        entry.actor_rule = actorRule;
+                    }
+                    if (rule.scope === 'owner' && rule.owner_field) entry.owner_field = rule.owner_field;
+                    if (rule.scope === 'model_callback' && rule.model_callback) entry.model_callback = rule.model_callback;
+                    return entry;
+                });
             },
 
             /** Shared by saveDraft()/confirmPublish() — posts the current
