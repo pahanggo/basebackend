@@ -8,7 +8,42 @@
     // those handlers call into. Merged onto the main workflowDesigner()
     // Alpine component in edit.blade.php.
     const WF_INSPECTOR_MIXIN = {
+            /**
+             * `renderNodeInspector()`/`renderEdgeInspector()` are bound via
+             * Alpine's `x-html`, which reactively reruns and blindly
+             * overwrites the panel's innerHTML whenever ANY reactive value
+             * either of them reads changes — not just when the user
+             * switches to a different node/edge, but on every single field
+             * edit within the SAME one too (setPath/removeAt/etc. all mutate
+             * `this.graph`, which both render functions read from). That
+             * innerHTML replacement wipes out whatever select2 widgets were
+             * mounted in the old markup WITHOUT ever calling their own
+             * destroy() — so if one of those widgets ever had its dropdown
+             * opened (select2's AttachBody decorator binds a namespaced
+             * 'scroll' listener onto every scrollable ancestor — here,
+             * .workflow-inspector itself — that snaps the ancestor's
+             * scrollTop back to wherever it was when the dropdown opened,
+             * meant to keep the dropdown glued to its field), that listener
+             * is bound to .workflow-inspector, not to the widget's own
+             * (about-to-be-destroyed) DOM, so it survives the wipe and
+             * freezes the whole panel's scroll forever. destroySelect2Safely()
+             * on its own (see WF_INSPECTOR_MIXIN's other comment) only
+             * covers OUR OWN manual reinitSelect2Widgets() calls — it can't
+             * help here because Alpine's swap happens independently,
+             * without going through that code path at all. Running the same
+             * cleanup here, at the very top of both render functions —
+             * called synchronously every time, right before Alpine (or our
+             * own code) is about to replace this panel's content — is the
+             * one choke point that's guaranteed to run first regardless of
+             * what triggered the re-render.
+             */
+            destroyInspectorSelect2Widgets() {
+                document.querySelectorAll('.workflow-inspector .wf-actor-select2, .workflow-inspector .wf-model-callback-select2')
+                    .forEach(el => this.destroySelect2Safely($(el)));
+            },
+
             renderNodeInspector() {
+                this.destroyInspectorSelect2Widgets();
                 const node = this.findNode(this.selected.id);
                 if (! node) return '';
                 let html = `<h5>Node: ${node.id}</h5>`;
@@ -28,8 +63,91 @@
                     html += `<p class="text-muted small mb-2">Overrides the global Show/Update/Delete settings for records sitting here. Leave a row unchecked to use the global default.</p>`;
                     html += this.renderRowActionsFields(node);
                 }
-                html += `<div class="mt-3"><button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedNode()">Delete node</button></div>`;
+                html += this.renderNodeTransitionsList(node);
+
+                html += `<div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="Alpine.$data(document.querySelector('[x-data]')).cloneSelectedNode()">Clone node</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedNode()">Delete node</button>
+                </div>`;
                 return html;
+            },
+
+            /** Lists every connection touching this node, split into
+             *  outgoing/incoming — clicking a row jumps straight to that
+             *  connection (selects it, highlights its line on the canvas,
+             *  and swaps the panel to its own inspector), the same way
+             *  clicking the line itself would. Useful once a node has
+             *  several edges converging on it and the lines get hard to
+             *  pick out visually (see connections.blade.php's lane system). */
+            renderNodeTransitionsList(node) {
+                const outgoing = this.graph.edges.filter(e => e.from === node.id);
+                const incoming = this.graph.edges.filter(e => e.to === node.id);
+
+                const row = (edge, otherNodeId, arrow) => {
+                    const otherName = this.findNode(otherNodeId)?.name || otherNodeId;
+                    const label = edge.name || edge.id;
+                    return `<div class="wf-transition-row small" onclick="Alpine.$data(document.querySelector('[x-data]')).selectEdge('${edge.id}')">
+                        <i class="la ${arrow === 'out' ? 'la-long-arrow-alt-right' : 'la-long-arrow-alt-left'}"></i>
+                        <span class="flex-grow-1">${label}</span>
+                        <span class="text-muted small">${arrow === 'out' ? '&rarr; ' + otherName : otherName + ' &rarr;'}</span>
+                    </div>`;
+                };
+
+                let html = ''
+                html += `<label class="mt-2 mb-1 d-block small">Incoming transitions (${incoming.length})</label>`;
+                html += incoming.length
+                    ? incoming.map(e => row(e, e.from, 'in')).join('')
+                    : `<p class="text-muted small">None.</p>`;
+
+                html += `<hr><label class="mb-1 d-block small">Outgoing transitions (${outgoing.length})</label>`;
+                html += outgoing.length
+                    ? outgoing.map(e => row(e, e.to, 'out')).join('')
+                    : `<p class="text-muted small">None.</p>`;
+
+
+                return html;
+            },
+
+            /** Selects a connection by id — same end state as clicking its
+             *  line on the canvas (opens its inspector, and
+             *  updateSelectedConnectionStyling()/redrawOrthogonalConnections()
+             *  highlight it), used by the node inspector's transitions list. */
+            selectEdge(edgeId) {
+                if (! this.findEdge(edgeId)) return;
+                this.selected = { kind: 'edge', id: edgeId };
+                this.redrawOrthogonalConnections();
+                this.$nextTick(() => this.reinitSelect2Widgets());
+            },
+
+            /** The connection inspector's "Connected nodes" list — From/To,
+             *  clicking either jumps to that node (selects it, marks it
+             *  active on the canvas via the same selectNodeVisually() a
+             *  toolbar-created node uses, and swaps the panel to its own
+             *  inspector). Mirrors renderNodeTransitionsList()'s row shape
+             *  on the node inspector, the other direction. */
+            renderEdgeNodesList(edge) {
+                const row = (nodeId, label) => {
+                    const name = this.findNode(nodeId)?.name || nodeId;
+                    return `<div class="wf-transition-row small" onclick="Alpine.$data(document.querySelector('[x-data]')).selectNode('${nodeId}')">
+                        <span>${label}</span>
+                        <span class="flex-grow-1">${name}</span>
+                    </div>`;
+                };
+
+                let html = `<hr/><label class="mt-2 mb-1 d-block small">Connected nodes</label>`;
+                html += row(edge.from, '<i class="la la-long-arrow-alt-right"></i>');
+                html += row(edge.to, '<i class="la la-long-arrow-alt-left"></i>');
+                return html;
+            },
+
+            /** Selects a node by id — same end state as clicking it on the
+             *  canvas (marks it active there too, via selectNodeVisually,
+             *  and swaps the panel to its own inspector), used by the
+             *  connection inspector's connected-nodes list. */
+            selectNode(nodeId) {
+                if (! this.findNode(nodeId)) return;
+                this.selectNodeVisually(nodeId);
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             /**
@@ -80,6 +198,7 @@
             },
 
             renderEdgeInspector() {
+                this.destroyInspectorSelect2Widgets();
                 const edge = this.findEdge(this.selected.id);
                 if (! edge) return '';
                 const fromName = this.findNode(edge.from)?.name || edge.from;
@@ -125,7 +244,9 @@
                     html += `<button type="button" class="btn btn-sm btn-outline-primary" onclick="Alpine.$data(document.querySelector('[x-data]')).addInput()">+ Add input field</button>`;
                 }
 
-                html += `<div class="mt-3"><button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedEdge()">Delete connection</button></div>`;
+                html += this.renderEdgeNodesList(edge);
+
+                html += `<div class="mt-3 d-flex justify-content-end"><button type="button" class="btn btn-sm btn-danger" onclick="Alpine.$data(document.querySelector('[x-data]')).removeSelectedEdge()">Delete connection</button></div>`;
                 return html;
             },
 
@@ -248,7 +369,7 @@
                 document.querySelectorAll('.wf-actor-select2').forEach(el => {
                     const $el = $(el);
                     if ($el.hasClass('select2-hidden-accessible')) {
-                        $el.select2('destroy');
+                        this.destroySelect2Safely($el);
                     }
 
                     // Inside a Bootstrap modal (the settings modal; a node's
@@ -320,7 +441,7 @@
                 document.querySelectorAll('.wf-model-callback-select2').forEach(el => {
                     const $el = $(el);
                     if ($el.hasClass('select2-hidden-accessible')) {
-                        $el.select2('destroy');
+                        this.destroySelect2Safely($el);
                     }
 
                     $el.select2({
@@ -345,6 +466,28 @@
                         app.setPath(el.dataset.path, $el.val() || '');
                     });
                 });
+            },
+
+            /** select2('destroy') alone can leave a real bug behind: opening
+             *  a select2 dropdown makes it bind a namespaced 'scroll'
+             *  listener onto every scrollable ancestor (the settings modal
+             *  body, the inspector panel) that snaps that ancestor's
+             *  scrollTop back to wherever it was the instant the dropdown
+             *  opened — select2's own way of keeping the dropdown glued to
+             *  its field while the page can't scroll out from under it. That
+             *  listener is only ever removed by select2's own close()
+             *  teardown; destroy() doesn't run it, so destroying a widget
+             *  whose dropdown happens to still be open (exactly what removing
+             *  a selected chip does, right before our onchange handler
+             *  re-inits everything) leaves the ancestor's scroll frozen at
+             *  that position forever — the "settings modal only scrolls
+             *  down to where it just was" bug. Closing first runs select2's
+             *  own real cleanup instead of working around it separately. */
+            destroySelect2Safely($el) {
+                if ($el.data('select2')) {
+                    $el.select2('close');
+                }
+                $el.select2('destroy');
             },
 
             /** All select2 widgets the inspector might currently contain —

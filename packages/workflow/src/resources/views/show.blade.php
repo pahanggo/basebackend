@@ -12,6 +12,20 @@
 --}}
 @extends(backpack_view('blank'))
 
+@push('after_styles')
+<style>
+    label:empty {
+        display: none;
+    }
+</style>
+{{-- Editable fields (crud::fields.{type}) push their own CSS onto the same
+     'crud_fields_styles' stack a normal Backpack create/edit form renders —
+     see crud/form_content.blade.php. This page builds its own <form> rather
+     than including that partial, so the stack has to be output here too or
+     an editable field's own styling silently never applies. --}}
+@stack('crud_fields_styles')
+@endpush
+
 @section('header')
     <section class="container-fluid d-print-none mb-4 mt-3">
         <h2>
@@ -26,6 +40,26 @@
 @endphp
 
 @section('content')
+    {{--
+        A row whose field_policy marks it visible + not-readonly
+        renders as a genuinely editable input (crud::fields.{type},
+        via InlineFieldCrudStub) instead of a read-only column —
+        saved straight from this page (workflow.show.update),
+        deliberately independent of the model's own Backpack
+        Update operation/button (see WorkflowInlineFieldRenderer).
+        The whole table is one form only when at least one row is
+        editable, so a purely read-only state renders exactly as
+        before.
+    --}}
+    @if ($hasEditableFields)
+        <form method="POST" action="{{ route('workflow.show.update') }}" enctype="multipart/form-data" id="wf-inline-edit-form">
+            @csrf
+            <input type="hidden" name="workflowable_type" value="{{ get_class($workflowable) }}">
+            <input type="hidden" name="workflowable_id" value="{{ $workflowable->getKey() }}">
+            @if ($returnTo)
+                <input type="hidden" name="return_to" value="{{ $returnTo }}">
+            @endif
+    @endif
     <div class="row">
         <div class="{{ $workflowTimeline ? 'col-md-8' : 'col-md-12' }}">
             @if (! empty($node['header_view']) && view()->exists($node['header_view']))
@@ -43,7 +77,20 @@
                                 <tr>
                                     <td style="width: 30%"><strong>{{ $column['label'] }}</strong></td>
                                     <td>
-                                        @if (view()->exists('vendor.backpack.crud.columns.' . $column['type']))
+                                        @if ($column['editable'] ?? false)
+                                            @php
+                                                // No 'label' here — the table's own left-hand
+                                                // column already shows it, so the field
+                                                // partial's own <label> would just duplicate it.
+                                                $field = array_merge($column, [
+                                                    'name' => $column['name'],
+                                                    'label' => '',
+                                                    'type' => $column['render_type'],
+                                                    'wrapper' => ['class' => '']
+                                                ]);
+                                            @endphp
+                                            @include('crud::fields.' . $column['render_type'], ['field' => $field, 'crud' => $inlineEditCrud, 'entry' => $workflowable])
+                                        @elseif (view()->exists('vendor.backpack.crud.columns.' . $column['type']))
                                             @include('vendor.backpack.crud.columns.' . $column['type'], ['entry' => $workflowable])
                                         @elseif (view()->exists('crud::columns.' . $column['type']))
                                             @include('crud::columns.' . $column['type'], ['entry' => $workflowable])
@@ -69,7 +116,19 @@
             </div>
         @endif
     </div>
-    <div class="row">
+    @if ($hasEditableFields)
+            <div class="row d-none" id="save-actions">
+                <div class="col-12">
+                    <div class="bg-white p-3">
+                        <h6 class="text-muted">Next actions</h6>
+                        <button type="submit" class="btn btn-primary mb-3">Save changes</button>
+                        <a class="btn btn-default mb-3" href="javascript:window.location.reload(true)">Cancel changes</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    @endif
+    <div class="row" id="transition-actions">
         <div class="col-12">
             <div class="bg-white p-3">
                 @if ($node != null)
@@ -119,7 +178,63 @@
 @endsection
 
 @section('after_scripts')
+    {{-- Same reasoning as the 'crud_fields_styles' stack above, for JS: an
+         editable field (crud::fields.{type}) pushes its init script here via
+         'crud_fields_scripts' — see e.g. crud/fields/money.blade.php's own
+         bpFieldInitMoneyElement. --}}
+    @stack('crud_fields_scripts')
+
     <script>
+        {{-- A field with a `data-init-function` attribute (money, date
+             pickers, select2, switch, etc.) is inert until its init
+             function actually runs on the element — a normal Backpack
+             create/edit form does this via crud/form_content.blade.php's
+             own copy of this exact dispatcher. This page renders fields
+             directly, bypassing that partial entirely, so without this the
+             field LOOKS interactive (its own inline JS still handles
+             typing/formatting once initialized) but the hidden input that's
+             actually submitted on Save never gets wired up in the first
+             place — silently submitting whatever value the field started
+             the page with, no matter what the user typed. --}}
+        function wfInitializeFieldsWithJavascript(container) {
+            $(container).find('[data-init-function]').not('[data-initialized=true]').each(function () {
+                var element = $(this);
+                var functionName = element.data('init-function');
+
+                if (typeof window[functionName] === 'function') {
+                    window[functionName](element);
+                    element.attr('data-initialized', 'true');
+                }
+            });
+        }
+
+        jQuery('document').ready(function ($) {
+            wfInitializeFieldsWithJavascript('form');
+        });
+
+        {{-- Once the user actually touches an editable field, "Save
+             changes" is what they mean to do next — not fire a state
+             transition on the unsaved edit's original values — so swap
+             which action bar is visible. Listens on the edit form itself
+             (native 'input'/'change', which also catches jQuery-triggered
+             ones like money's own hidden-input sync) rather than per-field,
+             so this works for any field type without per-type wiring. --}}
+        (function () {
+            var editForm = document.getElementById('wf-inline-edit-form');
+
+            if (! editForm) {
+                return;
+            }
+
+            var markDirty = function () {
+                document.getElementById('save-actions')?.classList.remove('d-none');
+                document.getElementById('transition-actions')?.classList.add('d-none');
+            };
+
+            editForm.addEventListener('input', markDirty);
+            editForm.addEventListener('change', markDirty);
+        })();
+
         window.wfTransitionForm = null;
 
         window.openWorkflowTransitionModal = function (button) {

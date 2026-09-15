@@ -89,8 +89,15 @@
                 // wrapping element (rather than canvasEl itself, where
                 // Drawflow's listener would still run first since it was
                 // registered earlier) stops the event before it ever
-                // reaches Drawflow's handler.
+                // reaches Drawflow's handler. #workflow-canvas-wrap is also
+                // the parent of the whole inspector panel though (see
+                // edit.blade.php) — without the target check below this
+                // blanket-blocked right-click there too, breaking the
+                // browser's own text-field context menu (Cut/Copy/Paste)
+                // and "Inspect" on every field in the node/edge inspector,
+                // not just the canvas this was meant to guard.
                 document.getElementById('workflow-canvas-wrap').addEventListener('contextmenu', (e) => {
+                    if (! e.target.closest('#workflow-canvas')) return;
                     e.preventDefault();
                     e.stopPropagation();
                 }, true);
@@ -121,63 +128,70 @@
                 $('.wf-float-toolbar [data-toggle="tooltip"], .wf-zoom-controls [data-toggle="tooltip"]').tooltip();
             },
 
-            /** Ctrl/Cmd+C copies the selected state/fork/join node; Ctrl/Cmd+V
-             *  drops a clone of the last-copied node next to its source.
-             *  Ignored while typing in an inspector field so it doesn't
-             *  hijack normal copy/paste there. */
+            /** Ctrl/Cmd+S saves the draft from anywhere on the page,
+             *  including while typing in an inspector field — it also
+             *  suppresses the browser's own "Save page" dialog rather than
+             *  let that fire alongside it. Node copy/paste used to live here
+             *  too (Ctrl/Cmd+C / Ctrl/Cmd+V), but keyboard-driven copy could
+             *  never reliably tell "the user wants to copy the selected
+             *  node" apart from "the user highlighted some plain text in
+             *  the inspector and wants a normal browser copy" — highlighting
+             *  text doesn't focus any element, so there was no reliable
+             *  signal to distinguish the two, and it intermittently ate
+             *  real text copies whenever a node happened to be selected.
+             *  Replaced with an explicit "Clone node" button in the node
+             *  inspector (see cloneSelectedNode()) instead. */
             handleKeydown(e) {
                 if (! (e.ctrlKey || e.metaKey)) return;
-                const key = e.key.toLowerCase();
+                if (e.key.toLowerCase() !== 's') return;
 
-                // Save works from anywhere on the page, including while typing
-                // in an inspector field — it should also suppress the browser's
-                // own "Save page" dialog rather than let that fire alongside it.
-                if (key === 's') {
-                    e.preventDefault();
-                    this.saveDraft();
-                    return;
-                }
-
-                const tag = document.activeElement ? document.activeElement.tagName : '';
-                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (document.activeElement && document.activeElement.isContentEditable)) return;
-
-                if (key === 'c' && this.selected && this.selected.kind === 'node') {
-                    e.preventDefault();
-                    this.copySelectedNode();
-                } else if (key === 'v' && this.clipboardNode) {
-                    e.preventDefault();
-                    this.pasteClonedNode();
-                }
+                e.preventDefault();
+                this.saveDraft();
             },
 
-            copySelectedNode() {
-                const node = this.findNode(this.selected.id);
-                if (node) this.clipboardNode = JSON.parse(JSON.stringify(node));
-            },
-
-            pasteClonedNode() {
-                const source = this.clipboardNode;
+            /** Duplicates the currently selected node right next to itself —
+             *  same field_policy/header_view/footer_view/row_actions clone
+             *  pasteClonedNode() used to build off a copy/paste clipboard,
+             *  just applied immediately to the selection instead of needing
+             *  a separate copy step first. Confirmed first via swal() since
+             *  it's a one-click action that alters the graph (adds a node,
+             *  connectable like any other) — cheap to undo (delete it
+             *  again), but still worth a deliberate confirm rather than
+             *  firing on the first click. */
+            cloneSelectedNode() {
+                const source = this.findNode(this.selected.id);
                 if (! source) return;
 
-                const id = this.generateNodeId(source.type);
-                const node = {
-                    id,
-                    name: source.name + ' copy',
-                    type: source.type,
-                    field_policy: JSON.parse(JSON.stringify(source.field_policy || [])),
-                    header_view: source.header_view || '',
-                    footer_view: source.footer_view || '',
-                    row_actions: JSON.parse(JSON.stringify(source.row_actions || {})),
-                };
-                this.graph.nodes.push(node);
+                swal({
+                    title: 'Clone this node?',
+                    text: `A copy of "${source.name || source.id}" (with the same field policy, header/footer, and row actions) will be added next to it.`,
+                    icon: 'info',
+                    buttons: ['Cancel', 'Clone'],
+                }).then((confirmed) => {
+                    if (! confirmed) return;
 
-                const sourceDfId = this.nodeIdToDrawflowId[source.id];
-                const sourcePos = sourceDfId != null ? this.editor.drawflow.drawflow[this.editor.module].data[sourceDfId] : null;
-                const x = this.snap((sourcePos ? sourcePos.pos_x : 120) + 220);
-                const y = this.snap(sourcePos ? sourcePos.pos_y : 100);
-                this.drawNode(node, x, y);
-                this.updateMinimap();
-                this.selectNodeVisually(id);
+                    const id = this.generateNodeId(source.type);
+                    const node = {
+                        id,
+                        name: source.name + ' copy',
+                        type: source.type,
+                        field_policy: JSON.parse(JSON.stringify(source.field_policy || [])),
+                        header_view: source.header_view || '',
+                        footer_view: source.footer_view || '',
+                        row_actions: JSON.parse(JSON.stringify(source.row_actions || {})),
+                    };
+                    this.graph.nodes.push(node);
+
+                    const sourceDfId = this.nodeIdToDrawflowId[source.id];
+                    const sourcePos = sourceDfId != null ? this.editor.drawflow.drawflow[this.editor.module].data[sourceDfId] : null;
+                    const x = this.snap((sourcePos ? sourcePos.pos_x : 120) + 220);
+                    const y = this.snap(sourcePos ? sourcePos.pos_y : 100);
+                    this.drawNode(node, x, y);
+                    this.updateMinimap();
+                    this.selectNodeVisually(id);
+
+                    new Noty({ type: 'success', text: `Cloned "${node.name}".` }).show();
+                });
             },
 
             /** Marks a node selected both in our Alpine state (drives the
@@ -321,7 +335,14 @@
                     const fromDf = this.nodeIdToDrawflowId[edge.from];
                     const toDf = this.nodeIdToDrawflowId[edge.to];
                     if (fromDf && toDf) {
-                        try { this.editor.addConnection(fromDf, toDf, 'output_1', 'input_1'); } catch (e) {}
+                        // The 5th arg is our own patch to vendored Drawflow
+                        // (public/packages/drawflow/dist/drawflow.js, search
+                        // "PATCHED") — passing our real edge id lets several
+                        // distinct edges share the exact same (from, to)
+                        // node pair (unpatched Drawflow can only ever draw
+                        // one connection per output/input port pair; see
+                        // that file's own addConnection() docblock).
+                        try { this.editor.addConnection(fromDf, toDf, 'output_1', 'input_1', edge.id); } catch (e) {}
                     }
                 });
                 this.suppressEvents = false;
@@ -355,13 +376,35 @@
                 if (! from || ! to) return;
                 const id = 'edge_' + (this.graph.edges.length + 1) + '_' + Date.now().toString(36);
                 this.graph.edges.push(this.normalizeEdge({ id, from, to }));
+
+                // This fires for a user's own interactive drag-a-new-connection
+                // gesture, which goes through patched Drawflow's own
+                // click/drag handling rather than our drawEdges() — so the
+                // connection got created with no id yet (only drawEdges()
+                // passes one). Stamp it on now, onto both sides of the
+                // connection record and the SVG's data-edge-id, so this
+                // brand new edge is immediately as addressable (selectable,
+                // removable, redrawable) as one loaded from saved data.
+                const outputConns = this.editor.drawflow.drawflow[this.editor.module]
+                    .data[c.output_id]?.outputs?.[c.output_class]?.connections || [];
+                const outEntry = outputConns.find(x => x.node == c.input_id && x.output === c.input_class && ! x.id);
+                if (outEntry) outEntry.id = id;
+                const inputConns = this.editor.drawflow.drawflow[this.editor.module]
+                    .data[c.input_id]?.inputs?.[c.input_class]?.connections || [];
+                const inEntry = inputConns.find(x => x.node == c.output_id && x.input === c.output_class && ! x.id);
+                if (inEntry) inEntry.id = id;
+                const svg = document.querySelector(
+                    '.connection.node_in_node-' + c.input_id + '.node_out_node-' + c.output_id + '.' + c.output_class + '.' + c.input_class
+                );
+                if (svg) svg.dataset.edgeId = id;
             },
 
             onConnectionRemoved(c) {
                 if (this.suppressEvents) return;
-                const from = this.drawflowIdToNodeId[c.output_id];
-                const to = this.drawflowIdToNodeId[c.input_id];
-                const idx = this.graph.edges.findIndex(e => e.from === from && e.to === to);
+                const edge = c.id ? this.findEdge(c.id) : null;
+                const idx = edge
+                    ? this.graph.edges.indexOf(edge)
+                    : this.graph.edges.findIndex(e => e.from === this.drawflowIdToNodeId[c.output_id] && e.to === this.drawflowIdToNodeId[c.input_id]);
                 if (idx !== -1) this.graph.edges.splice(idx, 1);
                 if (this.selected && this.selected.kind === 'edge') this.selected = null;
                 this.redrawOrthogonalConnections();
@@ -398,9 +441,9 @@
             },
 
             onConnectionSelected(c) {
-                const from = this.drawflowIdToNodeId[c.output_id];
-                const to = this.drawflowIdToNodeId[c.input_id];
-                const edge = this.graph.edges.find(e => e.from === from && e.to === to);
+                const edge = c.id
+                    ? this.findEdge(c.id)
+                    : this.graph.edges.find(e => e.from === this.drawflowIdToNodeId[c.output_id] && e.to === this.drawflowIdToNodeId[c.input_id]);
                 if (edge) {
                     this.selected = { kind: 'edge', id: edge.id };
                     this.redrawOrthogonalConnections();
@@ -411,32 +454,72 @@
             findNode(id) { return this.graph.nodes.find(n => n.id === id); },
             findEdge(id) { return this.graph.edges.find(e => e.id === id); },
 
+            /** Deleting a node also silently deletes every connection attached
+             *  to it (see below) and can't be undone from within the
+             *  designer — a mis-click here is expensive enough (especially
+             *  on a node with several incoming/outgoing transitions) to
+             *  warrant the same swal() confirmation this app's own
+             *  Backpack delete button uses (crud/buttons/delete.blade.php),
+             *  rather than deleting on the first click. */
             removeSelectedNode() {
                 const node = this.findNode(this.selected.id);
                 if (! node) return;
-                const dfId = this.nodeIdToDrawflowId[node.id];
-                if (dfId) this.editor.removeNodeId('node-' + dfId);
-                this.graph.nodes = this.graph.nodes.filter(n => n.id !== node.id);
-                this.graph.edges = this.graph.edges.filter(e => e.from !== node.id && e.to !== node.id);
-                this.selected = null;
-                this.redrawOrthogonalConnections();
-                this.updateMinimap();
+
+                const attachedEdges = this.graph.edges.filter(e => e.from === node.id || e.to === node.id).length;
+                const warning = attachedEdges
+                    ? `This will also delete ${attachedEdges} connection${attachedEdges === 1 ? '' : 's'} attached to it. This cannot be undone.`
+                    : 'This cannot be undone.';
+
+                swal({
+                    title: 'Delete this node?',
+                    text: `"${node.name || node.id}" will be permanently removed. ${warning}`,
+                    icon: 'warning',
+                    buttons: ['Cancel', 'Delete'],
+                    dangerMode: true,
+                }).then((confirmed) => {
+                    if (! confirmed) return;
+
+                    const dfId = this.nodeIdToDrawflowId[node.id];
+                    if (dfId) this.editor.removeNodeId('node-' + dfId);
+                    this.graph.nodes = this.graph.nodes.filter(n => n.id !== node.id);
+                    this.graph.edges = this.graph.edges.filter(e => e.from !== node.id && e.to !== node.id);
+                    this.selected = null;
+                    this.redrawOrthogonalConnections();
+                    this.updateMinimap();
+                });
             },
 
+            /** Deleting a connection removes a whole transition — its
+             *  actor_rule, preconditions, actions, everything — with no undo,
+             *  same reasoning as removeSelectedNode()'s swal() confirmation. */
             removeSelectedEdge() {
                 const edge = this.findEdge(this.selected.id);
                 if (! edge) return;
-                this.graph.edges = this.graph.edges.filter(e => e.id !== edge.id);
-                this.selected = null;
-                this.redrawOrthogonalConnections();
-                // Also remove the visual connection, if it still exists.
-                const fromDf = this.nodeIdToDrawflowId[edge.from];
-                const toDf = this.nodeIdToDrawflowId[edge.to];
-                if (fromDf && toDf) {
-                    this.suppressEvents = true;
-                    try { this.editor.removeSingleConnection(fromDf, toDf, 'output_1', 'input_1'); } catch (e) {}
-                    this.suppressEvents = false;
-                }
+
+                const fromName = this.findNode(edge.from)?.name || edge.from;
+                const toName = this.findNode(edge.to)?.name || edge.to;
+
+                swal({
+                    title: 'Delete this connection?',
+                    text: `"${edge.name || edge.id}" (${fromName} → ${toName}) will be permanently removed, along with its actor rule, preconditions, and actions. This cannot be undone.`,
+                    icon: 'warning',
+                    buttons: ['Cancel', 'Delete'],
+                    dangerMode: true,
+                }).then((confirmed) => {
+                    if (! confirmed) return;
+
+                    this.graph.edges = this.graph.edges.filter(e => e.id !== edge.id);
+                    this.selected = null;
+                    this.redrawOrthogonalConnections();
+                    // Also remove the visual connection, if it still exists.
+                    const fromDf = this.nodeIdToDrawflowId[edge.from];
+                    const toDf = this.nodeIdToDrawflowId[edge.to];
+                    if (fromDf && toDf) {
+                        this.suppressEvents = true;
+                        try { this.editor.removeSingleConnection(fromDf, toDf, 'output_1', 'input_1', edge.id); } catch (e) {}
+                        this.suppressEvents = false;
+                    }
+                });
             },
 
         // ---------- Minimap ----------

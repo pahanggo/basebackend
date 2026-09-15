@@ -7,23 +7,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Workflow\HasWorkflow;
 use Workflow\Models\WorkflowDefinition;
-use Workflow\Support\CustomFieldDefinitionParser;
+use Workflow\Support\InlineFieldCrudStub;
 use Workflow\Support\SafeLocalUrl;
+use Workflow\Support\WorkflowInlineFieldRenderer;
 use Workflow\Support\WorkflowStatusPresenter;
 
 /**
  * The "show-workflow" page linked to from the generic workflow_show button in
- * the actions column: the current node's header_view, its field policy
- * rendered as a plain read-only column list (in the order configured in the
- * node inspector — no Backpack field/form involved, this is a summary view,
- * not an edit form), the current node's footer_view, and the
+ * the actions column: the current node's header_view, its field policy (in
+ * the order configured in the node inspector — no Backpack CrudController
+ * form involved), the current node's footer_view, and the
  * record_button-surfaced transitions available to the logged-in user at the
- * bottom. Kept generic (not per-model) the same way WorkflowTransitionController
- * is, so any HasWorkflow model gets this for free.
+ * bottom. A field_policy entry marked visible + not-readonly renders as a
+ * genuinely editable input right here (see WorkflowInlineFieldRenderer/
+ * WorkflowInlineUpdateController) — everything else renders as a plain
+ * read-only column, same as before. Kept generic (not per-model) the same
+ * way WorkflowTransitionController is, so any HasWorkflow model gets this
+ * for free.
  */
 class WorkflowShowController
 {
-    public function __invoke(Request $request, WorkflowStatusPresenter $presenter): View
+    public function __invoke(Request $request, WorkflowStatusPresenter $presenter, WorkflowInlineFieldRenderer $renderer): View
     {
         $validated = $request->validate([
             'workflowable_type' => 'required|string',
@@ -39,35 +43,10 @@ class WorkflowShowController
 
         $workflowable = $class::findOrFail($validated['workflowable_id']);
         $instance = $workflowable->workflowInstance();
-        $token = $instance?->activeTokens()->first();
-        $node = $token ? $instance->effectiveVersion()->node($token->node_id) : null;
+        $node = $renderer->currentNode($instance);
 
-        // Built as real Backpack column definitions (name/label/type, plus
-        // whatever custom_field_definition merges in — e.g. a money field's
-        // prefix/suffix) so show.blade.php can render each one through the
-        // actual crud::columns.{type} partial instead of a raw scalar dump,
-        // matching what the same field policy would produce on the model's
-        // Backpack show/list column.
-        $columns = collect($node['field_policy'] ?? [])
-            ->filter(fn (array $entry) => ($entry['visible'] ?? true) !== false)
-            ->map(function (array $entry) {
-                $column = [
-                    'name' => $entry['field'],
-                    'label' => ($entry['label'] ?? null) ?: Str::headline(str_replace('.', ' ', $entry['field'])),
-                    'type' => $entry['type'] ?? 'text',
-                ];
-
-                if (! empty($entry['custom_field_definition'])) {
-                    $decoded = (new CustomFieldDefinitionParser)->parse((string) $entry['custom_field_definition']);
-
-                    if (is_array($decoded)) {
-                        $column = array_merge($column, $decoded);
-                    }
-                }
-
-                return $column;
-            })
-            ->values();
+        $columns = $node ? $renderer->split($node, $workflowable) : collect();
+        $inlineEditCrud = new InlineFieldCrudStub($workflowable);
 
         $status = $presenter->present($workflowable, backpack_auth()->user());
 
@@ -83,6 +62,8 @@ class WorkflowShowController
             'displayName' => $displayName,
             'node' => $node,
             'columns' => $columns,
+            'hasEditableFields' => $columns->contains('editable', true),
+            'inlineEditCrud' => $inlineEditCrud,
             'status' => $status,
             // Threaded through each transition form as a hidden field, so
             // WorkflowTransitionController can send the user back to

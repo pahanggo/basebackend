@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Workflow\Http\Controllers\WorkflowActorSearchController;
 use Workflow\Http\Controllers\WorkflowDesignerController;
 use Workflow\Http\Controllers\WorkflowFieldDefinitionValidateController;
+use Workflow\Http\Controllers\WorkflowInlineUpdateController;
 use Workflow\Http\Controllers\WorkflowModelCallbackSearchController;
 use Workflow\Http\Controllers\WorkflowModelFieldsController;
 use Workflow\Http\Controllers\WorkflowModelSearchController;
@@ -41,6 +42,7 @@ Route::group([
 
     Route::post('transition', WorkflowTransitionController::class)->name('workflow.transition');
     Route::get('show', WorkflowShowController::class)->name('workflow.show');
+    Route::post('show/update', WorkflowInlineUpdateController::class)->name('workflow.show.update');
     Route::get('timeline', WorkflowTimelineController::class)->name('workflow.timeline');
 
     Route::get('models/search', WorkflowModelSearchController::class)->name('workflow.models.search');

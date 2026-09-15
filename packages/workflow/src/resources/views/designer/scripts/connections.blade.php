@@ -67,16 +67,20 @@
                 return rects;
             },
 
+            /** Connectors always leave/enter perpendicular to the node edge
+             *  — vertically here, since ports sit on the top/bottom faces
+             *  (output at the bottom, input at the top). The simple 2-bend
+             *  "jog at the midpoint" path only looks right when that gives
+             *  both the exit and entrance a real stub to travel along
+             *  before turning; below a minimum length (or when the target
+             *  sits above the source, making the stub negative) it
+             *  collapses into an ugly near-instant turn right at the port
+             *  — so fall back to routing around with fixed-length stubs instead. */
             orthogonalPath(x1, y1, x2, y2, lane = 0, obstacles = []) {
-                // Connectors always leave/enter perpendicular to the node edge
-                // — vertically here, since ports sit on the top/bottom faces
-                // (output at the bottom, input at the top). The simple 2-bend
-                // "jog at the midpoint" path only looks right when that gives
-                // both the exit and entrance a real stub to travel along
-                // before turning; below a minimum length (or when the target
-                // sits above the source, making the stub negative) it
-                // collapses into an ugly near-instant turn right at the port
-                // — so fall back to routing around with fixed-length stubs instead.
+                return this.pointsToPath(this.computeOrthogonalPoints(x1, y1, x2, y2, lane, obstacles));
+            },
+
+            computeOrthogonalPoints(x1, y1, x2, y2, lane = 0, obstacles = []) {
                 const minStub = 10;
                 const midY = (y1 + y2) / 2;
                 const exitStub = midY - y1;
@@ -85,7 +89,7 @@
                 if (exitStub >= minStub && entranceStub >= minStub) {
                     const straight = [{ x: x1, y: y1 }, { x: x1, y: midY }, { x: x2, y: midY }, { x: x2, y: y2 }];
                     if (! this.pathHitsObstacle(straight, obstacles)) {
-                        return this.pointsToPath(straight);
+                        return straight;
                     }
                     // The direct jog would cut through some other node that
                     // just happens to sit between source and target — fall
@@ -128,13 +132,27 @@
                     ];
                     if (! this.pathHitsObstacle(points, obstacles)) break;
                 }
-                return this.pointsToPath(points);
+                return points;
             },
 
             /** Assigns each edge that needs the routed (non-diagonal) fallback
              *  path a "lane" — greedy interval-overlap stacking, like calendar
              *  event layout — so two detouring edges whose vertical ranges
-             *  overlap never end up tracing the exact same line on screen. */
+             *  overlap never end up tracing the exact same line on screen.
+             *
+             *  Covers two distinct reasons an edge can't use the plain 2-bend
+             *  path: a degenerate midpoint (source/target too close vertically
+             *  — the usual "return" edge back up to an earlier node) OR its
+             *  straight path would cut through an unrelated node sitting
+             *  between them (e.g. a "skip" edge routing around a fork/join in
+             *  the middle column). Both used to pick their horizontal offset
+             *  independently — a degenerate edge from computeDetourLanes, an
+             *  obstacle-blocked one from orthogonalPath's own per-edge
+             *  "attempt" search — so two edges could land on the exact same
+             *  pixels with no coordination between them at all, making one
+             *  invisible/unclickable underneath the other. Folding obstacle
+             *  detection in here too means every edge that needs to detour
+             *  draws from the same shared lane registry. */
             computeDetourLanes() {
                 const data = this.editor.drawflow.drawflow[this.editor.module].data;
                 const minStub = 10;
@@ -149,10 +167,18 @@
                     const inEl = document.getElementById('node-' + toDf);
                     if (! outNode || ! inNode || ! outEl || ! inEl) return;
 
-                    const y1 = outNode.pos_y + outEl.offsetHeight;
-                    const y2 = inNode.pos_y;
+                    const x1 = outNode.pos_x + outEl.offsetWidth / 2, y1 = outNode.pos_y + outEl.offsetHeight;
+                    const x2 = inNode.pos_x + inEl.offsetWidth / 2, y2 = inNode.pos_y;
                     const midY = (y1 + y2) / 2;
-                    if (midY - y1 >= minStub && y2 - midY >= minStub) return; // 2-bend path, no detour
+                    const degenerate = ! (midY - y1 >= minStub && y2 - midY >= minStub);
+
+                    let needsDetour = degenerate;
+                    if (! needsDetour) {
+                        const straightPath = [{ x: x1, y: y1 }, { x: x1, y: midY }, { x: x2, y: midY }, { x: x2, y: y2 }];
+                        const obstacles = this.obstacleRectsExcluding([edge.from, edge.to]);
+                        needsDetour = this.pathHitsObstacle(straightPath, obstacles);
+                    }
+                    if (! needsDetour) return; // plain 2-bend path, no detour/lane needed
 
                     const p1y = y1 + stub, p2y = y2 - stub;
                     items.push({ id: edge.id, min: Math.min(p1y, p2y), max: Math.max(p1y, p2y) });
@@ -194,7 +220,16 @@
 
                     const fromNodeId = this.drawflowIdToNodeId[outId];
                     const toNodeId = this.drawflowIdToNodeId[inId];
-                    const edge = this.graph.edges.find(e => e.from === fromNodeId && e.to === toNodeId);
+                    // Patched Drawflow (public/packages/drawflow/dist/drawflow.js)
+                    // stamps our own edge id straight onto the SVG as
+                    // data-edge-id — reading it directly here is what lets
+                    // several distinct edges share the same (from, to) node
+                    // pair each resolve to the right one, instead of the
+                    // from/to-only lookup this used to be (which always
+                    // picked whichever such edge came first).
+                    const edge = svg.dataset.edgeId
+                        ? this.findEdge(svg.dataset.edgeId)
+                        : this.graph.edges.find(e => e.from === fromNodeId && e.to === toNodeId);
                     const lane = edge ? (this.edgeDetourLane[edge.id] || 0) : 0;
                     const obstacles = this.obstacleRectsExcluding([fromNodeId, toNodeId]);
 
@@ -301,11 +336,11 @@
                         const oldFromDf = this.nodeIdToDrawflowId[edge.from];
                         const oldToDf = this.nodeIdToDrawflowId[edge.to];
                         this.suppressEvents = true;
-                        try { this.editor.removeSingleConnection(oldFromDf, oldToDf, 'output_1', 'input_1'); } catch (err) {}
+                        try { this.editor.removeSingleConnection(oldFromDf, oldToDf, 'output_1', 'input_1', edge.id); } catch (err) {}
 
                         if (end === 'from') edge.from = newNodeId; else edge.to = newNodeId;
 
-                        try { this.editor.addConnection(this.nodeIdToDrawflowId[edge.from], this.nodeIdToDrawflowId[edge.to], 'output_1', 'input_1'); } catch (err) {}
+                        try { this.editor.addConnection(this.nodeIdToDrawflowId[edge.from], this.nodeIdToDrawflowId[edge.to], 'output_1', 'input_1', edge.id); } catch (err) {}
                         this.suppressEvents = false;
                     }
                 }
@@ -323,9 +358,10 @@
                     const inClass = Array.from(svg.classList).find(c => c.startsWith('node_in_'));
                     const outClass = Array.from(svg.classList).find(c => c.startsWith('node_out_'));
                     if (! inClass || ! outClass) return;
-                    const fromNodeId = this.drawflowIdToNodeId[outClass.replace('node_out_node-', '')];
-                    const toNodeId = this.drawflowIdToNodeId[inClass.replace('node_in_node-', '')];
-                    const edge = this.graph.edges.find(e => e.from === fromNodeId && e.to === toNodeId);
+                    const edge = svg.dataset.edgeId
+                        ? this.findEdge(svg.dataset.edgeId)
+                        : this.graph.edges.find(e => e.from === this.drawflowIdToNodeId[outClass.replace('node_out_node-', '')]
+                            && e.to === this.drawflowIdToNodeId[inClass.replace('node_in_node-', '')]);
                     const isSelected = !! (edge && this.selected?.kind === 'edge' && this.selected.id === edge.id);
                     svg.classList.toggle('wf-selected', isSelected);
                     // SVGs stack in DOM order, so a connection that overlaps
@@ -373,8 +409,16 @@
 
                 const length = path.getTotalLength();
                 const mid = length ? path.getPointAtLength(length / 2) : { x: 0, y: 0 };
+                // Two detouring edges now always draw in distinct lanes (see
+                // computeDetourLanes) — a lane is only ~24px wide while a
+                // label is typically 80-150px, nowhere near enough
+                // horizontal separation to keep their labels from
+                // overlapping when both paths happen to have a similar
+                // midpoint, so stagger each lane's label onto its own row.
+                const lane = this.edgeDetourLane?.[edge.id];
+                const y = mid.y + (lane ? lane * 14 : 0);
                 label.setAttribute('x', mid.x);
-                label.setAttribute('y', mid.y);
+                label.setAttribute('y', y);
 
                 const bbox = label.getBBox();
                 const padX = 4, padY = 2;

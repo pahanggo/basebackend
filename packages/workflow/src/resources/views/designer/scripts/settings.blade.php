@@ -13,7 +13,7 @@
             openSettingsModal() {
                 this.renderSettingsModal();
                 $('#wf-settings-modal').modal('show');
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             renderSettingsModal() {
@@ -126,13 +126,13 @@
             toggleOperationEnabled(op, checked) {
                 this.graph.operation_settings[op].enabled = checked;
                 this.renderSettingsModal();
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             addVisibilityRule() {
                 this.graph.visibility_rules.push({ actor_rule: null, scope: 'all', owner_field: '', model_callback: '' });
                 this.renderSettingsModal();
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             // Not the generic removeAt() other repeatable lists use — that
@@ -145,13 +145,13 @@
             removeVisibilityRule(i) {
                 this.graph.visibility_rules.splice(i, 1);
                 this.renderSettingsModal();
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             setVisibilityRuleScope(i, value) {
                 this.graph.visibility_rules[i].scope = value;
                 this.renderSettingsModal();
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
 
             moveVisibilityRule(i, direction) {
@@ -160,7 +160,7 @@
                 if (j < 0 || j >= rules.length) return;
                 [rules[i], rules[j]] = [rules[j], rules[i]];
                 this.renderSettingsModal();
-                this.$nextTick(() => this.initActorSelect2());
+                this.$nextTick(() => this.reinitSelect2Widgets());
             },
     };
 </script>

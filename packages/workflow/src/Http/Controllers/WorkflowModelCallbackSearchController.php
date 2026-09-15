@@ -6,7 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReflectionClass;
 use ReflectionMethod;
-use Workflow\Support\EloquentModelFinder;
+use Workflow\Models\WorkflowDefinition;
 
 /**
  * Ajax search backing the "model callback" pickers — both the actor_rule's
@@ -17,15 +17,18 @@ use Workflow\Support\EloquentModelFinder;
  */
 class WorkflowModelCallbackSearchController
 {
-    public function __invoke(Request $request, EloquentModelFinder $finder): JsonResponse
+    public function __invoke(Request $request): JsonResponse
     {
         $model = (string) $request->query('model');
         $term = strtolower(trim((string) $request->query('q', '')));
 
-        // Only ever reflect a class this app's own EloquentModelFinder
-        // already recognizes as a concrete model under app/Models — never an
-        // arbitrary attacker-supplied class name.
-        if ($model === '' || ! in_array($model, $finder->all(), true)) {
+        // Validated against WorkflowDefinition rather than
+        // EloquentModelFinder (which only scans app/Models) — a downstream
+        // model can live in its own package (e.g. the Purchase Request
+        // demo's), and only needs to already be some workflow's target to
+        // be reflectable here. See WorkflowModelFieldsController/
+        // WorkflowActorSearchController for the same fix, made earlier.
+        if ($model === '' || ! class_exists($model) || ! WorkflowDefinition::where('model', $model)->exists()) {
             return response()->json(['results' => []]);
         }
 

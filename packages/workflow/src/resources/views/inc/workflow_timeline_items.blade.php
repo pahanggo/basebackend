@@ -10,12 +10,20 @@
     <div class="wf-timeline-item">
         <span class="wf-timeline-dot"></span>
         <div class="wf-timeline-time">{{ $step['recorded_at']->format('d M Y, H:i') }}</div>
-        <div class="wf-timeline-title">{{ $step['from_label'] }} &rarr; {{ $step['to_label'] }}</div>
+        <div class="wf-timeline-title">
+            @if ($step['is_edit'] ?? false)
+                {{ $step['to_label'] }}
+            @else
+                {{ $step['from_label'] }} &rarr; {{ $step['to_label'] }}
+            @endif
+        </div>
         <div class="wf-timeline-meta">{{ $step['edge_label'] }} &middot; {{ $step['trigger'] }}</div>
         <div class="wf-timeline-meta">
             <i class="la la-user"></i> {{ $step['actor'] }}
-            &nbsp;&middot;&nbsp;
-            <i class="la la-clock-o"></i> {{ $step['time_spent'] }}
+            @unless ($step['is_edit'] ?? false)
+                &nbsp;&middot;&nbsp;
+                <i class="la la-clock-o"></i> {{ $step['time_spent'] }}
+            @endunless
         </div>
         @if (! empty($step['inputs']))
             <dl class="wf-timeline-inputs mb-0 mt-1">

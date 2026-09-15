@@ -67,6 +67,8 @@
     .wf-zoom-controls .btn { padding: .25rem .5rem; }
 
     .wf-repeatable-row { border: 1px solid #e9ecef; border-radius: 4px; padding: .5rem; margin-bottom: .5rem; background: #fafbfc; }
+    .wf-transition-row { border: 1px solid #e9ecef; border-radius: 4px; padding: .35rem .5rem; margin-bottom: .35rem; background: #fafbfc; cursor: pointer; display: flex; align-items: center; gap: .35rem; }
+    .wf-transition-row:hover { background: #eef1ff; border-color: var(--primary); }
     .wf-group-box { border: 1px dashed #adb5bd; border-radius: 4px; padding: .5rem; margin-bottom: .5rem; }
     p.version { position: absolute;top: 60px;left: 14px;pointer-events: none;z-index: 1; }
 

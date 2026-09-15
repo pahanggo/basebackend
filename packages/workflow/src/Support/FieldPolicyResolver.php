@@ -90,7 +90,7 @@ class FieldPolicyResolver
     /**
      * @param  array<string, mixed>  $entry
      */
-    protected function resolveMode(array $entry, string $default): string
+    public function resolveMode(array $entry, string $default): string
     {
         if (isset($entry['mode'])) {
             return $entry['mode'];

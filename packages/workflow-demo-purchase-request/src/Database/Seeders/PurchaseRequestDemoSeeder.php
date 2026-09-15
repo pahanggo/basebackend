@@ -49,7 +49,7 @@ class PurchaseRequestDemoSeeder extends Seeder
      * `users` (the app's own shared table, not this demo's) or
      * `purchase_requests`, a record's department is derived purely from its
      * requester's own department role — see
-     * PurchaseRequest::visibleToDepartment(), the model_callback backing
+     * PurchaseRequest::callbackFunctionSameDepartment(), the model_callback backing
      * the "HOD sees only their department" example in
      * PurchaseRequestVisibilityRulesTest.
      *
@@ -130,8 +130,8 @@ class PurchaseRequestDemoSeeder extends Seeder
         // definition — kept as one variable here for the same reason: a
         // change to one should almost certainly apply to the other too.
         $requestFieldPolicy = [
-            ['field' => 'amount', 'visible' => true, 'label' => 'Amount', 'type' => 'money', 'readonly' => true, 'custom_field_definition' => "[\n\"prefix\" => \"$\",\n]"],
-            ['field' => 'purpose', 'visible' => true, 'label' => 'Purpose', 'type' => 'textarea', 'readonly' => true],
+            ['field' => 'amount', 'visible' => true, 'label' => 'Amount', 'type' => 'money', 'readonly' => false, 'custom_field_definition' => "[\n\"prefix\" => \"$\",\n]"],
+            ['field' => 'purpose', 'visible' => true, 'label' => 'Purpose', 'type' => 'textarea', 'readonly' => false],
             ['field' => 'requester_id', 'visible' => false, 'label' => 'Requester Id', 'type' => 'number', 'readonly' => true],
             ['field' => 'hod_remarks', 'visible' => false, 'label' => 'Hod Remarks', 'type' => 'textarea', 'readonly' => true],
             ['field' => 'marketing_feedback', 'visible' => false, 'label' => 'Marketing Feedback', 'type' => 'textarea', 'readonly' => true],

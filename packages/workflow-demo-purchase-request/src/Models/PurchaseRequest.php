@@ -100,7 +100,7 @@ class PurchaseRequest extends Model
      * the actor isn't tagged with a department role themselves — an HOD
      * with no department can't fall back to seeing everyone's.
      */
-    public function visibleToDepartment($query, ?User $actor): void
+    public function callbackFunctionSameDepartment($query, ?User $actor): void
     {
         $departmentRoles = collect(\WorkflowDemo\PurchaseRequest\Database\Seeders\PurchaseRequestDemoSeeder::DEPARTMENTS)
             ->map(fn (string $department) => "department_{$department}");

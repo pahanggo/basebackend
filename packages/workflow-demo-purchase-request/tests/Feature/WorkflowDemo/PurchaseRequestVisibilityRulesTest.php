@@ -88,7 +88,7 @@ it('sees nothing for a role with no visibility rule configured at all — deny b
  * The full three-tier example, using PurchaseRequestDemoSeeder's own
  * department-tagged fixtures (one employee and one HOD per department, in
  * addition to the flat department-less employee/hod every other test in
- * this file uses) and PurchaseRequest::visibleToDepartment() — the
+ * this file uses) and PurchaseRequest::callbackFunctionSameDepartment() — the
  * model_callback escape hatch standing in for "same department as me",
  * which the no-code 'owner'/'all' scopes can't express on their own.
  */
@@ -96,7 +96,7 @@ function republishWithDepartmentScopedHod(): void
 {
     republishWithVisibilityRules([
         ['actor_rule' => ['roles' => ['finance', 'operations', 'marketing', 'ceo'], 'match' => 'any'], 'scope' => 'all'],
-        ['actor_rule' => ['roles' => ['hod'], 'match' => 'any'], 'scope' => 'model_callback', 'model_callback' => 'visibleToDepartment'],
+        ['actor_rule' => ['roles' => ['hod'], 'match' => 'any'], 'scope' => 'model_callback', 'model_callback' => 'callbackFunctionSameDepartment'],
         ['actor_rule' => ['roles' => ['employee'], 'match' => 'any'], 'scope' => 'owner', 'owner_field' => 'requester_id'],
     ]);
 }

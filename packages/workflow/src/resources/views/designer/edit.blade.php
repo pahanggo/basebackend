@@ -39,7 +39,7 @@
 @endsection
 
 @section('after_scripts')
-<script src="{{ asset('packages/drawflow/dist/drawflow.min.js') }}?v={{ filemtime(public_path('packages/drawflow/dist/drawflow.min.js')) }}"></script>
+<script src="{{ asset('packages/drawflow/dist/drawflow.js') }}?v={{ filemtime(public_path('packages/drawflow/dist/drawflow.js')) }}"></script>
 <script src="{{ asset('packages/select2/dist/js/select2.full.min.js') }}?v={{ filemtime(public_path('packages/select2/dist/js/select2.full.min.js')) }}"></script>
 
 {{--
@@ -145,7 +145,6 @@
                     }
                 })(),
                 reconnecting: null, // {edgeId, end: 'from'|'to', svg}
-                clipboardNode: null,
                 savingDraft: false,
                 // Working copy edited inside the field-policy modal — only
                 // written back onto the node itself when Save is clicked, so

@@ -17,9 +17,9 @@ class WorkflowTimeline
 {
     /**
      * @return array<int, array{
-     *     from_label: string, to_label: string, edge_label: string,
+     *     is_edit: bool, from_label: string, to_label: string, edge_label: string,
      *     trigger: string, actor: string, recorded_at: \Illuminate\Support\Carbon,
-     *     time_spent: string, inputs: array<int, array{label: string, value: mixed}>,
+     *     time_spent: ?string, inputs: array<int, array{label: string, value: mixed}>,
      * }>
      */
     public function build(Model $workflowable): array
@@ -47,20 +47,32 @@ class WorkflowTimeline
         $previousAt = $instance->created_at;
 
         foreach ($entries as $entry) {
-            $edge = $version?->edge($entry->edge_id);
+            $isEdit = $entry->edge_id === null;
+            $edge = $isEdit ? null : $version?->edge($entry->edge_id);
 
             $timeline[] = [
+                'is_edit' => $isEdit,
                 'from_label' => $version?->node($entry->from_node_id)['name'] ?? $entry->from_node_id,
                 'to_label' => $version?->node($entry->to_node_id)['name'] ?? $entry->to_node_id,
-                'edge_label' => $edge['name'] ?? $entry->edge_id,
+                'edge_label' => $isEdit ? 'Edited fields' : ($edge['name'] ?? $entry->edge_id),
                 'trigger' => $entry->trigger,
                 'actor' => $this->describeActor($entry->actor_type, $entry->actor_id),
                 'recorded_at' => $entry->created_at,
-                'time_spent' => $this->describeDuration($previousAt, $entry->created_at),
-                'inputs' => $this->describeInputs($entry->inputs, $edge['inputs'] ?? []),
+                // An edit doesn't move the record anywhere, so "time spent
+                // in the previous state" doesn't apply to it — and it must
+                // not consume this step's timestamp as the next step's
+                // "previous" baseline either, or a real transition's own
+                // duration would be measured from the edit instead of from
+                // whatever state change actually preceded it.
+                'time_spent' => $isEdit ? null : $this->describeDuration($previousAt, $entry->created_at),
+                'inputs' => $isEdit
+                    ? $this->describeEditedFields($entry->inputs)
+                    : $this->describeInputs($entry->inputs, $edge['inputs'] ?? []),
             ];
 
-            $previousAt = $entry->created_at;
+            if (! $isEdit) {
+                $previousAt = $entry->created_at;
+            }
         }
 
         return array_reverse($timeline);
@@ -91,6 +103,37 @@ class WorkflowTimeline
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * An inline-edit history row's `inputs` is keyed by field name to
+     * {label, from, to} (see WorkflowInlineUpdateController::recordEditHistory())
+     * rather than an edge's flat captured-value shape — always shown (no
+     * show_in_timeline opt-in, unlike a transition's own inputs), since an
+     * edit step's whole reason for existing on the timeline is showing what
+     * changed.
+     *
+     * @param  array<string, array{label: string, from: mixed, to: mixed}>|null  $changed
+     * @return array<int, array{label: string, value: mixed}>
+     */
+    protected function describeEditedFields(?array $changed): array
+    {
+        return collect($changed ?? [])
+            ->map(fn (array $change) => [
+                'label' => $change['label'],
+                'value' => $this->formatScalar($change['from']).' → '.$this->formatScalar($change['to']),
+            ])
+            ->values()
+            ->all();
+    }
+
+    protected function formatScalar(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        return is_scalar($value) ? (string) $value : json_encode($value);
     }
 
     protected function describeActor(?string $actorType, mixed $actorId): string
