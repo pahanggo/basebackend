@@ -125,8 +125,6 @@ export async function fetchFeatures({
     const parseStarted = performance.now();
     const parsed = await parseInWorker(buffer, { binary });
 
-    console.log(parsed)
-
     return {
         ...parsed,
         timing: {
