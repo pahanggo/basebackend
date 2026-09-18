@@ -12,26 +12,38 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+
+use function Laravel\Prompts\pause;
 
 class FeatureReadController extends Controller
 {
     public const GEOJSON_TYPE = 'application/geo+json';
 
-    public const BINARY_TYPE = 'application/vnd.gis.features+gis1';
+    /**
+     * The binary encoding is a **stream of framed `GIS1` documents**, not one
+     * document, so it carries its own media type: a reader that expected the
+     * old single-document form would otherwise read a frame header as a GIS1
+     * header and fail obscurely instead of on negotiation.
+     */
+    public const BINARY_TYPE = 'application/vnd.gis.features+gis1-stream';
+
+    /** A frame carrying one `GIS1` document of at most `stream_chunk` features. */
+    public const FRAME_FEATURES = 1;
+
+    /** The last frame: the `cull` object, as JSON. Ends the stream. */
+    public const FRAME_TRAILER = 2;
 
 
     /**
-     * Features in a viewport, as GeoJSON.
+     * Features in a viewport, in whichever encoding was negotiated.
      *
-     * S3 adds the `GIS1` binary encoding, content negotiation and keyset
-     * paging at this same URL; this is the GeoJSON half of that contract,
-     * which the renderer's worker parses into typed arrays.
-     *
-     * The response streams. A zoom-12 viewport with the cull suppressed is
-     * 164,000 features and about 50 MB of JSON, and building that in memory
-     * before sending it would defeat the point of asking for it.
+     * **Both encodings stream, `stream_chunk` features at a time.** A zoom-12
+     * viewport with the cull suppressed is 164,000 features and about 50 MB of
+     * JSON, and building that in memory before sending it would defeat the
+     * point of asking for it. The binary encoding streams as a sequence of
+     * framed `GIS1` documents rather than one, because one cannot: see
+     * `streamFrames()`.
      */
     public function __invoke(Request $request, Layer $layer): SymfonyResponse
     {
@@ -60,15 +72,13 @@ class FeatureReadController extends Controller
             ->orderByDesc('area_m2')
             ->limit($cap + 1);
 
-        if ($binary) {
-            return $this->binaryResponse($rows, $viewport, $threshold, $withProperties, $cap);
-        }
-
         return response()->stream(
-            fn () => $this->streamCollection($rows, $viewport, $threshold, $withProperties, $cap),
+            fn () => $binary
+                ? $this->streamFrames($rows, $viewport, $threshold, $withProperties, $cap)
+                : $this->streamCollection($rows, $viewport, $threshold, $withProperties, $cap),
             200,
             [
-                'Content-Type' => self::GEOJSON_TYPE,
+                'Content-Type' => $binary ? self::BINARY_TYPE : self::GEOJSON_TYPE,
                 'X-Gis-Area-Threshold' => (string) round($threshold, 4),
             ],
         );
@@ -95,26 +105,44 @@ class FeatureReadController extends Controller
     }
 
     /**
-     * The whole response in memory, on purpose.
+     * Write the binary encoding as a stream of framed `GIS1` documents.
      *
-     * A capped read is 20,000 features, which is about 2.5 MB encoded — small
-     * enough that streaming would buy nothing and cost the ability to write the
-     * header, whose section offsets are only known once every section has been
-     * built.
+     * A single `GIS1` document cannot stream: its header carries the offset of
+     * every section, and those are only known once the last feature has been
+     * encoded. So the response is a sequence of small documents instead —
+     * `stream_chunk` features each, every one complete and self-describing —
+     * and the client paints each as it lands rather than waiting for the whole
+     * read. Because the rows arrive biggest-first, the first frame carries the
+     * most visible features on the screen.
+     *
+     * Framing is a kind byte and a little-endian length, so a reader knows how
+     * much to buffer before it has anything to parse, and a frame it does not
+     * recognise is skippable rather than fatal:
+     *
+     *     uint8   kind: 1 features, 2 trailer
+     *     uint32  payload length
+     *     bytes   payload
+     *
+     * The trailer carries the `cull` object and ends the stream. It cannot be
+     * a header any more — headers are written before the first feature is
+     * read, and `returned`, `capped` and `smallestReturnedM2` are only known
+     * at the end. That is the same reason GeoJSON puts its counts last.
      */
-    protected function binaryResponse(
+    protected function streamFrames(
         Builder $rows,
         ViewportRead $viewport,
         float $threshold,
         bool $withProperties,
         int $cap,
-    ): Response {
-        $encoder = new BinaryFeatureEncoder;
+    ): void {
+        $size = max(1, (int) config('gis.read.stream_chunk'));
+        $encoder = $this->encoder($viewport);
+        $returned = 0;
         $capped = false;
         $smallest = null;
 
         foreach ($rows->cursor() as $row) {
-            if ($encoder->count() === $cap) {
+            if ($returned === $cap) {
                 $capped = true;
                 break;
             }
@@ -127,13 +155,32 @@ class FeatureReadController extends Controller
                 $withProperties ? json_decode($row->properties ?: '{}', true) : null,
             );
 
+            $returned++;
             $smallest = (float) $row->area_m2;
+
+            if ($encoder->count() === $size) {
+                $this->frame(self::FRAME_FEATURES, $encoder->encode());
+                $encoder = $this->encoder($viewport);
+            }
         }
 
-        return response($encoder->encode(), 200, [
-            'Content-Type' => self::BINARY_TYPE,
-            'X-Gis-Cull' => json_encode($this->cull($viewport, $threshold, $encoder->count(), $smallest, $capped, $cap)),
-        ]);
+        // The remainder. An empty frame is never written: a frame declares a
+        // feature count, and a reader should not have to special-case zero.
+        if ($encoder->count() > 0) {
+            $this->frame(self::FRAME_FEATURES, $encoder->encode());
+        }
+
+        $this->frame(self::FRAME_TRAILER, json_encode(
+            $this->cull($viewport, $threshold, $returned, $smallest, $capped, $cap),
+        ));
+    }
+
+    /** One framed payload, pushed to the client immediately. */
+    protected function frame(int $kind, string $payload): void
+    {
+        echo chr($kind), pack('V', strlen($payload)), $payload;
+
+        $this->flush();
     }
 
     /**
@@ -154,7 +201,6 @@ class FeatureReadController extends Controller
             'capped' => $capped,
             'cap' => $cap,
             'zoom' => $viewport->zoom,
-            'simplified' => $viewport->usesSimplifiedGeometry(),
         ];
     }
 
@@ -192,24 +238,39 @@ class FeatureReadController extends Controller
     protected function binaryGeometryColumn(ViewportRead $viewport): Expression
     {
         return GeometryCast::selectBinary('geom', 'geometry');
-        return $viewport->usesSimplifiedGeometry()
-            ? GeometryCast::selectBinary('geom_simple', 'geometry', fallback: 'geom')
-            : GeometryCast::selectBinary('geom', 'geometry');
     }
 
     /**
-     * Which geometry the read returns.
+     * The encoder for this read, and whether it shortens coordinates.
      *
-     * Below the editing zoom the pre-simplified column is enough, and it is
-     * what `gis:import-bencana` filled for the features large enough to still
-     * be drawn when zoomed out. Where it is NULL the feature was too small to
-     * be worth simplifying, so the original is returned.
+     * Quantisation is applied **below the editing zoom only**. At 1e-7 degrees
+     * a coordinate is accurate to about half a centimetre, which is invisible
+     * on screen but is not nothing if it travels: above `edit_min_zoom` the
+     * client may drag a vertex and send that coordinate back, and a read that
+     * had rounded it would write the rounding into storage. Each edit would
+     * move the vertex again. Full precision where geometry can round-trip,
+     * shortened where it can only be looked at.
+     */
+    protected function encoder(ViewportRead $viewport): BinaryFeatureEncoder
+    {
+        $exponent = (int) config('gis.read.coord_exponent');
+
+        return new BinaryFeatureEncoder(
+            $exponent > 0 && $viewport->belowEditingZoom() ? $exponent : null,
+        );
+    }
+
+    /**
+     * Which geometry the read returns: the stored one, at every zoom.
+     *
+     * There is no level-of-detail geometry any more. A feature is returned with
+     * the vertices it was imported with, or it is not returned at all — the
+     * area cull decides which, and it drops whole features rather than
+     * reshaping them.
      */
     protected function geometryColumn(ViewportRead $viewport): string
     {
-        return $viewport->usesSimplifiedGeometry()
-            ? GeometryCast::selectGeoJson('geom_simple', 'geometry', fallback: 'geom')
-            : GeometryCast::selectGeoJson('geom', 'geometry');
+        return GeometryCast::selectGeoJson('geom', 'geometry');
     }
 
     /**
@@ -221,79 +282,64 @@ class FeatureReadController extends Controller
      * because four double comparisons are not a spherical geometry problem.
      * The exact test is the client's job, and it re-culls against its real
      * viewport anyway.
+     *
+     * The index is named rather than left to the planner — see
+     * `ix_layer_read`'s migration for why the read needs that shape, and
+     * `forceReadIndex()` for why MySQL will not choose it.
      */
     protected function query(Layer $layer, ViewportRead $viewport): Builder
     {
-        $table = $this->shouldForceBoundingBoxIndex($layer, $viewport)
-            ? '`gis_features` FORCE INDEX (ix_layer_bbox)'
-            : '`gis_features`';
-
-        return DB::connection(config('gis.connection'))
-            ->table(DB::raw($table))
+        $rows = DB::connection(config('gis.connection'))
+            ->table(DB::raw('`gis_features` FORCE INDEX (ix_layer_read)'))
             ->where('layer_id', $layer->id)
             ->where('minx', '<=', $viewport->maxx)
             ->where('maxx', '>=', $viewport->minx)
             ->where('miny', '<=', $viewport->maxy)
-            ->where('maxy', '>=', $viewport->miny);
+            ->where('maxy', '>=', $viewport->miny)
+            ;
+
+        // Everything the caller already holds, left out. All four columns are
+        // in `ix_layer_read`, so this is resolved in the index alongside the
+        // viewport test rather than costing a row read to reject a row.
+        if ($viewport->exclude !== null) {
+            $held = $viewport->exclude;
+
+            $rows->whereNot(fn (Builder $q) => $q
+                ->where('minx', '<=', $held->maxx)
+                ->where('maxx', '>=', $held->minx)
+                ->where('miny', '<=', $held->maxy)
+                ->where('maxy', '>=', $held->miny));
+        }
+
+        return $rows;
     }
 
     /**
-     * Which index this read should use, because the planner gets it wrong at
-     * exactly the zoom people work at.
+     * Why the index is forced, and why the old heuristic is gone.
      *
-     * `ORDER BY area_m2 DESC LIMIT n` invites the planner to read
-     * `ix_layer_area` backwards and stop once it has n rows. That is a good
-     * plan when the area threshold is selective and a terrible one when it is
-     * not: at zoom 16 the threshold admits 385,510 of the layer's 672,109
-     * features, so the scan walks most of them looking for the few thousand
-     * that also fall in a 3 km viewport. Measured on `lots` at
-     * `min_area_px = 100`, per layer:
+     * `ix_layer_read` is `(layer_id, area_m2, minx, maxx, miny, maxy)`. Read
+     * backwards it returns rows already ordered by area, so there is no
+     * filesort and the first row is available immediately — which is what lets
+     * the response actually stream rather than arrive in one burst at the end.
+     * The four bounding-box columns ride along so index condition pushdown
+     * rejects 97% of the entries before any row is read; only a feature that
+     * survives the viewport test costs a lookup for its geometry.
      *
-     *     zoom 16   planner 1.10 s   forcing ix_layer_bbox 0.14 s
-     *     zoom 14   planner 0.54 s   forcing ix_layer_bbox 0.26 s
-     *     zoom 12   planner 0.03 s   forcing ix_layer_bbox 0.38 s
+     * **MySQL will not choose it.** The moment `geom` joins the select list the
+     * index stops covering, and the optimiser — which has no statistics on
+     * these correlated columns and cannot see that pushdown will discard almost
+     * everything — falls back to a table scan and a filesort. Measured on
+     * `Gunatanah`, 16,475 features at zoom 12: planner 395 ms with the first
+     * row at 368 ms, this index forced 96 ms with the first row at 0.4 ms.
      *
-     * The plans trade places on one thing: whether the viewport or the area
-     * threshold is the more selective filter. Zoomed out the threshold is
-     * enormous and few features pass it, so the area index is nearly free;
-     * zoomed in the viewport is a pinprick and the bounding box is what
-     * narrows the search.
-     *
-     * MySQL cannot see this — it estimates 770,775 rows for either plan,
-     * because it has no statistics on these correlated columns — so the choice
-     * is made here, from the viewport's share of the layer's extent.
-     *
-     * **The crossover moves with `min_area_px`, so the two are tuned
-     * together.** At 100 px² it sits between 0.4% and 5.9%; at 4 px² it sits
-     * between 5.9% and 100%. If this becomes a nuisance, the principled fix is
-     * to store an area distribution per layer at import and estimate both row
-     * counts properly, rather than inferring one of them from geometry.
+     * This replaces the old `shouldForceBoundingBoxIndex()`, which chose
+     * between `ix_layer_area` and `ix_layer_bbox` from the viewport's share of
+     * the layer extent. That heuristic existed because neither index served
+     * both filters, and it had to be re-tuned whenever `min_area_px` moved. One
+     * index now serves both, and it wins or ties at every zoom measured (12,
+     * 14, 16, 18) — `ix_layer_bbox` is the only plan that still filesorts, and
+     * at zoom 18 its 17 ms of total time costs 69 ms of first-row latency.
      */
-    protected function shouldForceBoundingBoxIndex(Layer $layer, ViewportRead $viewport): bool
-    {
-        $extent = $layer->extent;
-
-        if ($extent === null) {
-            return false;
-        }
-
-        $box = $extent->getBoundingBox();
-
-        if ($box->isEmpty()) {
-            return false;
-        }
-
-        $extentArea = ($box->getNorthEast()->x() - $box->getSouthWest()->x())
-            * ($box->getNorthEast()->y() - $box->getSouthWest()->y());
-
-        if ($extentArea <= 0.0) {
-            return false;
-        }
-
-        $viewportArea = ($viewport->maxx - $viewport->minx) * ($viewport->maxy - $viewport->miny);
-
-        return $viewportArea / $extentArea < (float) config('gis.read.bbox_index_max_share');
-    }
 
     /**
      * Write the FeatureCollection a row at a time.
@@ -315,6 +361,7 @@ class FeatureReadController extends Controller
     ): void {
         echo '{"type":"FeatureCollection","features":[';
 
+        $chunk = max(1, (int) config('gis.read.stream_chunk'));
         $returned = 0;
         $capped = false;
         $smallest = null;
@@ -337,8 +384,9 @@ class FeatureReadController extends Controller
             // Without this the response is not streamed at all: PHP's output
             // buffer holds the whole body, which for a padded zoom-12 read is
             // tens of megabytes, and the client waits for all of it while the
-            // worker sits idle.
-            if ($returned % 2000 === 0) {
+            // worker sits idle. The interval matches the binary encoding's
+            // frame size, so both push at the same granularity.
+            if ($returned % $chunk === 0) {
                 $this->flush();
             }
         }

@@ -265,7 +265,6 @@ class ImportBencanaCommand extends Command
      *   longitude-latitude order, so X is longitude and Y is latitude.
      * - The vertex count, out of the WKB layout — see `GeometryCast`.
      *
-     * `geom_simple` is left NULL here and filled by a targeted second pass.
      *
      * @param  array{table: string, name: string, attributes: array<int, string>}  $definition
      */
@@ -284,11 +283,10 @@ class ImportBencanaCommand extends Command
         return $target->affectingStatement(
             <<<SQL
             INSERT INTO gis_features
-                (layer_id, geom, geom_simple, minx, miny, maxx, maxy, area_m2, vertex_count, properties, version, created_at, updated_at)
+                (layer_id, geom, minx, miny, maxx, maxy, area_m2, vertex_count, properties, version, created_at, updated_at)
             SELECT
                 ?,
                 `geometry`,
-                NULL,
                 ST_X(ST_PointN({$envelopeRing}, 1)),
                 ST_Y(ST_PointN({$envelopeRing}, 1)),
                 ST_X(ST_PointN({$envelopeRing}, 3)),
@@ -342,34 +340,14 @@ class ImportBencanaCommand extends Command
     }
 
     /**
-     * Extent, feature count, and `geom_simple` for the features that need it.
+     * Extent and feature count.
      *
-     * Simplification is only worth anything for the large polygons that stay on
-     * screen when zoomed out; everything smaller is dropped by the area cull
-     * before it is ever drawn. So the second pass touches only features above
-     * the zoom-12 threshold — a few thousand rows rather than 1.4 million — and
-     * keeps the result only where it is still valid, since `ST_Simplify` is
-     * free to emit geometry that is not.
+     * This used to fill `geom_simple` as well. Nothing reads it now: the read
+     * returns stored geometry at every zoom, and the area cull decides which
+     * features are drawn by dropping whole ones rather than reshaping them.
      */
     protected function rollUpLayer(Layer $layer, Connection $target): void
     {
-        $tolerance = (float) config('gis.import.bencana.simplify_tolerance');
-        $threshold = $this->lowZoomAreaThreshold();
-
-        $simplified = $target->affectingStatement(
-            <<<SQL
-            UPDATE gis_features
-               SET geom_simple = IF(
-                       ST_IsValid(ST_SRID(ST_Simplify(ST_SRID(`geom`, 0), ?), 4326)),
-                       ST_SRID(ST_Simplify(ST_SRID(`geom`, 0), ?), 4326),
-                       NULL
-                   )
-             WHERE layer_id = ?
-               AND area_m2 >= ?
-            SQL,
-            [$tolerance, $tolerance, $layer->id, $threshold],
-        );
-
         $bounds = $target->selectOne(
             'SELECT COUNT(*) AS n, MIN(minx) AS minx, MIN(miny) AS miny, MAX(maxx) AS maxx, MAX(maxy) AS maxy
                FROM gis_features WHERE layer_id = ?',
@@ -387,18 +365,9 @@ class ImportBencanaCommand extends Command
 
         $layer->save();
 
-        $this->components->twoColumnDetail('Simplified for low zoom', number_format($simplified).' features');
         $this->components->twoColumnDetail('Extent', $bounds->n > 0
             ? sprintf('%.3f, %.3f to %.3f, %.3f', $bounds->minx, $bounds->miny, $bounds->maxx, $bounds->maxy)
             : 'empty');
-    }
-
-    /** Square metres of `min_area_px` pixels at zoom 12, at this latitude. */
-    protected function lowZoomAreaThreshold(): float
-    {
-        $metresPerPixel = 156543.03392 * cos(deg2rad(3.8)) / (2 ** 12);
-
-        return $metresPerPixel ** 2 * (float) config('gis.read.min_area_px');
     }
 
     protected function sourceConnection(): Connection

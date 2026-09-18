@@ -37,10 +37,6 @@ return [
             // server, so rows never travel through PHP.
             'chunk' => 2000,
 
-            // Degrees. Roughly three pixels at zoom 12 (38.1 m/px at this
-            // latitude), which is the band `geom_simple` exists to serve.
-            'simplify_tolerance' => 0.001,
-
             'layers' => [
                 'lots' => [
                     'table' => 'lots',
@@ -92,7 +88,7 @@ return [
 
     'default_view' => [
         'center' => [103.3260, 3.8077],
-        'zoom' => 12,
+        'zoom' => 15,
     ],
 
     /*
@@ -139,16 +135,30 @@ return [
     */
 
     'read' => [
-        'min_area_px' => 4,
-        'max_features_per_response' => 30000,
+        'min_area_px' => 1,
+        'max_features_per_response' => 1000000,
         'edit_min_zoom' => 16,
 
-        // The viewport's share of a layer's extent below which the feature
-        // read forces `ix_layer_bbox` instead of letting MySQL choose. Tuned
-        // against `min_area_px`: raising that constant makes the area
-        // threshold more selective and moves the crossover down. See
-        // FeatureReadController::shouldForceBoundingBoxIndex().
-        'bbox_index_max_share' => 0.01,
+        // Features per streamed chunk. The binary encoding sends one complete
+        // `GIS1` document per chunk and the readable one flushes at the same
+        // interval, so the client paints a chunk at a time instead of waiting
+        // for the whole read. Rows arrive biggest-first, so the first chunk is
+        // the most visible thing on the screen.
+        //
+        // Smaller is more responsive and costs more frames: each chunk is a
+        // worker round trip, an index insert and a path append.
+        'stream_chunk' => 100,
+
+        // Decimal places kept for a coordinate in the binary encoding, below
+        // the editing zoom. Each ordinate becomes a biased uint32 rather than
+        // a float64, halving the coordinate section — which is two thirds of
+        // the payload. 7 is a resolution of 1e-7 degrees, about 1.1 cm, and a
+        // worst-case error of half that; 0 disables it and sends float64.
+        //
+        // NOT applied at or above `edit_min_zoom`: there a coordinate can be
+        // dragged and sent back, and rounding it on the way out would write the
+        // rounding into storage.
+        'coord_exponent' => 5,
     ],
 
     'write' => [

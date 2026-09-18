@@ -108,3 +108,14 @@ it('serves the api health check behind the same guard', function () {
         ->assertJsonPath('ok', true)
         ->assertJsonPath('capabilities.maxBatch', config('gis.write.max_batch'));
 });
+
+it('gives the client a same-origin API base that no proxy can get wrong', function () {
+    // Absolute URLs in this blob are a trap behind a TLS-terminating proxy:
+    // the application generates http:// unless it trusts the proxy, and a URL
+    // inside JSON is one of the few Cloudflare's HTTPS rewriting cannot fix.
+    // Relative means it takes the page's own scheme and host, always.
+    $bootstrap = bootstrapBlob(test()->actingAs(gisUser())->get(route('gis.editor')));
+
+    expect($bootstrap['apiBase'])->toBe('/api/geo');
+    expect($bootstrap['apiBase'])->not->toStartWith('http');
+});

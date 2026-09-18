@@ -109,6 +109,41 @@ export class SpatialIndex {
         this._scratch = bigger;
     }
 
+    /**
+     * Add the features in `[from, to)`, which the streamed read just appended.
+     *
+     * A bulk `load` into an existing tree inserts one item at a time, so this
+     * is more expensive per feature than the packing `rebuild` does — but it is
+     * paid once per 100-feature chunk against a tree that is still small, and
+     * the alternative is rebuilding the whole index 130 times over one read.
+     * The hit test stays correct throughout, which is the point: a map that is
+     * painting is a map the user is already pointing at.
+     */
+    append(from, to) {
+        const { bbox } = this.geometry;
+        const items = new Array(to - from);
+
+        for (let f = from; f < to; f++) {
+            items[f - from] = {
+                minX: bbox[f * 4],
+                minY: bbox[f * 4 + 1],
+                maxX: bbox[f * 4 + 2],
+                maxY: bbox[f * 4 + 3],
+                i: f,
+            };
+        }
+
+        this.tree.load(items);
+
+        for (const item of items) {
+            this.items.push(item);
+        }
+
+        if (this._scratch.length < to) {
+            this._scratch = new Uint32Array(Math.max(1024, to * 2));
+        }
+    }
+
     /** Patch one feature's box after an edit, without rebuilding. */
     update(index) {
         const { bbox } = this.geometry;

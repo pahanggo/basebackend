@@ -136,6 +136,20 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Addresses whose X-Forwarded-* headers this application believes. The
+    | default is the loopback, which is where a Cloudflare Tunnel or any other
+    | same-host reverse proxy connects from. Without it, a TLS-terminating
+    | proxy leaves the application generating http:// URLs for an https:// page.
+    |
+    */
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.1,::1'),
+
     'asset_url' => env('ASSET_URL', null),
 
     /*

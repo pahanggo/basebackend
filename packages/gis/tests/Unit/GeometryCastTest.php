@@ -92,12 +92,12 @@ it('writes only geometry it generated itself', function () {
 });
 
 it('stores a null geometry as null', function () {
-    $feature = Feature::factory()->create([
-        'layer_id' => Layer::factory()->global(),
-        'geom_simple' => null,
-    ]);
+    // `gis_layers.extent` is the nullable geometry column now that
+    // `gis_features.geom_simple` is gone; the cast has to hand back null
+    // rather than attempt to read a zero-length blob.
+    $layer = Layer::factory()->global()->create(['extent' => null]);
 
-    expect(Feature::findOrFail($feature->id)->geom_simple)->toBeNull();
+    expect(Layer::findOrFail($layer->id)->extent)->toBeNull();
 });
 
 it('preserves rings and parts', function () {

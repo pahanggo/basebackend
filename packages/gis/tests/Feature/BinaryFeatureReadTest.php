@@ -4,6 +4,7 @@ use Gis\Http\Controllers\Api\FeatureReadController;
 use Gis\Http\Encoders\BinaryFeatureEncoder;
 use Gis\Models\Layer;
 use Gis\Testing\RefreshesGisDatabase;
+use Illuminate\Support\Facades\DB;
 
 require_once __DIR__.'/../Helpers.php';
 
@@ -13,7 +14,12 @@ beforeEach(function () {
     seedParcels(Layer::factory()->global()->create(['name' => 'Lot']));
 });
 
-function readBinary(array $query = []): string
+/**
+ * The whole framed response: every feature frame, plus the trailer's cull.
+ *
+ * @return array{frames: array<int, string>, cull: array<string, mixed>|null}
+ */
+function binaryStream(array $query = []): array
 {
     $layer = Layer::query()->firstOrFail();
 
@@ -27,7 +33,44 @@ function readBinary(array $query = []): string
     $response->assertOk();
     $response->assertHeader('Content-Type', FeatureReadController::BINARY_TYPE);
 
-    return $response->getContent();
+    $body = $response->streamedContent();
+    $frames = [];
+    $cull = null;
+    $offset = 0;
+
+    while ($offset < strlen($body)) {
+        $kind = ord($body[$offset]);
+        $length = unpack('V', substr($body, $offset + 1, 4))[1];
+        $payload = substr($body, $offset + 5, $length);
+        $offset += 5 + $length;
+
+        if ($kind === FeatureReadController::FRAME_TRAILER) {
+            $cull = json_decode($payload, true, flags: JSON_THROW_ON_ERROR);
+            break;
+        }
+
+        $frames[] = $payload;
+    }
+
+    expect($offset)->toBe(strlen($body), 'the frames should account for every byte');
+
+    return ['frames' => $frames, 'cull' => $cull];
+}
+
+/**
+ * One frame's `GIS1` document.
+ *
+ * The layout assertions below are about one document, and a document is what a
+ * frame carries; the fixture is nine parcels against a chunk of 100, so unless
+ * a test says otherwise there is exactly one.
+ */
+function readBinary(array $query = []): string
+{
+    $frames = binaryStream($query)['frames'];
+
+    expect($frames)->toHaveCount(1);
+
+    return $frames[0];
 }
 
 /** @return array<string, int> the decoded GIS1 header */
@@ -36,7 +79,7 @@ function header_(string $body): array
     $fields = unpack('a4magic/vversion/vflags/Vcount/Vrings/Vvertices/Vproperties', $body);
 
     $offsets = unpack('Vcoords/Vbbox/Vids/Varea/VringStarts/VfeatStarts/Vtypes/VpropertiesAt', substr($body, 24, 32));
-    $tail = unpack('Vtotal/Vreserved', substr($body, 56, 8));
+    $tail = unpack('Vtotal/VcoordExponent', substr($body, 56, 8));
 
     return $fields + $offsets + $tail;
 }
@@ -168,4 +211,139 @@ it('culls and caps exactly as the readable encoding does', function () {
     config(['gis.read.max_features_per_response' => 20000]);
 
     expect(header_(readBinary(['zoom' => 12]))['count'])->toBe(4);
+});
+
+it('frames the stream so a reader knows how much to buffer', function () {
+    config(['gis.read.stream_chunk' => 2]);
+
+    $stream = binaryStream();
+
+    // Nine parcels in twos: four full frames and a remainder. An empty frame is
+    // never written, so nine does not become five plus a zero.
+    expect($stream['frames'])->toHaveCount(5);
+
+    $counts = array_map(fn (string $frame) => header_($frame)['count'], $stream['frames']);
+
+    expect($counts)->toBe([2, 2, 2, 2, 1]);
+});
+
+it('gives every frame a header of its own, with its own offsets', function () {
+    config(['gis.read.stream_chunk' => 4]);
+
+    foreach (binaryStream()['frames'] as $frame) {
+        $header = header_($frame);
+
+        expect($header['magic'])->toBe(BinaryFeatureEncoder::MAGIC);
+        expect($header['coords'])->toBe(BinaryFeatureEncoder::HEADER_BYTES);
+        expect($header['total'])->toBe(strlen($frame));
+    }
+});
+
+it('carries the cull in a trailer, which is the only place it can be', function () {
+    // Not a header: `returned`, `capped` and `smallestReturnedM2` are only known
+    // once the last row has been read, and headers are written before the first.
+    $stream = binaryStream();
+
+    expect($stream['cull'])->not->toBeNull();
+    expect($stream['cull']['returned'])->toBe(9);
+    expect($stream['cull']['capped'])->toBeFalse();
+    // JSON has one number type, so a whole-numbered area comes back an int.
+    expect($stream['cull']['smallestReturnedM2'])->toEqual(60.0);
+});
+
+it('reports the same cull however the features were divided up', function () {
+    $whole = binaryStream()['cull'];
+
+    config(['gis.read.stream_chunk' => 1]);
+
+    expect(binaryStream()['cull'])->toEqual($whole);
+});
+
+it('stops at the cap mid-chunk, and says so in the trailer', function () {
+    config(['gis.read.max_features_per_response' => 5, 'gis.read.stream_chunk' => 2]);
+
+    $stream = binaryStream();
+
+    expect(array_map(fn (string $f) => header_($f)['count'], $stream['frames']))->toBe([2, 2, 1]);
+    expect($stream['cull']['returned'])->toBe(5);
+    expect($stream['cull']['capped'])->toBeTrue();
+});
+
+it('quantises coordinates below the editing zoom, and not at it', function () {
+    $low = header_(readBinary(['zoom' => 12]));
+    $edit = header_(readBinary(['zoom' => 18]));
+
+    expect($low['flags'] & BinaryFeatureEncoder::FLAG_QUANTISED)->toBe(BinaryFeatureEncoder::FLAG_QUANTISED);
+    expect($low['coordExponent'])->toBe((int) config('gis.read.coord_exponent'));
+    expect($low['bbox'] - $low['coords'])->toBe($low['vertices'] * 8);
+
+    // At the editing zoom a coordinate can be dragged and sent back, so
+    // rounding it on the way out would write the rounding into storage.
+    expect($edit['flags'] & BinaryFeatureEncoder::FLAG_QUANTISED)->toBe(0);
+    expect($edit['coordExponent'])->toBe(0);
+    expect($edit['bbox'] - $edit['coords'])->toBe($edit['vertices'] * 16);
+});
+
+it('halves the coordinate section without moving a vertex further than the exponent allows', function () {
+    $body = readBinary(['zoom' => 12]);
+    $h = header_($body);
+
+    $packed = array_values(unpack('V*', substr($body, $h['coords'], $h['vertices'] * 8)));
+
+    // The same geometry, straight from MySQL, in the same order.
+    $stored = DB::connection(config('gis.connection'))
+        ->table('gis_features')
+        ->where('layer_id', Layer::query()->firstOrFail()->id)
+        ->orderByDesc('area_m2')
+        ->selectRaw('ST_AsBinary(geom, \'axis-order=long-lat\') AS wkb')
+        ->pluck('wkb');
+
+    $expected = [];
+
+    foreach ($stored as $wkb) {
+        $rings = unpack('V', substr($wkb, 5, 4))[1];
+        $offset = 9;
+
+        for ($r = 0; $r < $rings; $r++) {
+            $points = unpack('V', substr($wkb, $offset, 4))[1];
+            $offset += 4;
+
+            foreach (unpack('e'.($points * 2), substr($wkb, $offset, $points * 16)) as $ordinate) {
+                $expected[] = $ordinate;
+            }
+
+            $offset += $points * 16;
+        }
+    }
+
+    // The zoom-12 cull drops the small parcels, and both lists are ordered by
+    // area descending, so the response is a prefix of the stored ordinates.
+    expect(count($packed))->toBeLessThan(count($expected));
+
+    $scale = 10 ** (int) config('gis.read.coord_exponent');
+    $worst = 0.0;
+
+    foreach ($packed as $i => $value) {
+        $bias = $i % 2 === 0 ? BinaryFeatureEncoder::LNG_BIAS : BinaryFeatureEncoder::LAT_BIAS;
+        $worst = max($worst, abs(($value / $scale) - $bias - $expected[$i]));
+    }
+
+    // Rounding to the nearest step cannot move a coordinate further than half
+    // of one, whatever the exponent is set to.
+    expect($worst)->toBeLessThanOrEqual(0.5 / $scale);
+});
+
+it('keeps every ordinate inside the range a biased uint32 affords', function () {
+    $body = readBinary(['zoom' => 12]);
+    $h = header_($body);
+
+    $ceiling = 360 * (10 ** (int) config('gis.read.coord_exponent'));
+
+    // 360 degrees of longitude at the finest exponent this can take, 1e-7, is
+    // 3.6e9 — inside uint32. Anything beyond would have wrapped silently.
+    expect($ceiling)->toBeLessThanOrEqual(4_294_967_295);
+
+    foreach (unpack('V*', substr($body, $h['coords'], $h['vertices'] * 8)) as $value) {
+        expect($value)->toBeGreaterThanOrEqual(0)->toBeLessThanOrEqual($ceiling);
+    }
 });

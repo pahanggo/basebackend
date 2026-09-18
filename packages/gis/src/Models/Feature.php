@@ -23,7 +23,7 @@ class Feature extends GisModel
     protected $table = 'gis_features';
 
     protected $fillable = [
-        'layer_id', 'geom', 'geom_simple',
+        'layer_id', 'geom',
         'minx', 'miny', 'maxx', 'maxy',
         'area_m2', 'vertex_count', 'properties', 'version',
     ];
@@ -31,7 +31,6 @@ class Feature extends GisModel
     protected $casts = [
         'layer_id' => 'integer',
         'geom' => GeometryCast::class,
-        'geom_simple' => GeometryCast::class,
         'minx' => 'float',
         'miny' => 'float',
         'maxx' => 'float',

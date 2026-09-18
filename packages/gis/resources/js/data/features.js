@@ -5,16 +5,25 @@
  * loop, and the arrays come back as transferable buffers, so the handoff moves
  * memory rather than copying it.
  *
- * S3 replaces the JSON body with the `GIS1` binary encoding at this same URL
- * through content negotiation; this module is where that swap happens, and
- * nothing above it should need to know.
+ * The binary response is **a stream of frames**, each a complete `GIS1`
+ * document of at most 100 features. Each frame is parsed and handed up as it
+ * lands, so the map fills in from the first tenth of a second rather than
+ * staying empty until the last feature has been read. Because the server
+ * orders by area, the frames arrive most-visible-first, which is what makes
+ * the partial picture worth looking at.
+ *
+ * GeoJSON is still read whole: it is the readable encoding, a single JSON
+ * document by definition, and incremental parsing of one would mean shipping a
+ * streaming JSON parser to serve the debugging path.
  */
 
 import { fromTransfer } from '../map/geometry.js';
 import { viewGis1 } from './gis1.js';
+import { FeatureAccumulator } from './accumulator.js';
+import { FRAME_FEATURES, FRAME_TRAILER, readFrames } from './stream.js';
 
 export const GEOJSON_TYPE = 'application/geo+json';
-export const BINARY_TYPE = 'application/vnd.gis.features+gis1';
+export const BINARY_TYPE = 'application/vnd.gis.features+gis1-stream';
 
 let worker = null;
 let nextId = 1;
@@ -44,10 +53,9 @@ function ensureWorker() {
 
         resolver.resolve({
             geometry: event.data.binary
-                ? viewGis1(event.data.buffer, event.data.layout)
+                ? viewGis1(event.data.buffer, event.data.layout, event.data.coordsBuffer)
                 : fromTransfer(event.data),
             properties: event.data.properties || null,
-            keep: event.data.keep ? new Uint8Array(event.data.keep) : null,
             cull: event.data.cull,
         });
     };
@@ -57,14 +65,13 @@ function ensureWorker() {
 
 /**
  * @param {ArrayBuffer} buffer an encoded GeoJSON FeatureCollection
- * @param {number} simplifyThreshold vertex count above which to simplify
  */
-export function parseInWorker(buffer, { binary = false, simplifyThreshold = 64 } = {}) {
+export function parseInWorker(buffer, { binary = false } = {}) {
     const id = nextId++;
 
     return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
-        ensureWorker().postMessage({ id, buffer, binary, simplifyThreshold }, [buffer]);
+        ensureWorker().postMessage({ id, buffer, binary }, [buffer]);
     });
 }
 
@@ -82,6 +89,12 @@ export function parseInWorker(buffer, { binary = false, simplifyThreshold = 64 }
  * @param {Array<number>} options.bbox minx, miny, maxx, maxy
  * @param {number} options.zoom
  * @param {number|null} options.minArea
+ * @param {Function|null} options.onChunk called with each streamed chunk, as it
+ *        is appended, so the renderer can paint a partial read
+ * @param {Array<number>|null} options.held a box every feature of which the
+ *        caller already has, so a pan asks only for what is new
+ * @param {FeatureAccumulator|null} options.into append into this rather than
+ *        starting a fresh set, which is what makes a pan additive
  */
 export async function fetchFeatures({
     apiBase,
@@ -91,6 +104,9 @@ export async function fetchFeatures({
     minArea = null,
     binary = true,
     signal = null,
+    onChunk = null,
+    held = null,
+    into = null,
 }) {
     const params = new URLSearchParams({
         bbox: bbox.map((n) => n.toFixed(6)).join(','),
@@ -99,6 +115,10 @@ export async function fetchFeatures({
 
     if (minArea !== null) {
         params.set('minArea', String(minArea));
+    }
+
+    if (held !== null) {
+        params.set('held', held.map((n) => n.toFixed(6)).join(','));
     }
 
     // Content negotiation, not a `?format=` parameter: the two encodings are
@@ -115,6 +135,79 @@ export async function fetchFeatures({
         throw new Error(`Feature read failed: ${response.status}`);
     }
 
+    return binary
+        ? readStream(response, started, onChunk, into)
+        : readWhole(response, started);
+}
+
+/**
+ * The binary encoding: one frame at a time, painted as it arrives.
+ *
+ * Frames are parsed in order and one at a time. Parsing 100 features costs
+ * well under a millisecond, so there is nothing to gain from overlapping it
+ * with the read, and doing so would mean appending chunks in whatever order
+ * the worker happened to finish them.
+ */
+async function readStream(response, started, onChunk, into = null) {
+    const accumulator = into ?? new FeatureAccumulator();
+    let bytes = 0;
+    let parseMs = 0;
+    let cull = null;
+    let chunks = 0;
+    let firstChunkMs = null;
+
+    for await (const frame of readFrames(response.body)) {
+        bytes += frame.payload.byteLength + 5;
+
+        if (frame.kind === FRAME_TRAILER) {
+            cull = JSON.parse(new TextDecoder().decode(frame.payload));
+            break;
+        }
+
+        if (frame.kind !== FRAME_FEATURES) {
+            // Forwards compatible on purpose: the frame header carries a length
+            // precisely so an unknown kind can be stepped over.
+            continue;
+        }
+
+        const parseStarted = performance.now();
+        const parsed = await parseInWorker(frame.payload.buffer, { binary: true });
+
+        parseMs += performance.now() - parseStarted;
+        chunks++;
+
+        const range = accumulator.append(parsed.geometry, parsed.properties);
+
+        if (firstChunkMs === null) {
+            firstChunkMs = performance.now() - started;
+        }
+
+        if (onChunk) {
+            onChunk({
+                geometry: accumulator.geometry,
+                properties: accumulator.properties,
+                first: chunks === 1,
+                ...range,
+            });
+        }
+    }
+
+    return {
+        geometry: accumulator.geometry,
+        properties: accumulator.properties,
+        cull: cull || {},
+        timing: {
+            transferMs: performance.now() - started,
+            parseMs,
+            firstChunkMs,
+            chunks,
+            bytes,
+        },
+    };
+}
+
+/** The readable encoding, which is one document and is read as one. */
+async function readWhole(response, started) {
     // An ArrayBuffer, not text. `response.text()` decodes on the main thread
     // and `postMessage` of the resulting string copies it again; a buffer is
     // transferred to the worker, which decodes it there.
@@ -123,15 +216,17 @@ export async function fetchFeatures({
     const bytes = buffer.byteLength;
 
     const parseStarted = performance.now();
-    const parsed = await parseInWorker(buffer, { binary });
+    const parsed = await parseInWorker(buffer, { binary: false });
 
     return {
         ...parsed,
         timing: {
             transferMs: transferred,
             parseMs: performance.now() - parseStarted,
+            firstChunkMs: transferred,
+            chunks: 1,
             bytes,
         },
-        cull: parsed.cull || JSON.parse(response.headers.get('X-Gis-Cull') || '{}'),
+        cull: parsed.cull || {},
     };
 }

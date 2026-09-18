@@ -89,9 +89,16 @@ it('sends no attributes unless they are asked for', function () {
     expect($with['features'][0]['properties'])->toHaveKey('attributes');
 });
 
-it('reads the simplified geometry below the editing zoom and the real one above', function () {
-    expect(decodeStream(readViewport(['zoom' => 12]))['cull']['simplified'])->toBeTrue();
-    expect(decodeStream(readViewport(['zoom' => 16]))['cull']['simplified'])->toBeFalse();
+it('returns the stored geometry at every zoom, never a reshaped copy', function () {
+    // There is no level-of-detail geometry. A feature is returned with the
+    // vertices it was imported with, or the area cull drops it whole.
+    $low = decodeStream(readViewport(['zoom' => 18]));
+    $high = decodeStream(readViewport(['zoom' => 16]));
+
+    $ring = fn (array $c) => $c['features'][0]['geometry']['coordinates'][0];
+
+    expect($ring($low))->toBe($ring($high));
+    expect($low['cull'])->not->toHaveKey('simplified');
 });
 
 it('excludes features outside the bounding box', function () {
@@ -107,4 +114,51 @@ it('rejects a bounding box it cannot use', function () {
 
 it('rejects a zoom outside the world', function () {
     readViewport(['zoom' => 99])->assertStatus(422);
+});
+
+it('leaves out everything the caller says it already holds', function () {
+    // The nine parcels run west to east from 103.320 in steps of 0.002.
+    $all = decodeStream(readViewport(['zoom' => 18]));
+
+    expect($all['features'])->toHaveCount(9);
+
+    // Claim the western half. Every parcel whose box meets it must be omitted.
+    $some = decodeStream(readViewport([
+        'zoom' => 18,
+        'held' => '103.0,3.7,103.325,3.9',
+    ]));
+
+    $heldIds = array_map(fn (array $f) => $f['id'], array_slice($all['features'], 0, 0));
+
+    expect(count($some['features']))->toBeLessThan(9);
+
+    // And the two halves together must be the whole, with nothing counted twice.
+    $west = decodeStream(readViewport(['zoom' => 18, 'bbox' => '103.0,3.7,103.325,3.9']));
+    $ids = array_merge(
+        array_map(fn (array $f) => $f['id'], $west['features']),
+        array_map(fn (array $f) => $f['id'], $some['features']),
+    );
+
+    expect($ids)->toHaveCount(count(array_unique($ids)));
+    expect(array_unique($ids))->toHaveCount(9);
+});
+
+it('excludes on intersection, not containment, so a straddling feature is never sent twice', function () {
+    // A box whose edge cuts through the parcels rather than between them.
+    $held = '103.0,3.7,103.3245,3.9';
+
+    $first = decodeStream(readViewport(['zoom' => 18, 'bbox' => $held]));
+    $second = decodeStream(readViewport(['zoom' => 18, 'held' => $held]));
+
+    $firstIds = array_map(fn (array $f) => $f['id'], $first['features']);
+    $secondIds = array_map(fn (array $f) => $f['id'], $second['features']);
+
+    // A feature straddling the edge belongs to the first read, because that
+    // read asked for everything meeting its box too. If the exclusion used
+    // containment it would come back in the second read as well.
+    expect(array_intersect($firstIds, $secondIds))->toBeEmpty();
+});
+
+it('refuses a held box that is not four numbers', function () {
+    readViewport(['held' => '103.0,3.7,103.5'])->assertStatus(422);
 });

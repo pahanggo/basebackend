@@ -16,6 +16,48 @@
 import { projectLng, projectLat } from '../map/geometry.js';
 
 const MAGIC = 0x31534947;          // 'GIS1' read as a little-endian uint32
+const VERSION = 2;
+const FLAG_PROPERTIES = 1;
+const FLAG_QUANTISED = 2;
+const LNG_BIAS = 180;
+const LAT_BIAS = 90;
+
+/**
+ * Full-precision coordinates: projected in place, as they always were.
+ *
+ * The array is a view onto the response buffer, so this rewrites the response
+ * itself. That is the point — nothing is allocated and nothing is re-packed.
+ */
+function projectInPlace(coords, vertexCount) {
+    for (let v = 0; v < vertexCount; v++) {
+        coords[v * 2] = projectLng(coords[v * 2]);
+        coords[v * 2 + 1] = projectLat(coords[v * 2 + 1]);
+    }
+
+    return coords;
+}
+
+/**
+ * Quantised coordinates: unbiased, scaled and projected in one pass.
+ *
+ * This is the one place the format allocates. A `uint32` section cannot be
+ * widened in place, so the projected coordinates need somewhere to go — but the
+ * pass itself is the pass that was already happening, and it was never free: it
+ * calls a `log` and a `tan` per vertex. Undoing the bias adds a multiply and a
+ * subtract to that, which is not measurable beside them.
+ */
+function expandCoords(buffer, coordsOffset, vertexCount, exponent) {
+    const packed = new Uint32Array(buffer, coordsOffset, vertexCount * 2);
+    const coords = new Float64Array(vertexCount * 2);
+    const scale = 10 ** exponent;
+
+    for (let v = 0; v < vertexCount; v++) {
+        coords[v * 2] = projectLng(packed[v * 2] / scale - LNG_BIAS);
+        coords[v * 2 + 1] = projectLat(packed[v * 2 + 1] / scale - LAT_BIAS);
+    }
+
+    return coords;
+}
 
 export function decodeGis1(buffer) {
     const view = new DataView(buffer);
@@ -26,7 +68,7 @@ export function decodeGis1(buffer) {
 
     const version = view.getUint16(4, true);
 
-    if (version !== 1) {
+    if (version !== VERSION) {
         throw new Error(`Unsupported GIS1 version ${version}`);
     }
 
@@ -44,14 +86,12 @@ export function decodeGis1(buffer) {
     const featStartsOffset = view.getUint32(44, true);
     const typesOffset = view.getUint32(48, true);
     const propertiesOffset = view.getUint32(52, true);
+    const coordExponent = view.getUint32(60, true);
 
-    const coords = new Float64Array(buffer, coordsOffset, vertexCount * 2);
-
-    // In place: read longitude and latitude, write x and y over them.
-    for (let v = 0; v < vertexCount; v++) {
-        coords[v * 2] = projectLng(coords[v * 2]);
-        coords[v * 2 + 1] = projectLat(coords[v * 2 + 1]);
-    }
+    const quantised = (flags & FLAG_QUANTISED) === FLAG_QUANTISED;
+    const coords = quantised
+        ? expandCoords(buffer, coordsOffset, vertexCount, coordExponent)
+        : projectInPlace(new Float64Array(buffer, coordsOffset, vertexCount * 2), vertexCount);
 
     const bbox = new Float64Array(buffer, bboxOffset, count * 4);
 
@@ -83,6 +123,7 @@ export function decodeGis1(buffer) {
         count,
         ringCount,
         vertexCount,
+        quantised,
         coordsOffset,
         bboxOffset,
         idsOffset,
@@ -92,7 +133,7 @@ export function decodeGis1(buffer) {
         typesOffset,
     };
 
-    const properties = (flags & 1) === 1 && propertiesLength > 0
+    const properties = (flags & FLAG_PROPERTIES) === FLAG_PROPERTIES && propertiesLength > 0
         ? JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, propertiesOffset, propertiesLength)))
         : null;
 
@@ -104,12 +145,19 @@ export function decodeGis1(buffer) {
  *
  * The arrays are views onto one buffer, so it is transferred once and re-viewed
  * here rather than sent seven times — which would fail on the second, the
- * buffer having already been detached.
+ * buffer having already been detached. Quantised coordinates are the exception:
+ * they were expanded out of the response into their own buffer, so there are
+ * two to transfer and two to re-view.
  */
-export function viewGis1(buffer, layout) {
+export function viewGis1(buffer, layout, coordsBuffer = null) {
     return {
         count: layout.count,
-        coords: new Float64Array(buffer, layout.coordsOffset, layout.vertexCount * 2),
+        // Quantised coordinates were expanded into a buffer of their own, so
+        // they are transferred separately and viewed whole; full-precision ones
+        // still live inside the response buffer.
+        coords: layout.quantised
+            ? new Float64Array(coordsBuffer)
+            : new Float64Array(buffer, layout.coordsOffset, layout.vertexCount * 2),
         bbox: new Float64Array(buffer, layout.bboxOffset, layout.count * 4),
         ids: new Float64Array(buffer, layout.idsOffset, layout.count),
         area: new Float64Array(buffer, layout.areaOffset, layout.count),

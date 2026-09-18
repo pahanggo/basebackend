@@ -48,7 +48,6 @@ class FeatureCreate extends Command
         $feature = new Feature([
             'layer_id' => $layerId,
             'geom' => $geometry,
-            'geom_simple' => null,
             ...GeometryInput::boundingBox($geometry),
             'area_m2' => GeometryCast::geodesicArea($geometry),
             'vertex_count' => GeometryCast::countVertices($geometry),

@@ -159,6 +159,12 @@ together. The principled fix, if this becomes a nuisance, is to store an area
 distribution per layer at import and estimate both row counts properly rather
 than inferring one from geometry.
 
+> **Superseded.** Both the heuristic and `gis.read.bbox_index_max_share` were
+> removed once `ix_layer_read` existed — see "The index the read was always
+> asking for" at the end of this file. The reasoning above still explains why
+> MySQL cannot choose; the answer turned out to be one index that serves both
+> filters rather than a rule for picking between two that each serve one.
+
 After it, at `min_area_px = 32`, per layer:
 
 | Zoom | `lots` | `usages` |
@@ -191,8 +197,9 @@ cull and turns out to be what makes the cap cheap.
 - **The counts come after the features, not in headers.** Reporting `candidates`
   up front meant two `COUNT(*)` queries over 174,000 rows, which measured at two
   thirds of the whole request. The GeoJSON encoding puts the `cull` object after
-  the feature array; the binary one puts it in a header, which it can do because
-  it is not streamed.
+  the feature array; the binary one put it in a header, which it could do
+  because it was not streamed. **Superseded below** — the binary encoding now
+  streams too, and the counts moved into a trailer frame.
 - **The "binary above 2,000 features" rule lives in the client.** Deciding it
   server-side would mean counting the result before encoding it, and that count
   is the thing that was just removed. Negotiation is still by `Accept` and never
@@ -201,9 +208,11 @@ cull and turns out to be what makes the cap cheap.
   rather than this thing: a capped response is complete and says so, and nothing
   in the client yet asks for the remainder. The cursor over `(minx, id)` remains
   the design; it belongs with whatever first needs a second page.
-- **The GeoJSON encoding streams and the binary one does not.** A capped binary
-  response is about 3 MB, and its header carries section offsets that are only
-  known once every section is built.
+- ~~**The GeoJSON encoding streams and the binary one does not.**~~ **Superseded.**
+  See "Both encodings stream" below. The reasoning was sound — a `GIS1` header
+  carries section offsets that are only known once every section is built — but
+  the conclusion was wrong: the answer is to send several small documents rather
+  than one large one.
 
 ### A bug worth recording
 
@@ -211,8 +220,8 @@ The first implementation returned the response without flushing, so PHP held the
 entire body in its output buffer — "streaming" that streamed nothing. An
 uncapped zoom-12 read then buffered tens of megabytes and, with `cursor()`
 buffering the result set on the MySQL side as well, the request simply never
-returned. Both are fixed: the stream flushes every 2,000 features, and the cap
-bounds the result set.
+returned. Both are fixed: the stream flushes every chunk, and the cap bounds the
+result set.
 
 ### Tests
 
@@ -223,3 +232,267 @@ little-endian doubles, and the two encodings asserted to agree on ids, areas and
 coordinates for the same query. Plus the cull at three zooms, `minArea=0`, the
 cap, the ordering, attribute suppression, simplified-versus-real geometry, and
 the parameter validation.
+
+## Both encodings stream, 100 features at a time
+
+Added after the fact, on top of the session above.
+
+The binary encoding is now a **sequence of framed `GIS1` documents** rather than
+one: a kind byte, a little-endian length, and a payload, ending with a trailer
+frame carrying the `cull` object. Each feature frame is a complete document of
+at most `gis.read.stream_chunk` features, so the client parses and paints each
+as it lands. The GeoJSON encoding was already one streamed document and only
+changed its flush interval to match. The media type changed with the shape:
+`application/vnd.gis.features+gis1-stream`.
+
+The trailer exists because `returned`, `capped` and `smallestReturnedM2` are
+only known once the last row has been read, and headers are written before the
+first. That is the same argument that put the GeoJSON counts after the features;
+it now applies to both.
+
+### What it changed on the client
+
+- `data/stream.js` reassembles frames out of whatever pieces the network
+  delivered, copying each payload into a buffer of its own. That copy is not a
+  missed optimisation: a `GIS1` document is read by pointing a `Float64Array` at
+  an offset inside its buffer, which requires the buffer to begin where the
+  document does.
+- `data/accumulator.js` grows one layer's arrays a chunk at a time, rebasing
+  `ringStarts` and `featStarts` onto what is already held and rewriting each
+  sentinel rather than appending it. **The geometry object's identity never
+  changes** — the renderer and the spatial index both hold a reference and
+  re-read its fields, so growth replaces arrays on the same object.
+- `SpatialIndex.append()` bulk-loads the new range into the existing tree, so
+  the hit test stays correct while the map is still filling in.
+- `GisRenderer.appendGeometry()` extends the `Path2D` objects already built
+  instead of rebuilding them. This is the one that matters: see below.
+
+### Results
+
+Measured in Chrome against the imported cadastre, `Gunatanah` at zoom 12 with
+the usual quarter-viewport padding — 23,215 features, 233 frames, 9.0 MB.
+
+| | |
+| --- | --- |
+| Full path rebuild, 23,215 features | 7.4 – 12 ms |
+| Appending one 100-feature chunk | 0.0 – 0.6 ms |
+| Spatial index, 232 appends | 17 ms total |
+| Parse, 233 frames | 73 – 121 ms total (0.3 – 0.5 ms a frame) |
+| Warm draw (the pan case, unchanged) | 0.0 – 0.2 ms |
+
+**Appending rather than rebuilding is what makes this viable.** Replacing the
+layer per chunk would rebuild a growing path 233 times: at roughly 8 ms a
+rebuild that is about 1.9 seconds of main-thread work for one read, against
+about 23 ms spent appending. `Path2D` cannot remove a subpath, so an append is
+only valid while the cache it extends is still the right one; a zoom during the
+read invalidates the whole set and the next draw rebuilds it once.
+
+Correctness was checked by reading the same viewport through both encodings and
+comparing: the accumulated arrays hold the same 23,215 features, the same id sum
+exactly, and the same areas to double precision.
+
+### What streaming did not buy, and why
+
+Time to first byte is **430 – 490 ms** against a total of **484 – 537 ms**. Most
+of the wait is MySQL, not transfer: the read is `ORDER BY area_m2 DESC`, and
+where the planner does not take `ix_layer_area` it sorts before it returns
+anything — measured at 393 ms to the first row, 411 ms to the last. Streaming
+moves the first paint from the end of the response to the first frame after
+that, which is an honest 50 – 165 ms, not the several hundred it would be if the
+query itself streamed.
+
+So the win here is smaller than the mechanism deserves, and the thing standing
+in front of it is the index choice already recorded as an open item —
+`bbox_index_max_share` is tuned against `min_area_px`, and the principled fix is
+a stored area distribution per layer. **Streaming is what makes that fix worth
+making**: without it, removing the sort would only have moved bytes around.
+
+### Tests
+
+Five more feature tests over the framing (frame counts against a configured
+chunk size, a header and a length per frame, the trailer's cull, the cull being
+the same however the features were divided, and the cap landing mid-chunk), plus
+seven Node tests over the frame reader and the accumulator — reassembly from
+one-byte reads, payload buffer alignment, a truncated stream, and the
+accumulated arrays asserted equal to what a single whole response would have
+built.
+
+## The index the read was always asking for
+
+Added after the streaming work, because streaming exposed it.
+
+With both encodings sending 100 features at a time, the bytes still arrived in
+one burst: nothing for ~490 ms, then 9 MB in 63 ms. The flushes were real and
+fired 234 times; they simply all fired at the end, because the row source was
+not progressive. `ORDER BY area_m2 DESC` was being served by a table scan and a
+filesort, so MySQL produced no first row until the sort finished.
+
+### Why the planner could not get there
+
+Neither half of the read's `WHERE` is selective. On `Gunatanah`, 615,373
+features, at the zoom-12 threshold:
+
+| predicate | rows | share |
+| --- | --- | --- |
+| `area_m2 >= 5816` alone | 227,660 | 37.0% |
+| bounding box alone | 121,049 | 19.7% |
+| both | 16,475 | **2.7%** |
+
+MySQL has no cross-column statistics, so it sees two weak filters, declines both
+indexes and scans. Forcing either of the old indexes only moved the pain:
+`ix_layer_area` had to read a row per candidate to test the bounding box, and
+`ix_layer_bbox` still had to sort.
+
+### The index
+
+```
+ix_layer_read (layer_id, area_m2, minx, maxx, miny, maxy)
+```
+
+Leading with `(layer_id, area_m2)` means a backward scan is already in the
+order the read wants — no filesort, so the first row is immediate. Carrying the
+bounding box means index condition pushdown answers the viewport test inside the
+index, so a row is read only for a feature that survives it. `ix_layer_area` is a
+leftmost prefix of this and was dropped.
+
+**It has to be forced.** The moment `geom` joins the select list the index stops
+covering, and the optimiser goes straight back to the table scan — it cannot see
+that pushdown will discard 97% of the entries before any lookup. This is the one
+place in the read where the planner is overruled outright rather than advised.
+
+### Results
+
+Per-zoom, geometry in the select list, `Gunatanah`. "first row" is unbuffered
+time to the first row; the planner column is what shipped before this change.
+
+| zoom | plan | filesort | rows | total | first row |
+| --- | --- | --- | --- | --- | --- |
+| 12 | planner | yes | 16,475 | 395 ms | 368 ms |
+| 12 | `ix_layer_bbox` | yes | 16,475 | 279 ms | 250 ms |
+| 12 | **`ix_layer_read`** | **no** | 16,475 | **96 ms** | **0.4 ms** |
+| 14 | planner | no | 13,462 | 105 ms | 1.0 ms |
+| 14 | **`ix_layer_read`** | no | 13,462 | 117 ms | 0.6 ms |
+| 16 | planner | no | 8,239 | 113 ms | 0.7 ms |
+| 16 | **`ix_layer_read`** | no | 8,239 | 123 ms | 0.6 ms |
+| 18 | `ix_layer_bbox` | yes | 194 | 70 ms | 69.5 ms |
+| 18 | **`ix_layer_read`** | no | 194 | 87 ms | 0.6 ms |
+
+`ix_layer_read` is the only plan that never sorts. Where it loses on total time
+it loses by 10–17 ms and wins the first row by 69–368 ms, which for a streamed
+response is the number that matters.
+
+End to end, the zoom-12 viewport read of 23,215 features over both layers:
+
+| | before | after |
+| --- | --- | --- |
+| time to first byte | 428 – 504 ms | **95 – 169 ms** |
+| whole response | 484 – 567 ms | **148 – 257 ms** |
+
+Where the remaining time goes, for the same read: 48 ms to filter, 378 ms to
+fetch 6.0 MB of geometry, 20 ms to encode. The geometry fetch is the payload and
+is not going anywhere; it is now spread across the response instead of preceding
+it.
+
+### What is left
+
+Time to first byte is ~95 ms rather than ~1 ms because `cursor()` runs over a
+buffered PDO connection: `execute()` does not return until the whole result set
+is in PHP memory, so the first `echo` waits for the last row. Unbuffered would
+close that gap, but it has to be scoped to this one read and restored in a
+`finally` — no other query may use the connection while the cursor is open, and
+under Octane that connection is shared. Worth doing; not done here.
+
+## Shrinking the response, and making a pan additive
+
+Three changes, after the index work above.
+
+### Coordinates are quantised below the editing zoom
+
+GIS1 is version 2. Flag bit 1 marks quantised coordinates, the header's old
+`reserved` word carries the exponent, and each ordinate becomes a `uint32`
+holding `round((lng + 180) * 10^e)` — or `+ 90` for latitude. The bias is what
+makes it unsigned, and unsigned is what makes it portable: PHP's `pack()` has no
+signed little-endian code, only the machine's own byte order, while every other
+field in this format is explicitly little-endian.
+
+**Not at or above `edit_min_zoom`.** There a vertex can be dragged and sent
+back, so a read that had rounded it would write the rounding into storage, and
+each edit would move the vertex again. Full precision where geometry can
+round-trip, shortened where it can only be looked at.
+
+The conversion runs once over the whole accumulated blob in `encode()`, so
+`appendRing` stays the pure byte copy the format was built around. Over 1.7
+million ordinates: unpack 26 ms, scale 34 ms, repack 12 ms. Per ring it would
+pay PHP's call overhead 38,000 times for the same arithmetic.
+
+On the client it costs nothing extra. The projection pass over every vertex was
+already there and already calls a `log` and a `tan`; undoing the bias adds a
+multiply and a subtract. It is the one place the format allocates — a `uint32`
+section cannot be widened in place — so the expanded coordinates travel back
+from the worker as a second transferable buffer.
+
+`geom_simple` is **not** used by this encoding. Simplification drops vertices
+and changes the drawn shape; quantisation keeps every vertex and shortens each
+one. They are alternatives, and this encoding takes the second.
+
+### gzip was never on
+
+nginx's default `gzip_types` is HTML and JSON, so the binary encoding shipped
+uncompressed for the whole of S3. Adding
+`application/vnd.gis.features+gis1-stream` and `application/geo+json`
+compresses it to **0.45** of its size. This is deployment configuration, not
+repository configuration: a new environment loses it silently, and the only
+symptom is a response three times larger than this file claims.
+
+### A pan asks only for the edge
+
+The read accepts `held=minx,miny,maxx,maxy`, a box the client already holds
+every feature for, and leaves out anything whose bounding box **meets** it.
+
+Meets, not is contained by. A feature straddling the old boundary was returned
+by the previous read, because that read asked for everything intersecting its
+box too. Excluding on intersection is what makes the two responses disjoint, and
+disjoint is what lets the client append without deduplicating by id.
+
+All four bounding-box columns are in `ix_layer_read`, so the exclusion resolves
+inside the index next to the viewport test — it costs no row read to reject a
+row, and the plan still has no filesort.
+
+The client compacts to the padded area on **every** additive read. That is not
+an optimisation, it is the invariant: what is held must equal what `loaded`
+claims, or a pan back across older leftovers asks for features it already has —
+and two identical rings in one `Path2D` filled `evenodd` cancel into a hole
+rather than showing as extra ink. Keeping the leftovers as a cache would mean
+deduplicating by id and an unbounded working set.
+
+`held` is not sent after a capped response, which dropped features inside the
+box it covers.
+
+### Results
+
+Same zoom-12 viewport, `Gunatanah`, measured in Chrome. "On the wire" is
+`encodedBodySize`, so it is what actually crossed the network.
+
+| | on the wire |
+| --- | --- |
+| before any of this | 8.98 MB |
+| after quantisation and gzip | **2.55 MB** |
+
+A pan sequence from that view, a third of a viewport at a time:
+
+| | features returned | on the wire |
+| --- | --- | --- |
+| initial load | 20,827 | 1.48 MB |
+| pan west | 2,595 | **0.19 MB** |
+| pan west | 1,354 | **0.09 MB** |
+| pan west | 3,389 | **0.24 MB** |
+| pan back east | 12,155 | 0.83 MB |
+
+Panning back costs more because compaction had already dropped that ground —
+the price of holding exactly what is claimed rather than caching. Against the
+server directly, a quarter-viewport pan goes from 17,316 rows and 6.32 MB of WKB
+to **841 rows and 0.36 MB**.
+
+Correctness after four pans: **zero duplicate ids**, and the held set returns to
+20,827 features at the original view — the same count a fresh full read gives.
+The spatial index tracked it exactly, so compaction leaves no stale items.

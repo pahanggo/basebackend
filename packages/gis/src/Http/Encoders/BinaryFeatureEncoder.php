@@ -18,14 +18,16 @@ use RuntimeException;
  *     0   char[4]   magic 'GIS1'
  *     4   uint16    version
  *     6   uint16    flags, bit 0 = an attribute tail follows
+ *                          bit 1 = coordinates are quantised (see below)
  *     8   uint32    featureCount
  *     12  uint32    ringCount
  *     16  uint32    vertexCount
  *     20  uint32    propertiesLength
  *     24  uint32[8] section offsets, in the order below
  *     56  uint32    totalLength
- *     60  uint32    reserved
+ *     60  uint32    coordExponent, 0 when coordinates are float64
  *     64  float64   coords, interleaved longitude and latitude
+ *         uint32    ...or quantised, when bit 1 is set
  *         float64   bbox, 4 per feature
  *         float64   ids
  *         float64   area in square metres
@@ -37,13 +39,44 @@ use RuntimeException;
  * Coordinates are copied out of MySQL's WKB **as bytes**. WKB stores each
  * ordinate as a little-endian double, which is exactly what a `Float64Array`
  * wants, so the coordinate run of every ring is a `substr` rather than a
- * decode-and-re-encode. Nothing in this encoder converts a number.
+ * decode-and-re-encode. Nothing in the hot path converts a number.
+ *
+ * **Quantisation.** With a `coordExponent` the coordinate section is halved:
+ * each ordinate becomes a `uint32` holding `round((lng + 180) * 10^e)`, or
+ * `round((lat + 90) * 10^e)`. At the default exponent of 7 that is a
+ * resolution of 1e-7 degrees — about 1.1 cm, with a worst-case error of half
+ * that — and the widest value, longitude at 180, is 3.6e9, inside `uint32`.
+ *
+ * The bias is what makes it unsigned, and unsigned is what makes it portable:
+ * PHP's `pack()` has no signed little-endian code, only the machine's own byte
+ * order, and this format is explicitly little-endian everywhere else.
+ *
+ * The conversion runs **once over the whole accumulated blob** in `encode()`,
+ * not per ring. Measured over 1.7 million ordinates: unpack 26 ms, scale 34 ms,
+ * repack 12 ms. Doing it ring by ring would pay PHP's call overhead 38,000
+ * times for the same arithmetic.
  */
 final class BinaryFeatureEncoder
 {
     public const MAGIC = 'GIS1';
 
-    public const VERSION = 1;
+    /**
+     * Bumped for quantisation. A version 1 reader must fail on a version 2
+     * document rather than read a `uint32` coordinate section as float64,
+     * which would produce coordinates rather than an error.
+     */
+    public const VERSION = 2;
+
+    /** An attribute tail follows the index arrays. */
+    public const FLAG_PROPERTIES = 1;
+
+    /** Coordinates are biased `uint32` at `coordExponent`, not float64. */
+    public const FLAG_QUANTISED = 2;
+
+    /** Added before scaling, so every ordinate is non-negative. */
+    public const LNG_BIAS = 180;
+
+    public const LAT_BIAS = 90;
 
     public const HEADER_BYTES = 64;
 
@@ -77,6 +110,12 @@ final class BinaryFeatureEncoder
     private int $rings = 0;
 
     private int $features = 0;
+
+    /**
+     * @param  int|null  $coordExponent  decimal places to keep, or null for
+     *                                   full float64 precision
+     */
+    public function __construct(private ?int $coordExponent = null) {}
 
     /**
      * @param  string  $wkb  geometry as WKB in longitude-latitude order, which
@@ -213,12 +252,16 @@ final class BinaryFeatureEncoder
         $hasProperties = $this->properties !== [];
         $tail = $hasProperties ? json_encode($this->properties, JSON_THROW_ON_ERROR) : '';
 
+        $coords = $this->coordExponent === null
+            ? $this->coords
+            : $this->quantise($this->coords, $this->coordExponent);
+
         $ringStarts = pack('V*', ...$this->ringStarts);
         $featStarts = pack('V*', ...$this->featStarts);
 
         $offset = self::HEADER_BYTES;
         $coordsOffset = $offset;
-        $offset += strlen($this->coords);
+        $offset += strlen($coords);
         $bboxOffset = $offset;
         $offset += strlen($this->bbox);
         $idsOffset = $offset;
@@ -239,7 +282,8 @@ final class BinaryFeatureEncoder
 
         $header = self::MAGIC
             .pack('v', self::VERSION)
-            .pack('v', $hasProperties ? 1 : 0)
+            .pack('v', ($hasProperties ? self::FLAG_PROPERTIES : 0)
+                | ($this->coordExponent === null ? 0 : self::FLAG_QUANTISED))
             .pack('V', $this->features)
             .pack('V', $this->rings)
             .pack('V', $this->vertices)
@@ -255,14 +299,14 @@ final class BinaryFeatureEncoder
                 $propertiesOffset,
             )
             .pack('V', $total)
-            .pack('V', 0);
+            .pack('V', $this->coordExponent ?? 0);
 
         if (strlen($header) !== self::HEADER_BYTES) {
             throw new RuntimeException('GIS1 header is '.strlen($header).' bytes, expected '.self::HEADER_BYTES.'.');
         }
 
         return $header
-            .$this->coords
+            .$coords
             .$this->bbox
             .$this->ids
             .$this->area
@@ -270,5 +314,40 @@ final class BinaryFeatureEncoder
             .$featStarts
             .$this->types
             .$tail;
+    }
+
+    /**
+     * Float64 ordinates to biased `uint32`, in one pass over the whole blob.
+     *
+     * Chunked rather than spread in a single `pack(...$all)` call: the argument
+     * list would otherwise be one per ordinate, which for a large viewport is
+     * millions of arguments on the stack for no gain.
+     *
+     * Ordinates alternate longitude, latitude, so the bias alternates with
+     * them. SRID 4326 keeps both in range, so the result cannot exceed the
+     * 3.6e9 that `uint32` affords.
+     */
+    private function quantise(string $blob, int $exponent): string
+    {
+        $scale = 10 ** $exponent;
+        $out = '';
+        $stride = 8192;                                // ordinates per chunk
+        $total = intdiv(strlen($blob), 8);
+
+        for ($start = 0; $start < $total; $start += $stride) {
+            $take = min($stride, $total - $start);
+            $values = unpack('e'.$take, substr($blob, $start * 8, $take * 8));
+            $scaled = [];
+
+            foreach ($values as $i => $value) {
+                // `unpack` indexes from 1, and even ordinates are longitude.
+                $bias = ($start + $i - 1) % 2 === 0 ? self::LNG_BIAS : self::LAT_BIAS;
+                $scaled[] = (int) round(($value + $bias) * $scale);
+            }
+
+            $out .= pack('V*', ...$scaled);
+        }
+
+        return $out;
     }
 }

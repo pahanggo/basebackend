@@ -13,7 +13,9 @@
 import { createRenderer } from './map/renderer.js';
 import { ensurePane } from './map/panes.js';
 import { SpatialIndex } from './map/spatial-index.js';
+import { projectLng, projectLat } from './map/geometry.js';
 import { fetchFeatures } from './data/features.js';
+import { FeatureAccumulator } from './data/accumulator.js';
 import { Store } from './store/store.js';
 import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
@@ -48,7 +50,12 @@ class LayerFeed {
         this.slot = null;
         this.controller = null;
         this.loaded = null;
+        this.entry = null;
+        this.accumulator = null;
+        this.capped = false;
     }
+
+
 
     /**
      * Whether what is loaded still covers the view.
@@ -100,6 +107,27 @@ class LayerFeed {
 
         this.controller = new AbortController();
 
+        // A pan overlaps what is already held: a quarter-viewport pan leaves 83%
+        // of the new padded area in memory. So the read declares what it holds
+        // and the server leaves those features out, and the response carries
+        // only the new edge rather than the whole area again.
+        //
+        // Only at constant zoom. Zoom moves the area threshold and, in the
+        // readable encoding, the geometry column too, so a zoom change makes
+        // everything held the wrong resolution and the wrong selection.
+        const additive = this.loaded !== null
+            && this.loaded.zoom === zoom
+            && this.slot !== null
+            && this.entry !== null
+            // A capped response dropped features inside the box it covers, so
+            // excluding that box next time would lose them permanently.
+            && !this.capped;
+
+        if (!additive) {
+            this.accumulator = new FeatureAccumulator();
+            this.entry = null;
+        }
+
         try {
             const result = await fetchFeatures({
                 apiBase: this.config.apiBase,
@@ -107,29 +135,87 @@ class LayerFeed {
                 bbox: [area.west, area.south, area.east, area.north],
                 zoom,
                 signal: this.controller.signal,
+                into: this.accumulator,
+                held: additive
+                    ? [this.loaded.west, this.loaded.south, this.loaded.east, this.loaded.north]
+                    : null,
+                onChunk: ({ geometry, from, to }) => {
+                    if (this.entry === null) {
+                        this.entry = { geometry, index: new SpatialIndex(geometry), visible: true };
+
+                        if (this.slot === null) {
+                            this.slot = this.renderer.addGeometry(this.entry);
+                        } else {
+                            this.renderer.replaceGeometry(this.slot, this.entry);
+                        }
+
+                        return;
+                    }
+
+                    this.entry.index.append(from, to);
+                    this.renderer.appendGeometry(this.slot, { from, to });
+                },
             });
-
-            const entry = {
-                geometry: result.geometry,
-                index: new SpatialIndex(result.geometry),
-                keep: result.keep,
-                visible: true,
-            };
-
-            if (this.slot === null) {
-                this.slot = this.renderer.addGeometry(entry);
-            } else {
-                this.renderer.replaceGeometry(this.slot, entry);
-            }
 
             this.loaded = area;
             this.timing = result.timing;
             this.cull = result.cull;
+            this.capped = result.cull.capped === true;
+            this.evict(area);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('gis: feature read failed', error);
             }
         }
+    }
+
+    /**
+     * Drop everything outside the area just read, so that what is held is
+     * exactly what `loaded` claims.
+     *
+     * **That equality is what makes the exclusion box sound.** The next read
+     * tells the server "I hold everything in this box"; if the client were also
+     * holding leftovers from an older area, a pan back across them would ask
+     * for features it already had and append them twice — and two identical
+     * rings in one `Path2D` filled `evenodd` cancel out, so the duplicate shows
+     * as a hole rather than as extra ink.
+     *
+     * The alternative is to keep the leftovers as a cache and deduplicate by id
+     * on the way in. That trades a bounded, O(n) pass here for an unbounded
+     * working set, and the arrays are the largest thing the client owns — 30 MB
+     * at 40,000 features, so ten screens of panning would be 300 MB.
+     *
+     * The index works in projected units, so the area is projected to match.
+     * Projection inverts latitude, which is why north becomes the smaller
+     * bound.
+     */
+    evict(area) {
+        if (this.entry === null || this.accumulator === null) {
+            return;
+        }
+
+        const west = projectLng(area.west);
+        const east = projectLng(area.east);
+        const north = projectLat(area.north);
+        const south = projectLat(area.south);
+
+        const bbox = this.entry.geometry.bbox;
+        const dropped = this.accumulator.compact(
+            (f) => bbox[f * 4] <= east
+                && bbox[f * 4 + 2] >= west
+                && bbox[f * 4 + 1] <= south
+                && bbox[f * 4 + 3] >= north,
+        );
+
+        if (dropped === 0) {
+            return;
+        }
+
+        // Every feature index moved, so the index is rebuilt rather than
+        // patched, and the renderer's paths are invalidated — a `Path2D` cannot
+        // give a subpath back.
+        this.entry.index = new SpatialIndex(this.entry.geometry);
+        this.renderer.replaceGeometry(this.slot, this.entry);
     }
 }
 
@@ -387,7 +473,7 @@ async function boot() {
 
     const view = config.map?.viewState || config.view;
 
-    const map = L.map(container, {
+    const map = window._map = L.map(container, {
         center: [view.center[1], view.center[0]],
         zoom: view.zoom,
         zoomControl: true,

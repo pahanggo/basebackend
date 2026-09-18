@@ -37,7 +37,7 @@ export const GisRenderer = L.Layer.extend({
     initialize(options) {
         L.setOptions(this, options);
 
-        /** @type {Array<{geometry: Object, index: Object, keep: Uint8Array|null, visible: boolean}>} */
+        /** @type {Array<{geometry: Object, index: Object, visible: boolean}>} */
         this._layers = [];
         this._frame = null;
         this._stats = { candidates: 0, drawn: 0, cullMs: 0, paintMs: 0, vertices: 0 };
@@ -91,9 +91,9 @@ export const GisRenderer = L.Layer.extend({
         };
     },
 
-    /** @param {{geometry: Object, index: Object, keep?: Uint8Array}} layer */
+    /** @param {{geometry: Object, index: Object}} layer */
     addGeometry(layer) {
-        this._layers.push({ keep: null, visible: true, generation: 0, cache: null, ...layer });
+        this._layers.push({ visible: true, generation: 0, cache: null, ...layer });
         this.schedule();
 
         return this._layers.length - 1;
@@ -103,7 +103,57 @@ export const GisRenderer = L.Layer.extend({
     replaceGeometry(slot, layer) {
         const generation = (this._layers[slot]?.generation ?? 0) + 1;
 
-        this._layers[slot] = { keep: null, visible: true, generation, cache: null, ...layer };
+        this._layers[slot] = { visible: true, generation, cache: null, ...layer };
+        this.schedule();
+    },
+
+    /**
+     * Extend one layer's working set with the features a streamed read just
+     * appended, without rebuilding what is already painted.
+     *
+     * The response arrives 100 features at a time, so replacing the layer per
+     * chunk would rebuild a growing path 130 times over one read — quadratic,
+     * and measurably so: the cold build of 40,000 features is 76 ms. Instead
+     * the new features are added to the `Path2D` objects already built, which
+     * costs only what they contain.
+     *
+     * `Path2D` has no way to remove a subpath, so this is only valid while the
+     * cache it extends is still the right one. Where it is not — a zoom during
+     * the read, a threshold change — the whole set is invalidated and the next
+     * draw rebuilds it, which is the correct answer and happens at most once.
+     *
+     * @param {number} slot
+     * @param {{from: number, to: number}} chunk
+     */
+    appendGeometry(slot, { from, to }) {
+        const layer = this._layers[slot];
+
+        if (!layer || !this._map) {
+            return;
+        }
+
+        const cache = layer.cache;
+
+        if (!cache || cache.generation !== layer.generation || cache.zoom !== this._map.getZoom()) {
+            layer.cache = null;
+            this.schedule();
+
+            return;
+        }
+
+        const added = new Uint32Array(to - from);
+
+        for (let f = from; f < to; f++) {
+            added[f - from] = f;
+        }
+
+        const kept = cullByArea(layer.geometry.area, added, cache.threshold);
+        const built = this._buildPaths(layer, kept, worldSize(cache.zoom), cache.originX, cache.originY, cache.zoom, cache.paths);
+
+        cache.candidates += to - from;
+        cache.drawn += kept.length;
+        cache.vertices += built.vertices;
+
         this.schedule();
     },
 
@@ -313,11 +363,13 @@ export const GisRenderer = L.Layer.extend({
      * viewport rather than near 16 million, which matters because canvas paths
      * hold their points as 32-bit floats: at zoom 18 an unshifted coordinate
      * has lost the precision to place a vertex on the right pixel.
+     *
+     * `paths` may be an existing set, which is how a streamed chunk is added to
+     * what is already drawn. The origin and scale must then be the ones the
+     * path was built with, or the new features land offset from the old.
      */
-    _buildPaths(layer, kept, scale, originX, originY, zoom) {
+    _buildPaths(layer, kept, scale, originX, originY, zoom, paths = new Map()) {
         const { coords, ringStarts, featStarts, types } = layer.geometry;
-        const keep = zoom < 16 ? layer.keep : null;
-        const paths = new Map();
         let vertices = 0;
 
         for (let k = 0; k < kept.length; k++) {
@@ -347,10 +399,6 @@ export const GisRenderer = L.Layer.extend({
                 let moved = false;
 
                 for (let v = start; v < end; v++) {
-                    if (keep !== null && keep[v] === 0) {
-                        continue;
-                    }
-
                     const x = coords[v * 2] * scale - originX;
                     const y = coords[v * 2 + 1] * scale - originY;
 

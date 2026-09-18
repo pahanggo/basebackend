@@ -227,3 +227,82 @@ outside it is linear in the feature count that the cap now bounds.
 
 What would justify reopening scope is the reference-device measurement, which
 nobody has taken. It should be taken before S8 and S9 add work to this path.
+
+## A bug found later: large features vanishing below zoom 16
+
+Reported from the map — an estate boundary drawn at zoom 16 and absent at zoom
+15. Zoom 16 is where the renderer stops applying the simplification mask
+(`const keep = zoom < 16 ? layer.keep : null`), so the mask was the suspect, and
+it had two faults that only bite together.
+
+**The threshold was in the wrong units.** `simplifyLargeFeatures` defaulted to
+`minArea = 1e-9`, written when client coordinates were longitude and latitude.
+This session moved them to normalised Web Mercator, and the default did not
+follow. A triangle on a 1.2 km estate boundary measures 1.6e-13 in those units —
+about four orders of magnitude under the threshold — so every vertex of every
+feature qualified for removal.
+
+**The floor then kept the wrong vertices.** With everything qualifying, the loop
+walked the ring from one end dropping vertices until `kept > 4` failed, so the
+survivors were whichever ones it had not reached yet. On a 120-vertex ring that
+left vertices **0, 117, 118 and 119** — the first vertex and three adjacent ones
+beside it, since the ring closes. Four points clustered at one spot: a sliver
+that paints as a hairline.
+
+The fix orders removal by significance — smallest triangle first — so whatever
+the floor cuts a ring down to, the survivors are the vertices carrying the
+shape. The threshold is now derived from a pixel at zoom 15, the finest zoom the
+mask is applied at, which makes it conservative at every coarser zoom. That is
+the safe direction: too many vertices costs paint time, too few loses the
+feature.
+
+Measured on the reported view afterwards: 4 of 39,707 features exceed the
+64-vertex threshold at all, and they keep 233 of their 295 vertices, worst case
+30 of 74. Before, all four collapsed to 4 vertices each.
+
+**The regression test asserts extent, not count.** A mask that keeps four
+vertices is fine; a mask that keeps four *adjacent* vertices is the bug, and
+only the span of the survivors tells them apart.
+
+## Level of detail removed entirely
+
+Decided after the bug above, on the numbers the fix exposed.
+
+Fixing the mask made it correct; it did not make it worth having. Measured over
+the real cadastre, for every zoom the mask was applied at:
+
+| zoom | features | total vertices | ≥64-vertex features | dropped | share saved |
+| --- | --- | --- | --- | --- | --- |
+| 11 | 12,904 | 153,743 | 138 | 1,514 | 0.99% |
+| 12 | 20,827 | 177,367 | 84 | 1,524 | 0.86% |
+| 13 | 14,820 | 114,277 | 38 | 1,465 | 1.28% |
+| 14 | 18,120 | 117,717 | 16 | 703 | 0.60% |
+| 15 | 34,375 | 187,248 | 4 | 62 | 0.03% |
+
+And a full path rebuild at zoom 12, median of five: **24.6 ms with the mask,
+24.8 ms without it**. It saved about one percent of vertices and no measurable
+time, while costing a 262 kB array per layer, a branch in the renderer's hottest
+loop, and `keep` plumbing through the worker, the accumulator's `append` and
+`compact`, the renderer and the feed.
+
+So all of it went: `simplify.js`, the mask and its plumbing, `geom_simple` in the
+read, the second pass that filled it at import, `simplify_tolerance`, and the
+column itself. `ViewportRead::usesSimplifiedGeometry()` became
+`belowEditingZoom()`, which is all it still decides — whether coordinates may be
+quantised. The `cull` object no longer reports `simplified`, because nothing is.
+
+**What remains is the area cull, and it is a different kind of thing.** It
+varies which features are drawn, never what shape they are. A feature arrives
+with the vertices it was imported with or it does not arrive; nothing between
+the database and the screen reshapes one. Quantisation varies precision below
+the editing zoom, but every vertex still arrives.
+
+If the long tail ever does justify simplification, it belongs at import — one
+pass over the data, stored — not in a worker recomputing it per response. That
+is what `geom_simple` was, and it can come back the same way.
+
+### Verified after removal
+
+Every vertex loaded is painted, at every zoom: 477,148 of 477,148 at zoom 12,
+223,611 at zoom 15, 76,932 at zoom 16. Pan merging still appends with zero
+duplicates. 151 PHP tests, 33 Node tests, no console errors.

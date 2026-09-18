@@ -753,7 +753,7 @@ The `capabilities` block lets the client decide at runtime whether to route a ge
 
 ```
 GET /api/geo/layers/42/features?bbox=101.5,3.0,101.7,3.2&zoom=11&fields=status,name
-Accept: application/vnd.gis.bin
+Accept: application/vnd.gis.features+gis1-stream
 ```
 
 | Parameter | Meaning |
@@ -792,9 +792,27 @@ All arrays are 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds w
 
 The client views the buffers and hands them to the renderer: no parse, no object allocation, no GC pressure. A 10,000-feature GeoJSON response is roughly 14 MB and costs about 400 ms to parse on the reference device; the same data in this format is roughly 4 MB and under 5 ms to view. This is what makes the import and first-render budgets in section 19 reachable.
 
+#### Streaming
+
+**Both encodings stream, 100 features at a time** (`gis.read.stream_chunk`). A zoom-12 read is 23,000 features and 9 MB; holding that in memory before sending it, or in the client before drawing it, wastes the time the user spends looking at an empty map. Because the rows are ordered by area descending, the chunks arrive most-visible-first, so the partial picture is the useful part of the picture.
+
+A single `GIS1` document cannot stream: its header carries the offset of every section, and those are not known until the last feature is encoded. So the binary response is **a sequence of framed `GIS1` documents**, each complete and self-describing:
+
+```
+uint8   kind: 1 features, 2 trailer
+uint32  payload length, little-endian
+bytes   payload
+```
+
+The trailer carries the `cull` object as JSON and ends the stream. It cannot be a response header, because `returned`, `capped` and `smallestReturnedM2` are only known once the last row has been read and headers are written before the first — the same reason the GeoJSON encoding puts its counts after the feature array. `X-Gis-Area-Threshold` is still a header, because the threshold is derived from the zoom and is known up front.
+
+The frame header exists so a reader knows how much to buffer before it has anything to parse, and so a frame kind it does not recognise can be stepped over rather than being fatal. A payload is copied into a buffer of its own before being viewed: a `GIS1` document is read by pointing a `Float64Array` at an offset inside its buffer, which is only legal when the buffer begins where the document does.
+
+Because the response is framed, the binary encoding carries its own media type — a reader expecting the older single-document form fails on negotiation rather than on the first four bytes.
+
 #### GeoJSON encoding
 
-`Accept: application/geo+json` returns RFC 7946 GeoJSON at the same URL with identical semantics. Used below 2,000 features, for debugging, and by third-party consumers. Encoding is a transport detail, never a separate endpoint.
+`Accept: application/geo+json` returns RFC 7946 GeoJSON at the same URL with identical semantics. Used below 2,000 features, for debugging, and by third-party consumers. Encoding is a transport detail, never a separate endpoint. It is a single JSON document — that is what makes it the readable one — so it is not framed; it simply flushes at the same 100-feature interval.
 
 #### Area culling
 

@@ -49,7 +49,6 @@ class FeatureFactory extends Factory
         return [
             'layer_id' => Layer::factory(),
             'geom' => GeometryCast::toGeometry($wkt),
-            'geom_simple' => null,
             'minx' => $lng,
             'miny' => $lat,
             'maxx' => $maxx,

@@ -23,6 +23,9 @@ return new class extends Migration
             $table->unsignedBigInteger('layer_id');
 
             $table->geometry('geom', srid: 4326);
+
+            // Dropped again in 2026_09_19_000200: it held a pre-simplified
+            // copy for use below the editing zoom, and nothing reads it now.
             $table->geometry('geom_simple', srid: 4326)->nullable();
 
             // Redundant against the spatial index on purpose: MySQL cannot

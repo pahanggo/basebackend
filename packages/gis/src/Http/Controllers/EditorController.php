@@ -42,7 +42,14 @@ class EditorController extends Controller
             // of one tab: two tabs are two clients, and a reload that reused
             // the old id could collide with a sequence it did not issue.
             'clientId' => Str::random(12),
-            'apiBase' => url(config('gis.route.api_prefix')),
+            // Root-relative, deliberately. The API is same-origin by design —
+            // session cookie and CSRF, never a bearer token — so an absolute
+            // URL adds nothing and can be wrong: behind a TLS-terminating
+            // proxy the application generates `http://` unless it has been
+            // told to trust the proxy, and a URL carried in this JSON blob is
+            // one of the few a reverse proxy cannot rewrite on the way out.
+            // A relative base takes the page's own scheme and host, always.
+            'apiBase' => '/'.trim(config('gis.route.api_prefix'), '/'),
 
             // The whole bootstrap payload, inlined. The editor opens without a
             // round trip when the user has a map, and opens the map browser

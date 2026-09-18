@@ -19,7 +19,6 @@ import {
     POLYGON,
 } from '../../resources/js/map/geometry.js';
 import { SpatialIndex, cullByArea } from '../../resources/js/map/spatial-index.js';
-import { simplifyLargeFeatures } from '../../resources/js/map/simplify.js';
 
 /** A square of `side` degrees with its lower-left corner at (lng, lat). */
 function square(id, lng, lat, side, area) {
@@ -192,29 +191,3 @@ test('a threshold of zero culls nothing', () => {
     assert.equal(cullByArea(geometry.area, index.search(0, 0, 1, 1), 0).length, 50);
 });
 
-test('simplification never reduces a ring below four vertices', () => {
-    // A near-degenerate zigzag: every interior vertex is droppable by area.
-    const ring = [];
-
-    for (let i = 0; i < 80; i++) {
-        ring.push([103.3 + i * 0.0001, 3.8 + (i % 2) * 1e-9]);
-    }
-
-    ring.push(ring[0]);
-
-    const geometry = buildGeometry({
-        features: [{ id: 1, geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} }],
-    });
-
-    const keep = simplifyLargeFeatures(geometry, 10);
-    const kept = keep.reduce((sum, k) => sum + k, 0);
-
-    assert.equal(kept, 4, `kept ${kept}`);
-});
-
-test('simplification leaves small features alone', () => {
-    const geometry = buildGeometry(grid(5));
-    const keep = simplifyLargeFeatures(geometry, 64);
-
-    assert.equal(keep.reduce((sum, k) => sum + k, 0), keep.length);
-});

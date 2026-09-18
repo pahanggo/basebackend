@@ -25,6 +25,16 @@ final class ViewportRead
         public readonly float $maxy,
         public readonly int $zoom,
         public readonly ?float $minAreaOverride = null,
+
+        /**
+         * A box the caller already holds every feature for.
+         *
+         * Anything whose bounding box meets it is left out of the response, so
+         * a pan asks only for what it does not have. See `Held`.
+         *
+         * @var Held|null
+         */
+        public readonly ?Held $exclude = null,
     ) {
         if ($minx >= $maxx || $miny >= $maxy) {
             throw new InvalidArgumentException('bbox must be minx,miny,maxx,maxy with minx < maxx and miny < maxy.');
@@ -40,24 +50,38 @@ final class ViewportRead
     }
 
     /**
-     * @param  array{bbox?: string, zoom?: mixed, minArea?: mixed}  $input
+     * @param  array{bbox?: string, zoom?: mixed, minArea?: mixed, held?: string}  $input
      */
     public static function fromQuery(array $input): self
     {
-        $parts = array_map('trim', explode(',', (string) ($input['bbox'] ?? '')));
-
-        if (count($parts) !== 4 || count(array_filter($parts, 'is_numeric')) !== 4) {
-            throw new InvalidArgumentException('bbox is required as minx,miny,maxx,maxy in longitude-latitude.');
-        }
+        $box = self::box($input['bbox'] ?? '', 'bbox');
+        $held = isset($input['held']) && $input['held'] !== ''
+            ? self::box($input['held'], 'held')
+            : null;
 
         return new self(
-            (float) $parts[0],
-            (float) $parts[1],
-            (float) $parts[2],
-            (float) $parts[3],
+            $box[0],
+            $box[1],
+            $box[2],
+            $box[3],
             (int) ($input['zoom'] ?? 12),
             isset($input['minArea']) && is_numeric($input['minArea']) ? (float) $input['minArea'] : null,
+            $held === null ? null : new Held($held[0], $held[1], $held[2], $held[3]),
         );
+    }
+
+    /**
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    private static function box(string $value, string $name): array
+    {
+        $parts = array_map('trim', explode(',', $value));
+
+        if (count($parts) !== 4 || count(array_filter($parts, 'is_numeric')) !== 4) {
+            throw new InvalidArgumentException("{$name} is required as minx,miny,maxx,maxy in longitude-latitude.");
+        }
+
+        return [(float) $parts[0], (float) $parts[1], (float) $parts[2], (float) $parts[3]];
     }
 
     /** Latitude at the middle of the viewport, which is where the scale is taken. */
@@ -90,10 +114,17 @@ final class ViewportRead
     }
 
     /**
-     * Below this zoom the pre-simplified column is enough; at and above it the
-     * user may be editing, and editing needs the real vertices.
+     * Below the zoom at which editing becomes possible.
+     *
+     * The only thing this still decides is whether coordinates may be
+     * quantised: above it a vertex can be dragged and sent back, so a read that
+     * had rounded it would write the rounding into storage.
+     *
+     * It used to select `geom_simple` as well. It does not any more — the read
+     * returns the stored geometry at every zoom, and nothing in this package
+     * changes the shape of a feature on its way to the screen.
      */
-    public function usesSimplifiedGeometry(): bool
+    public function belowEditingZoom(): bool
     {
         return $this->zoom < (int) config('gis.read.edit_min_zoom');
     }
