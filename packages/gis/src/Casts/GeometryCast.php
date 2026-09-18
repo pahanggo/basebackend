@@ -122,6 +122,28 @@ final class GeometryCast implements CastsAttributes
     }
 
     /**
+     * SQL counting every vertex in a polygon column, including hole rings.
+     *
+     * There is no `ST_NumPoints` for a polygon and no way to loop over rings in
+     * an expression — and looping is not academic here: one source row has
+     * 2,164 interior rings. So the count comes out of the WKB layout instead,
+     * which is exact. A polygon is 1 byte of byte order, 4 of type, 4 of ring
+     * count, then per ring 4 bytes of point count and 16 bytes per point:
+     *
+     *     points = (length - 9 - 4 * rings) / 16
+     *
+     * Lives here because `ST_AsBinary` does, and that is the whole point of the
+     * rule: one file owns the raw spatial calls.
+     */
+    public static function vertexCountExpression(string $column): string
+    {
+        return sprintf(
+            '((LENGTH(ST_AsBinary(`%1$s`)) - 9 - 4 * (1 + ST_NumInteriorRings(`%1$s`))) / 16)',
+            $column,
+        );
+    }
+
+    /**
      * Coerce the accepted input shapes to a Brick geometry.
      *
      * @param  Geometry|array<mixed>|string  $value

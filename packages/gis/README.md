@@ -52,6 +52,20 @@ If that entry is declined, nothing breaks and storage grows: soft-deleted rows
 are never purged, so the 30-day restore window becomes indefinite retention, and
 orphaned overlay images are never reclaimed.
 
+## Importing the cadastre
+
+`php artisan gis:import-bencana` copies the state cadastre from the `bencana`
+database into two global layers, once per environment. It is not a sync.
+
+Both databases must sit on the same MySQL server: the import is a cross-database
+`INSERT ... SELECT`, so 1.4 million rows never pass through PHP. It takes about
+eight minutes and needs read-only credentials on `bencana`.
+
+A layer that already holds features is refused. Pass `--fresh` to replace them,
+or `--resume` to continue an import that was interrupted — appending instead of
+resuming would double the layer with nothing to show for it but a feature count
+that does not add up.
+
 ## GEOS
 
 Constructive geometry runs through `geosop` (GEOS 3.11+), not a PHP extension.

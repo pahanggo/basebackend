@@ -20,6 +20,44 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | One-off cadastral import
+    |--------------------------------------------------------------------------
+    |
+    | `gis:import-bencana` copies the state cadastre in once per deployment. It
+    | is not a sync: once imported, the features belong to this application and
+    | are edited here. File import is a separate, later thing (v2).
+    |
+    */
+
+    'import' => [
+        'bencana' => [
+            'connection' => env('GIS_BENCANA_CONNECTION', 'bencana'),
+
+            // Rows per INSERT ... SELECT. Both databases sit on the same MySQL
+            // server, so rows never travel through PHP.
+            'chunk' => 2000,
+
+            // Degrees. Roughly three pixels at zoom 12 (38.1 m/px at this
+            // latitude), which is the band `geom_simple` exists to serve.
+            'simplify_tolerance' => 0.001,
+
+            'layers' => [
+                'lots' => [
+                    'table' => 'lots',
+                    'name' => 'Lot',
+                    'attributes' => ['upi', 'negeri', 'daerah', 'mukim', 'seksyen', 'no_lot', 'keluasan'],
+                ],
+                'usages' => [
+                    'table' => 'usages',
+                    'name' => 'Gunatanah',
+                    'attributes' => ['lot_upi', 'kod_gtn', 'gunatanah1'],
+                ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Route registration
     |--------------------------------------------------------------------------
     |

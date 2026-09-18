@@ -73,6 +73,14 @@ it('creates a spatial index, which requires NOT NULL and an SRID restriction', f
     expect((int) $srid->SRS_ID)->toBe(4326);
 });
 
+/*
+ * What S1b measured against the real 1.4 million rows: the planner still picks
+ * `sx_geom` here, but the spatial predicate is not the fastest way to ask the
+ * question. Filtering on the redundant `minx/maxx/miny/maxy` columns together
+ * with `area_m2` returns the identical 13,974 features in 0.48 s against
+ * 1.69 s, because it never evaluates a geodesic `ST_Intersects`. The feature
+ * read in S3 should take the bbox route. See S1b Results.
+ */
 it('uses the spatial index for the viewport query rather than scanning', function () {
     $layer = Layer::factory()->global()->create();
     seedGrid($layer->id);
