@@ -75,3 +75,34 @@
         margin-top: 60px;
     }
 }
+
+// The toolbar sits opposite the back link, above Leaflet's panes. It is chrome:
+// S6 collapses it while a draw or edit tool is active so it never intercepts a
+// drawing gesture (specification section 8).
+.gis-toolbar {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    z-index: 1000;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+
+    .btn {
+        background: #fff;
+        color: #23282c;
+
+        &:hover,
+        &:focus {
+            background: #f0f3f5;
+        }
+
+        @media (pointer: coarse) {
+            min-height: 44px;
+        }
+    }
+}
+
+// The modals are the application's own Bootstrap 4 dialogs, so they need no
+// styling of their own — only room for a table that may be wide.
+.modal .table-responsive {
+    max-height: 60vh;
+}

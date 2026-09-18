@@ -25,6 +25,17 @@
             <i class="la la-arrow-left"></i>
             <span>{{ __('Back to dashboard') }}</span>
         </a>
+
+        {{-- The toolbar the layer tree and the drawing tools mount into (S5b, S6).
+             For now it carries the two entry points S5 builds. --}}
+        <div class="gis-toolbar btn-group btn-group-sm" role="toolbar">
+            <button type="button" id="gis-open-maps" class="btn btn-light">
+                <i class="la la-map"></i> {{ __('Maps') }}
+            </button>
+            <button type="button" id="gis-add-layer" class="btn btn-light">
+                <i class="la la-plus"></i> {{ __('Add from library') }}
+            </button>
+        </div>
     </div>
 
     <script type="application/json" id="gis-bootstrap">@json($bootstrap)</script>

@@ -5,7 +5,10 @@ namespace Gis;
 use Gis\Console\ImportBencanaCommand;
 use Gis\Console\SweepCommand;
 use Illuminate\Console\Scheduling\Schedule;
+use Gis\Models\Map;
+use Gis\Policies\MapPolicy;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -29,6 +32,8 @@ class GisServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'gis');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+        Gate::policy(Map::class, MapPolicy::class);
 
         $this->registerRateLimits();
         $this->registerRoutes();

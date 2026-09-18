@@ -126,6 +126,55 @@ class MapAccess
     }
 
     /**
+     * Does this map own the layer outright?
+     *
+     * Ownership, not access, is what grants deleting a layer and changing a
+     * placement's access level. There is no self-escalation path: sharing a
+     * layer into a map you control does not make you its owner.
+     */
+    public function ownsLayer(int $layerId): bool
+    {
+        return $this->layer($layerId)?->owner_map_id === $this->map->id;
+    }
+
+    /**
+     * May this user place the layer somewhere at the given access level?
+     *
+     * `read` for anything they may see; `edit` only where they ALREADY hold
+     * edit rights on that layer — they own the layer's map, or hold an
+     * `owner`/`edit` placement of it in a map they may open. Without the second
+     * rule the permission model leaks: a user with their own map could add the
+     * cadastral base as editable and rewrite 1.4 million features they were
+     * only ever meant to read (specification section 8).
+     */
+    public static function mayTakeLayerAt(int $userId, int $layerId, string $access): bool
+    {
+        $layer = Layer::query()->find($layerId);
+
+        if ($layer === null) {
+            return false;
+        }
+
+        $visibleMapIds = Map::query()->visibleTo($userId)->pluck('id');
+
+        $visible = $layer->owner_map_id === null || $visibleMapIds->contains($layer->owner_map_id);
+
+        if (! $visible) {
+            return false;
+        }
+
+        if ($access === 'read') {
+            return true;
+        }
+
+        return MapLayer::query()
+            ->where('layer_id', $layerId)
+            ->whereIn('map_id', $visibleMapIds)
+            ->whereIn('access', ['owner', 'edit'])
+            ->exists();
+    }
+
+    /**
      * The placement's access and the layer's lock, without the user's role.
      *
      * A layer not placed in this map is not editable through this map at all —

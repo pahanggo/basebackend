@@ -1,0 +1,143 @@
+<?php
+
+namespace Gis\Http\Resources;
+
+use Gis\Models\Layer;
+use Gis\Models\Map;
+use Gis\Models\MapLayer;
+use Gis\Support\BasemapProviders;
+use Gis\Support\MapAccess;
+
+/**
+ * The bootstrap response: everything the editor needs before its first feature
+ * read, and **no geometry at all**.
+ *
+ * That exclusion is the whole shape of this response. A map placing the
+ * cadastral base holds 1.4 million features; the tree needs to know the layer
+ * exists, what it is called and how it is styled, and the renderer fetches
+ * coordinates by viewport afterwards.
+ *
+ * Each entry flattens a layer and its placement, because that is how the tree
+ * renders it — but the two carry **separate ids and separate versions**.
+ * `placementVersion` guards reorder and visibility; `layerVersion` guards name,
+ * style and schema. Sending one where the other is meant is a conflict, which
+ * is the intended way to find that mistake (specification section 7).
+ */
+class MapBootstrap
+{
+    /** @return array<string, mixed> */
+    public static function make(Map $map, MapAccess $access): array
+    {
+        return [
+            'id' => $map->id,
+            'name' => $map->name,
+            'version' => $map->version,
+            'role' => $access->role->value,
+            'viewState' => $map->view_state,
+            'layers' => self::layers($map),
+            'basemaps' => self::basemaps(),
+            'capabilities' => self::capabilities(),
+        ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    protected static function layers(Map $map): array
+    {
+        $placements = MapLayer::query()
+            ->where('map_id', $map->id)
+            ->orderBy('sort_key')
+            ->get();
+
+        $layers = Layer::query()
+            ->whereIn('id', $placements->pluck('layer_id'))
+            ->get()
+            ->keyBy('id');
+
+        // How many maps each layer appears in, in one query rather than one per
+        // row: `shared` decides which affordances the tree renders, and a tree
+        // of two thousand nodes would otherwise issue two thousand counts.
+        $shareCounts = MapLayer::query()
+            ->whereIn('layer_id', $placements->pluck('layer_id'))
+            ->selectRaw('layer_id, COUNT(*) as placements')
+            ->groupBy('layer_id')
+            ->pluck('placements', 'layer_id');
+
+        return $placements->map(function (MapLayer $placement) use ($layers, $shareCounts, $map) {
+            $layer = $layers->get($placement->layer_id);
+
+            if ($layer === null) {
+                return null;
+            }
+
+            return [
+                'placementId' => $placement->id,
+                'layerId' => $layer->id,
+                'parentId' => $placement->parent_id,
+                'sortKey' => $placement->sort_key,
+                'kind' => $layer->kind,
+                'name' => $layer->name,
+                'visible' => $placement->visible,
+                'opacity' => $placement->opacity,
+                'minZoom' => $placement->min_zoom,
+                'maxZoom' => $placement->max_zoom,
+                'locked' => $layer->locked,
+                'access' => $placement->access,
+                'shared' => (int) $shareCounts->get($layer->id, 1) > 1,
+                'ownerMapId' => $layer->owner_map_id,
+                'ownedHere' => $layer->owner_map_id === $map->id,
+                'style' => $layer->style,
+                'attrSchema' => $layer->attr_schema,
+                'sourceConfig' => $layer->source_config,
+                'featureCount' => $layer->feature_count,
+                'placementVersion' => $placement->version,
+                'layerVersion' => $layer->version,
+            ];
+        })->filter()->values()->all();
+    }
+
+    /**
+     * The basemap list, the tile template and the attribution together.
+     *
+     * The template comes from `config('services.map_tiles')`, which the
+     * latlng_picker CRUD field already uses — this package defines no tile URL
+     * of its own, so a deployment that repoints its tiles repoints every map in
+     * the application at once. Note its `{x}/{y}/{z}` order, which is not
+     * Leaflet's default and is why the client must take the template rather
+     * than assemble one (specification section 13).
+     *
+     * @return array<string, mixed>
+     */
+    protected static function basemaps(): array
+    {
+        $providers = (new BasemapProviders)->all();
+
+        return [
+            ...$providers,
+            'default' => config('gis.basemaps.default'),
+            'urlTemplate' => config('services.map_tiles.url'),
+            'attribution' => config('services.map_tiles.attribution'),
+        ];
+    }
+
+    /**
+     * What the server can actually do, read at runtime.
+     *
+     * The client branches on these rather than on a client-side config, so it
+     * never drifts from the deployment it is talking to — whether GEOS is
+     * available decides where a buffer is computed, and guessing wrong means
+     * either a refused request or a wrong answer.
+     *
+     * @return array<string, mixed>
+     */
+    public static function capabilities(): array
+    {
+        return [
+            'geos' => false,
+            'maxBatch' => (int) config('gis.write.max_batch'),
+            'maxFeaturesPerResponse' => (int) config('gis.read.max_features_per_response'),
+            'binaryFeatures' => true,
+            'editMinZoom' => (int) config('gis.read.edit_min_zoom'),
+            'minAreaPx' => (float) config('gis.read.min_area_px'),
+        ];
+    }
+}

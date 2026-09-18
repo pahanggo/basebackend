@@ -65,6 +65,14 @@ if (! function_exists('reader')) {
         return [$map, $layer, $placement];
     }
 
+    /** A user who may restore soft-deleted maps and layers. */
+    function gisAdministrator(): User
+    {
+        Permission::findOrCreate(config('gis.route.admin_permission'), 'web');
+
+        return tap(reader())->givePermissionTo(config('gis.route.admin_permission'));
+    }
+
     /** Base64 WKB for a small square, as a command carries geometry. */
     function wkbSquare(float $lng = 103.32, float $lat = 3.80, float $side = 0.0002): string
     {

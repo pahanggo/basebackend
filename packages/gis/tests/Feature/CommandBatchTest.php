@@ -217,7 +217,9 @@ it('refuses a batch above the cap and names the limit', function () {
 it('refuses an op that has no handler rather than ignoring it', function () {
     [$map] = editableMap();
 
-    sendCommands($map, [['op' => 'layer.setLocked', 'id' => 1, 'version' => 1, 'locked' => true]])
+    // `schema.addField` is in the catalogue and lands with the attribute
+    // schema in S9. Until then it fails loudly rather than being ignored.
+    sendCommands($map, [['op' => 'schema.addField', 'layerId' => 1, 'version' => 1, 'field' => []]])
         ->assertStatus(422)
         ->assertJsonPath('code', 'unknown_op');
 });

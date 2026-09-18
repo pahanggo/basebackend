@@ -51,6 +51,27 @@ class IdempotencyStore
         return [...$log->response, 'replayed' => true];
     }
 
+    /**
+     * The same lookup without a map, for the one write that happens before
+     * there is a map to address: creating one.
+     *
+     * Safe without the map id because `seq` is monotonic per client, so a
+     * creation and a command batch from the same client never share one — and a
+     * duplicate map is a worse failure than a duplicate feature, because the
+     * user may not notice until both have diverged.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function replayAny(string $clientId, int $seq): ?array
+    {
+        $log = CommandLog::query()
+            ->where('client_id', $clientId)
+            ->where('seq', $seq)
+            ->first();
+
+        return $log === null ? null : [...$log->response, 'replayed' => true];
+    }
+
     public function expiredBefore(): Carbon
     {
         return Carbon::now()->subHours($this->retentionHours);

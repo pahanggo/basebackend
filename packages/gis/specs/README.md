@@ -22,7 +22,8 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S2](S02-renderer.md) | Rendering engine — **hard gate** | S1b |
 | [S3](S03-feature-read-api.md) | Feature read API | S1b, S2 |
 | [S4](S04-store-commands-sync.md) | Store, commands, undo, sync | S1 |
-| [S5](S05-map-layer-tree.md) | Map browser, layer tree, library, control panel | S4, S2 |
+| [S5a](S05-map-layer-tree.md) | Map CRUD, sharing, layer library — **done** | S4, S2 |
+| [S5b](S05-map-layer-tree.md) | Layer tree, drag and drop, panes, control panel | S5a |
 | [S5b](S05b-image-overlays.md) | Image overlays | S5 |
 | [S6](S06-drawing-editing.md) | Drawing and vertex editing | S4, S2 |
 | [S7](S07-geometry-operations.md) | Geometry operations | S6 |
@@ -36,7 +37,7 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S14](S14-export.md) | Export and print layout | S11 |
 | [S15](S15-share-links.md) | Share links and embed | S14 |
 
-S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count.
+S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count. **S5 did split**, at the seam its own file named: S5a is the data and the authorization, S5b is the view over it. Both halves live in the one file.
 
 ## Definition of done
 

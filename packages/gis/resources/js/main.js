@@ -17,6 +17,10 @@ import { fetchFeatures } from './data/features.js';
 import { Store } from './store/store.js';
 import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
+import { configureHttp, getJson } from './lib/http.js';
+import { afterKey } from './lib/sort-key.js';
+import { MapBrowser } from './ui/map-browser.js';
+import { LayerLibrary } from './ui/layer-library.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
 function readBootstrap() {
@@ -130,21 +134,21 @@ class LayerFeed {
 }
 
 /**
- * The store and its outbound queue.
+ * The store and its outbound queue for one map.
  *
- * Both exist from the first frame even though nothing commits to them until S5
- * and S6: the queue's `clientId` has to be stable for the life of the tab,
- * because it is half of the idempotency key, and a queue created lazily on the
- * first edit would get a new one after every reload.
+ * Both are rebuilt when the map changes, because both are per map: the undo
+ * stack does not survive a switch (section 16), and a queue still holding
+ * commands for the previous map would post them against a map that is no
+ * longer open.
  *
- * Without a map there is nothing to sync to — the editor opens on the global
- * layers until S5 builds the map browser — so the store is created without a
- * queue and commits stay local.
+ * The `clientId` is NOT rebuilt. It is half of the idempotency key and has to
+ * be stable for the life of the tab, or a retry after a switch would look like
+ * new work.
  */
-function createStore(config) {
-    const sync = config.mapId === null ? null : new SyncQueue({
+function createStore(config, mapId) {
+    const sync = mapId === null ? null : new SyncQueue({
         apiBase: config.apiBase,
-        mapId: config.mapId,
+        mapId,
         clientId: config.clientId,
         csrfToken: config.csrfToken,
         onApplied: (body) => {
@@ -152,25 +156,226 @@ function createStore(config) {
             store.emit(['features', 'layers', 'measurements']);
         },
         onConflict: (problem) => {
-            // S5 opens the conflict panel here. Until it exists, the queue is
+            // S5b opens the conflict panel here. Until it exists the queue is
             // paused and the commands are kept, which is the safe half of the
-            // behaviour; nothing is lost, the user is simply not yet told.
+            // behaviour: nothing is lost, the user is simply not yet told.
             console.warn('gis: version conflict', problem);
         },
     });
 
-    const store = new Store({ sync });
-
-    store.state.map.id = config.mapId;
-
-    for (const layer of config.layers || []) {
-        store.state.layers[layer.id] = { ...layer, version: layer.version || 1 };
-    }
-
-    return { store, sync };
+    return { store: new Store({ sync }), sync };
 }
 
-function boot() {
+/**
+ * Put a map's bootstrap payload into the store.
+ *
+ * The layer and its placement arrive flattened, because that is how the tree
+ * renders them, and they are stored apart — two ids, two versions. Collapsing
+ * them here is the mistake the API shape exists to prevent: a rename guards on
+ * the layer's version, a reorder on the placement's.
+ */
+function hydrate(store, bootstrap) {
+    store.state.map = { id: bootstrap.id, name: bootstrap.name, version: bootstrap.version, role: bootstrap.role };
+    store.state.layers = {};
+    store.state.placements = {};
+    store.state.tree = [];
+
+    for (const entry of bootstrap.layers) {
+        store.state.layers[entry.layerId] = {
+            id: entry.layerId,
+            name: entry.name,
+            kind: entry.kind,
+            locked: entry.locked,
+            style: entry.style,
+            attrSchema: entry.attrSchema,
+            featureCount: entry.featureCount,
+            ownerMapId: entry.ownerMapId,
+            ownedHere: entry.ownedHere,
+            shared: entry.shared,
+            version: entry.layerVersion,
+        };
+
+        store.state.placements[entry.placementId] = {
+            id: entry.placementId,
+            layerId: entry.layerId,
+            parentId: entry.parentId,
+            sortKey: entry.sortKey,
+            visible: entry.visible,
+            opacity: entry.opacity,
+            minZoom: entry.minZoom,
+            maxZoom: entry.maxZoom,
+            access: entry.access,
+            version: entry.placementVersion,
+        };
+
+        store.state.tree.push(entry.placementId);
+    }
+}
+
+/** The vector layers this map shows, in tree order. S5b replaces this with the tree. */
+function visibleVectorLayers(store) {
+    return store.state.tree
+        .map((id) => store.state.placements[id])
+        .filter((placement) => placement.visible)
+        .map((placement) => store.state.layers[placement.layerId])
+        .filter((layer) => layer && layer.kind === 'vector');
+}
+
+/**
+ * The editor: one map open at a time, and the machinery to change which.
+ */
+class Editor {
+    constructor(config, map) {
+        this.config = config;
+        this.map = map;
+        this.feeds = [];
+        this.bootstrap = null;
+        this.store = null;
+        this.sync = null;
+        this.basemapLayer = null;
+
+        this.browser = new MapBrowser({
+            apiBase: config.apiBase,
+            strings: config.strings,
+            clientId: config.clientId,
+            currentMapId: () => this.bootstrap?.id ?? null,
+            canRestore: () => config.canRestore === true,
+            onRestore: (id) => this.restoreMap(id),
+            onLoad: (id, bootstrap) => this.open(id, bootstrap),
+        });
+
+        this.library = new LayerLibrary({
+            apiBase: config.apiBase,
+            strings: config.strings,
+            currentMapId: () => this.bootstrap?.id ?? null,
+            onPlace: (layerId, access) => this.place(layerId, access),
+        });
+    }
+
+    /**
+     * Switch to a map.
+     *
+     * **The queue is flushed before anything else changes.** Switching with
+     * unsynced commands in flight would strand them against a map that is no
+     * longer open; if the flush fails the switch is blocked and the changes are
+     * kept, never discarded silently (specification section 8).
+     */
+    async open(mapId, bootstrap = null) {
+        if (this.sync && this.sync.queue.length > 0) {
+            const flushed = await this.sync.flush().catch(() => null);
+
+            if (flushed === null || this.sync.queue.length > 0) {
+                window.alert(this.config.strings.unsyncedChanges);
+
+                return false;
+            }
+        }
+
+        this.bootstrap = bootstrap || await getJson(`${this.config.apiBase}/maps/${mapId}`);
+
+        const { store, sync } = createStore(this.config, this.bootstrap.id);
+
+        this.store = store;
+        this.sync = sync;
+
+        hydrate(this.store, this.bootstrap);
+        this.applyBasemap();
+        this.rebuildFeeds();
+
+        return true;
+    }
+
+    applyBasemap() {
+        const basemaps = this.bootstrap.basemaps;
+        const chosen = this.bootstrap.viewState?.basemap || basemaps.default;
+
+        // The template comes from the server, never assembled here: its path is
+        // `{x}/{y}/{z}`, which is not Leaflet's default order, so building one
+        // locally would silently request the wrong tiles.
+        const url = basemaps.urlTemplate.replace(/\/tiles\/[^/]+\//, `/tiles/${chosen}/`);
+
+        if (this.basemapLayer) {
+            this.map.removeLayer(this.basemapLayer);
+        }
+
+        this.basemapLayer = L.tileLayer(url, {
+            attribution: basemaps.attribution,
+            maxZoom: 20,
+            crossOrigin: 'anonymous',
+        }).addTo(this.map);
+    }
+
+    rebuildFeeds() {
+        this.renderer.clearGeometry();
+
+        this.feeds = visibleVectorLayers(this.store)
+            .map((layer) => new LayerFeed(this.renderer, this.config, layer));
+
+        this.refresh();
+    }
+
+    refresh() {
+        this.feeds.forEach((feed) => feed.refresh(this.map));
+    }
+
+    /** Place a library layer in this map: one command, one row, nothing copied. */
+    async place(layerId, access) {
+        const keys = this.store.state.tree.map((id) => this.store.state.placements[id]?.sortKey).filter(Boolean);
+
+        await this.sendCommands([{
+            op: 'layer.share',
+            layerId,
+            mapId: this.bootstrap.id,
+            access,
+            sortKey: afterKey(keys.length === 0 ? null : keys[keys.length - 1]),
+        }]);
+
+        await this.open(this.bootstrap.id);
+    }
+
+    restoreMap(id) {
+        return this.sendCommands([{ op: 'map.restore', id }]);
+    }
+
+    /**
+     * Commands that are not the result of a store mutation.
+     *
+     * Placing a layer and restoring a map both change server state the client
+     * has no optimistic copy of, so they go straight out rather than through
+     * `commit()`. Anything the user can undo goes through the store.
+     */
+    sendCommands(commands) {
+        return fetch(`${this.config.apiBase}/maps/${this.bootstrap.id}/commands`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': this.config.csrfToken,
+            },
+            body: JSON.stringify({
+                clientId: this.config.clientId,
+                seq: this.sync ? (this.sync.seq += 1) : 1,
+                mapVersion: this.bootstrap.version,
+                commands,
+            }),
+        }).then(async (response) => {
+            const body = await response.json();
+
+            if (!response.ok) {
+                const error = new Error(body.detail || 'Command failed');
+
+                error.problem = body;
+
+                throw error;
+            }
+
+            return body;
+        });
+    }
+}
+
+async function boot() {
     const config = readBootstrap();
     const container = document.getElementById('gis-map');
 
@@ -178,17 +383,16 @@ function boot() {
         return;
     }
 
+    configureHttp({ token: config.csrfToken });
+
+    const view = config.map?.viewState || config.view;
+
     const map = L.map(container, {
-        center: [config.view.center[1], config.view.center[0]],
-        zoom: config.view.zoom,
+        center: [view.center[1], view.center[0]],
+        zoom: view.zoom,
         zoomControl: true,
         preferCanvas: true,
     });
-
-    L.tileLayer(config.basemap.url, {
-        attribution: config.basemap.attribution,
-        maxZoom: config.basemap.maxZoom,
-    }).addTo(map);
 
     const renderer = createRenderer({
         pane: ensurePane(map, 'features', 0),
@@ -197,11 +401,11 @@ function boot() {
 
     renderer.addTo(map);
 
-    const feeds = (config.layers || []).map((layer) => new LayerFeed(renderer, config, layer));
-    const refreshAll = () => feeds.forEach((feed) => feed.refresh(map));
+    const editor = new Editor(config, map);
 
-    map.on('moveend zoomend', refreshAll);
-    refreshAll();
+    editor.renderer = renderer;
+
+    map.on('moveend zoomend', () => editor.refresh());
 
     // Docks and toolbars resize the map container without the window changing,
     // so the map has to be told (specification section 17).
@@ -211,15 +415,20 @@ function boot() {
         resizeTimer = window.setTimeout(() => map.invalidateSize(), 100);
     }).observe(container);
 
-    map.on('click', (event) => {
-        const hit = renderer.hitTest(event.containerPoint);
+    document.getElementById('gis-open-maps')?.addEventListener('click', () => editor.browser.open());
+    document.getElementById('gis-add-layer')?.addEventListener('click', () => editor.library.open());
 
-        if (hit) {
-            console.log('gis: hit', hit);
-        }
-    });
+    window.gis = { map, renderer, editor, config };
 
-    window.gis = { map, renderer, feeds, config, ...createStore(config) };
+    if (config.map === null) {
+        // No map to open is the one state with nothing to render, so the
+        // browser opens itself rather than leaving a blank canvas.
+        await editor.browser.open();
+
+        return;
+    }
+
+    await editor.open(config.map.id, config.map);
 }
 
 if (document.readyState === 'loading') {

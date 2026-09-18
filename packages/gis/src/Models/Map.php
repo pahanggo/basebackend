@@ -2,6 +2,7 @@
 
 namespace Gis\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -26,6 +27,21 @@ class Map extends GisModel
         'view_state' => 'array',
         'version' => 'integer',
     ];
+
+    /**
+     * Maps this user may open: the ones they own, plus the ones they are a
+     * member of.
+     *
+     * `owner_id` is checked as well as the pivot rather than instead of it: a
+     * map always has an owner, and requiring the pivot row to exist would make
+     * an owner lose their own map to a missed insert.
+     */
+    public function scopeVisibleTo(Builder $query, int $userId): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('owner_id', $userId)
+            ->orWhereHas('members', fn (Builder $m) => $m->where('user_id', $userId)));
+    }
 
     /**
      * Where layers sit in this map's tree. A placement is not a layer: the same

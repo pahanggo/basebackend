@@ -71,6 +71,13 @@ return [
         'web_prefix' => 'gis',
         'api_prefix' => 'api/geo',
         'permission' => 'Access GIS',
+
+        // Restoring a soft-deleted map or layer is an administrator action,
+        // not an owner one. An owner may delete their own map and may not undo
+        // it themselves — the usual shape for a destructive action with a
+        // recovery path, and it keeps the recovery auditable to a small group
+        // (specification section 8).
+        'admin_permission' => 'Administer GIS',
     ],
 
     /*
@@ -86,6 +93,38 @@ return [
     'default_view' => [
         'center' => [103.3260, 3.8077],
         'zoom' => 12,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Basemaps
+    |--------------------------------------------------------------------------
+    |
+    | The provider list comes from the tile service rather than from here, so a
+    | provider added to the service appears without a deployment and one removed
+    | stops being offered instead of rendering broken tiles. It is fetched
+    | server-side, cached, and delivered in the bootstrap: fetching it from the
+    | browser would put a second origin on the critical path for a list that
+    | changes a few times a year (specification section 13).
+    |
+    | The tile URL template itself is NOT here. It is `config('services.map_tiles')`,
+    | which the latlng_picker CRUD field already uses, so a deployment that
+    | repoints its tiles repoints every map in the application at once.
+    |
+    */
+
+    'basemaps' => [
+        'providers_url' => env('GIS_TILE_PROVIDERS_URL', 'https://tiles.pahanggo.com/providers'),
+        'cache_key' => 'gis.basemap.providers',
+        'cache_hours' => 24,
+        'timeout_seconds' => 5,
+
+        // The last resort: one basemap the user cannot change beats a map that
+        // will not load.
+        'default' => env('GIS_DEFAULT_BASEMAP', 'google-roadmap'),
+
+        // Overlays are classified by prefix, so a new one needs no code change.
+        'overlay_prefix' => 'owm-',
     ],
 
     /*

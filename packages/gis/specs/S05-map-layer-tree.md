@@ -8,7 +8,12 @@
 
 The map browser that chooses which map is open, and the tree that owns layer identity, order, visibility, opacity and z-order.
 
-May split in two: the map half (browser modal, create/copy/delete, bootstrap) and the layer half (tree, drag-and-drop).
+> **Split, as this file anticipated.** **S5a — maps and sharing** is built: every
+> endpoint, every layer command, the authorization, the map browser and the layer
+> library. **S5b — the layer tree** is not: the virtualized tree, drag and drop,
+> panes and z-order, and the map control panel. The seam is the one named below,
+> and it holds — S5a is data and authorization, S5b is the view over it. The gate
+> in this file is S5b's; S5a's results are recorded at the end.
 
 ## In scope
 
@@ -134,6 +139,121 @@ Plus: zero accessibility violations, and full keyboard operation — arrows navi
 
 The map browser replaces what an earlier draft suggested as an optional Backpack CRUD screen for listing maps. It is in-app, it knows about unsynced state, and it can open a map — none of which a CRUD panel does. Do not build both.
 
-## Results
+## Results — S5a (maps, sharing, library)
 
-_Fill in when complete._
+Built and measured. **Everything server-side is done, along with the two modals
+that sit on it.** The layer tree, drag and drop, panes and the control panel are
+S5b, and the gate table above belongs to that half.
+
+### What it costs
+
+| Operation | Measured |
+| --- | --- |
+| Bootstrap a map (1 layer, warm basemap cache) | **1.0 ms** |
+| Copy a map placing a 734,469-feature layer | **3.6 ms** |
+| Map listing, 25 rows with layer and feature counts | 4 queries, independent of page size |
+
+Copying is 3.6 ms because it copies nothing. That is the whole point of the
+layer split: the source map places a layer holding three quarters of a million
+features, and the copy writes one row. An earlier design duplicated features up
+to a 20,000-row cap, which against this data would have rejected every copy —
+shared layers make the question disappear rather than answer it.
+
+The listing's counts are two grouped queries for the whole page rather than two
+per row, and the **feature count sums only layers the map owns**. Summing shared
+ones would print the cadastral base on every row and say nothing about the work
+done in that map.
+
+### The permission model, and where it is actually enforced
+
+Effective permission is the narrowest of three terms — the user's role on the
+map, the placement's `access`, the layer's `locked` — resolved in one place
+(`MapAccess`) so no command has to remember all three. Four consequences are
+tested rather than asserted in prose:
+
+- A map owner given a `read` placement cannot write through it. Feature writes,
+  rename, restyle, delete and lock are all refused; **visibility and opacity are
+  not**, because those are this map's view of the layer rather than a change to
+  the layer.
+- A layer not placed in this map is unreachable through this map, whatever the
+  user's role elsewhere. That is what an escalation attempt would look like.
+- `layer.setAccess` is refused unless the **acting map owns the layer**. Without
+  it, anyone holding a read-only placement of the cadastral base could promote
+  their own placement and rewrite 1.4 million rows.
+- `layer.share` with `access: edit` is refused when the user holds only read
+  rights — **tested by calling the command directly**, because the library modal
+  offering only "read" is a courtesy and not a fence.
+
+Restore is administrators only, **including the owning map's owner**. An owner
+may delete and may not undo it themselves; that is the usual shape for a
+destructive action with a recovery path and it keeps recovery auditable to a
+small group. It needed a second permission, `Administer GIS`, added to the
+Administrator role in the seeder.
+
+### Decisions that differ from the plan
+
+- **`map.restore` and `layer.restore` are commands, not endpoints.** A
+  soft-deleted map cannot receive a batch addressed to itself, but the catalogue
+  has them take an `id` — so they are sent through any map the user has open and
+  name the deleted one. No new write path.
+- **Delete refuses the open map on the client's word.** Only the client knows
+  which map it is looking at, so it declares it (`?openMapId=`). A policy cannot
+  answer a question about a session.
+- **The basemap list ships inside the bootstrap**, with three levels of fallback
+  — live, cached, then the configured default alone — and reports which one it
+  used. It never throws and never returns an empty list, because a basemap the
+  user cannot change beats a map that will not load. The `owm-` classification
+  is by prefix, so a sixth weather provider needs no code change.
+- **The editor opens the user's most recent map** rather than always showing the
+  browser. Returning to the editor puts them back where they were; the browser
+  opens itself only when there is no map at all, which is the one state with
+  nothing to render.
+- **Fractional indexing appends by odometer, not by bisection.** Bisecting
+  towards an open end converges on `z` and then grows a character per insert —
+  500 appends produced an **84-character key**, against a `varchar(64)` column.
+  Incrementing with carry (`a0` → `a1`, `az` → `b0`) keeps an append-only list at
+  two characters for its first 1,612 layers. The client and server implement the
+  same algorithm and are tested against the same properties, because a drop
+  computes its key on the client and a copy computes one on the server.
+- **`$request->validate()` returns only the keys it has rules for**, so a rule of
+  `commands.*.op` silently stripped every command down to its op. The envelope is
+  validated and the commands are then taken from the raw input — rules for the
+  payloads would be a second copy of the catalogue.
+
+### Checked in the browser
+
+The editor was driven end to end against the imported cadastre: the map browser
+lists both dev maps and marks the open one, the library lists `Lot` and
+`Gunatanah` as base data with their feature counts, marks the already-placed one
+unselectable, and offers **read-only alone** for both — which is the permission
+rule showing through the UI rather than being described by it. Placing `Lot`
+wrote one row and the renderer picked it up: 27,041 + 24,615 features across two
+layers at zoom 12.
+
+### Tests
+
+**46 new feature tests** across the map browser, shared layers and the tree
+commands: visibility and paging of the listing, per-row roles, owned-only feature
+counts, idempotent creation, copy sharing layers and preserving the tree,
+bootstrap refusal, versioned rename, owner-only and not-currently-open delete,
+the deleted listing, administrator-only restore, the three basemap fallbacks
+including a thrown connection error, library visibility and access computation,
+every refusal above, one-row reorder asserted by counting UPDATE statements,
+group and ungroup with reparenting, and the zoom-range and opacity bounds.
+
+**Four JavaScript unit tests** for the client's fractional index, including the
+key-length property that caught the append bug.
+
+The whole suite is **140 tests, 586 assertions**, up from 91.
+
+### Not done — this is S5b
+
+The virtualized layer tree, drag and drop with its three drop targets, tri-state
+visibility inheritance, Leaflet panes and z-order from tree position, tree search,
+the ARIA treeview and keyboard operation, and the map control panel (basemap
+switcher, weather overlays, go-to-coordinate, search, isolate). The gate table
+above measures those, and none of it is measured yet.
+
+One piece of S5a is deliberately thin until then: **the conflict panel**. The
+client pauses its queue, keeps the commands and hands the problem document to a
+callback that currently logs. Nothing is lost; the user is simply not yet told.
