@@ -49,7 +49,7 @@ Root-level changes:
 
 ## Constraints that apply here
 
-- **The editor view extends `base/layouts/plain.blade.php`**, not `top_left`. Override the layout's `container` wrapper and centred body class — the map needs full bleed (§17).
+- **The editor view extends `base/layouts/plain.blade.php`**, not `top_left`. Add menu to access the editor view on the `menu.blade.php` similar to `kitchensink`. Add a back button on top left of the editor view to reaccess the dashboard. Override the layout's `container` wrapper and centred body class — the map needs full bleed (§17).
 - **Leaflet is a `<script>` tag pointing at `public/packages/leaflet/dist/leaflet.js`**, placed before the bundle. Never an import, never a second copy (§3).
 - The client reads configuration from one JSON blob rendered into the page, not from scattered `data-` attributes: tile URL and attribution from `config('services.map_tiles')`, CSRF token, current map id, capabilities.
 - `php artisan backpack:crud` is not used in this package, now or later.
