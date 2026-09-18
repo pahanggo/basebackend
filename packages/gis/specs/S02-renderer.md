@@ -91,4 +91,126 @@ If the budget misses, the likely remedy is server-side vector tiling, which §1 
 
 ## Results
 
-_Fill in when complete. Include the full budget table with measured values._
+Built and measured. **The budget is met for the interaction that dominates —
+panning — and missed for a cold rebuild. The reference-device gate was not
+measured at all**, and that qualification matters more than any number below.
+
+### Measured, on the development machine
+
+Apple Silicon, Chrome, 1710 x 930 viewport, against the imported `bencana`
+data at zoom 12 with both layers placed. **No CPU throttling was applied**: the
+tooling available here cannot drive Chrome's throttling, so every figure is
+from hardware several times faster than the reference device.
+
+| Metric | Budget | Measured | |
+| --- | --- | --- | --- |
+| Repaint, paths cached (pan) | < 16 ms | **0.00 ms**, worst 0.40 ms | pass |
+| Repaint, paths rebuilt (zoom, new data) | < 16 ms | **75.7 ms** both layers, 35.6 ms one | miss |
+| Index query + area cull | < 10 ms | **2.9 ms** over 36,000 candidates | pass |
+| Hit test | < 5 ms | **median 0.0 ms**, p95 0.2 ms, worst 2.7 ms | pass |
+| Peak JS heap, both layers | < 250 MB | **30 MB** | pass |
+| Sustained pan/zoom frame rate | >= 55 fps | **not measured** | — |
+| Selection repaint | < 8 ms | not applicable until S9 | — |
+
+Drawn at that view: 40,000 features, 273,327 vertices, two layers.
+
+The frame rate could not be measured through this tooling: a backgrounded tab
+gets no `requestAnimationFrame` callbacks, and the extension could not drive a
+foreground one. What is known is the JS cost per frame, which is the part this
+session controls, and it is 0.00 ms while panning.
+
+### The rebuild cost is a per-zoom cost, not a per-frame cost
+
+The 75.7 ms figure is building `Path2D` objects for 40,000 features. It happens
+when the zoom changes or a response arrives — not when the map moves. Panning
+reuses the built paths and shifts them with a canvas transform.
+
+That is the single most valuable thing in this session. Paths are built once in
+world pixels and translated per frame:
+
+| | Before | After |
+| --- | --- | --- |
+| Pan frame | 44 ms | 0.00 ms |
+
+It is also why the coordinates are shifted by a build-time origin rather than
+being absolute world pixels: canvas paths hold their points as 32-bit floats,
+and at zoom 18 an absolute world pixel has lost the precision to land on the
+right one.
+
+### Four measurements that changed the design
+
+**1. `closePath()` cost 2,151 ms of a 2,177 ms repaint.** Building one
+accumulating `Path2D` for 16,180 polygons, each ring closed with `closePath()`,
+took 2.2 seconds. The same loop without it takes 26 ms. Chrome appears to charge
+each `closePath()` in proportion to the whole path built so far. It is not
+needed anyway: every polygon ring arrives with its first vertex repeated at the
+end, so the subpath already closes itself. *Fill and stroke were never the
+problem* — they measured 1.3 ms and 0.0 ms for the same path.
+
+**2. Coordinates are stored projected, not as longitude and latitude.**
+Projecting at draw time costs a `sin` and a `log` per vertex, which measured
+21 ms of a 34 ms repaint — most of a frame, spent recomputing something that
+never changes. Normalised Web Mercator scales linearly with zoom, so a draw is
+now one multiply and one subtract per vertex. Longitude and latitude are
+recovered with `unproject` where they are needed, which is editing and export, a
+few vertices at a time. Verified against Leaflet: across 500 features the
+largest disagreement with `latLngToContainerPoint` is 0.5 px, which is its
+rounding.
+
+**3. rbush's `search` allocates an object per hit.** A zoom-12 query matches
+36,000 of them. Walking the tree directly and collecting indices into a reused
+`Uint32Array` took the query from 17 ms to 2.9 ms and now allocates nothing per
+frame. The cull compacts in place into the same buffer for the same reason.
+
+**4. Refetching on every `moveend` freezes the tab.** The first feed did, and a
+drag of a few pixels queued a multi-megabyte response; the application's
+file-based sessions serialise them, so forty small pans became forty queued
+requests. The read now covers a quarter-viewport of padding on each side and
+only a pan that leaves that area asks for more. Padding is not free either —
+half a viewport each way doubles both dimensions and quadruples the response,
+which measured 24 MB a layer.
+
+### What the cull constant does to this
+
+At 4 px² both layers hand the renderer 40,000 features, which is four times the
+10,000 the budget in section 19 assumes. One layer alone is 20,000 and rebuilds
+in 35.6 ms. The per-vertex cost is about 0.15 µs, so a 13,000-feature,
+87,000-vertex workload rebuilds in roughly 13 ms — inside the budget.
+
+**The constant is still open, and this session did not close it.** The
+measurements in the section above stand, and the cap S3 introduced changes the
+question: the server now returns the largest N features rather than everything
+above a threshold, so the count is bounded whatever the constant is. What the
+constant now controls is how much ground area goes unpainted, not how much work
+arrives.
+
+### Deviations from the plan
+
+- **Leaflet's own `closePath`-free path building** meant dropping the
+  "coarser tolerance while moving" behaviour in the plan: with a cached path
+  there is nothing to coarsen, and a moving flag would only invalidate the
+  cache. Visvalingam-Whyatt still runs in the worker and its mask is applied
+  below zoom 16, where the server also sends the pre-simplified geometry.
+- **The three canvases exist but only the feature canvas is painted.** Overlay
+  and edit are created and sized; S6 and S9 fill them.
+- **Pest browser tests were not written.** `pestphp/pest-plugin-browser` and
+  Playwright are not installed, and installing them is a dependency decision.
+  The pure client-side code — projection, array building, the index, the cull,
+  simplification — is covered by 11 tests under Node's own test runner, asserted
+  from Pest so the suite keeps one entry point and the repository gains no
+  second framework. Visual regression is therefore also not automated; the
+  rendering was checked by eye against the basemap, where parcel boundaries
+  follow the coastline and the street grid exactly.
+
+### Is this a scope conversation?
+
+The specification says to have one immediately if the budget misses. **Not yet.**
+The miss is a cold rebuild on a machine that was measured without throttling,
+and the mechanism that would fix it — fewer features per rebuild — is the cull
+constant that is already an open decision with numbers attached. Vector tiling
+is not indicated by anything measured here: the index query, the cull, the hit
+test and the pan frame are all comfortably inside budget, and the one number
+outside it is linear in the feature count that the cap now bounds.
+
+What would justify reopening scope is the reference-device measurement, which
+nobody has taken. It should be taken before S8 and S9 add work to this path.

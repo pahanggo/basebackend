@@ -2,6 +2,7 @@
 
 namespace Gis\Http\Controllers;
 
+use Gis\Models\Layer;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
@@ -33,6 +34,21 @@ class EditorController extends Controller
             'csrfToken' => csrf_token(),
             'apiBase' => url(config('gis.route.api_prefix')),
             'mapId' => null,
+
+            // Until S5 builds the tree, the editor shows the global layers the
+            // import created, in the order they were made.
+            'layers' => Layer::query()
+                ->whereNull('owner_map_id')
+                ->orderBy('id')
+                ->get(['id', 'name', 'kind', 'style', 'feature_count'])
+                ->map(fn (Layer $layer) => [
+                    'id' => $layer->id,
+                    'name' => $layer->name,
+                    'kind' => $layer->kind,
+                    'style' => $layer->style,
+                    'featureCount' => $layer->feature_count,
+                ])
+                ->all(),
             'basemap' => [
                 'url' => config('services.map_tiles.url'),
                 'attribution' => config('services.map_tiles.attribution'),

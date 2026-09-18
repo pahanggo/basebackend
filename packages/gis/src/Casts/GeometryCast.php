@@ -111,14 +111,35 @@ final class GeometryCast implements CastsAttributes
      * for queries that want to be explicit about it, or that select through an
      * expression where the internal format would not survive.
      */
-    public static function selectBinary(string $column, ?string $alias = null): Expression
+    public static function selectBinary(string $column, ?string $alias = null, ?string $fallback = null): Expression
     {
+        $source = $fallback === null
+            ? sprintf('`%s`', $column)
+            : sprintf('COALESCE(`%s`, `%s`)', $column, $fallback);
+
         return new Expression(sprintf(
-            "ST_AsBinary(`%s`, '%s') as `%s`",
-            $column,
+            "ST_AsBinary(%s, '%s') as `%s`",
+            $source,
             self::AXIS_ORDER,
             $alias ?? $column,
         ));
+    }
+
+    /**
+     * SQL selecting a geometry column as GeoJSON.
+     *
+     * `ST_AsGeoJSON` follows RFC 7946 and emits longitude-latitude regardless
+     * of the reference system's declared axis order, so it needs no option —
+     * unlike every other function in this file. Verified against
+     * `ST_AsText(..., 'axis-order=long-lat')` on real rows.
+     */
+    public static function selectGeoJson(string $column, ?string $alias = null, ?string $fallback = null): string
+    {
+        $source = $fallback === null
+            ? sprintf('`%s`', $column)
+            : sprintf('COALESCE(`%s`, `%s`)', $column, $fallback);
+
+        return sprintf('ST_AsGeoJSON(%s) AS `%s`', $source, $alias ?? $column);
     }
 
     /**
