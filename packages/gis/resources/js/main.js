@@ -1,9 +1,10 @@
 /**
  * GIS editor entry point.
  *
- * Boots the map, mounts the feature renderer, and keeps the visible layers fed
- * as the viewport moves. The store (S4), the layer tree (S5) and the drawing
- * tools (S6) mount from here later.
+ * Boots the map, mounts the feature renderer, keeps the visible layers fed as
+ * the viewport moves, and stands up the store. The layer tree (S5) and the
+ * drawing tools (S6) mount from here later and are what will first commit to
+ * the store — until then it exists, is wired to the server, and holds nothing.
  *
  * Leaflet is the global `L`, loaded from the vendored UMD build before this
  * bundle. It is never imported.
@@ -13,6 +14,9 @@ import { createRenderer } from './map/renderer.js';
 import { ensurePane } from './map/panes.js';
 import { SpatialIndex } from './map/spatial-index.js';
 import { fetchFeatures } from './data/features.js';
+import { Store } from './store/store.js';
+import { SyncQueue } from './store/sync.js';
+import { reconcile } from './store/commands/index.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
 function readBootstrap() {
@@ -125,6 +129,47 @@ class LayerFeed {
     }
 }
 
+/**
+ * The store and its outbound queue.
+ *
+ * Both exist from the first frame even though nothing commits to them until S5
+ * and S6: the queue's `clientId` has to be stable for the life of the tab,
+ * because it is half of the idempotency key, and a queue created lazily on the
+ * first edit would get a new one after every reload.
+ *
+ * Without a map there is nothing to sync to — the editor opens on the global
+ * layers until S5 builds the map browser — so the store is created without a
+ * queue and commits stay local.
+ */
+function createStore(config) {
+    const sync = config.mapId === null ? null : new SyncQueue({
+        apiBase: config.apiBase,
+        mapId: config.mapId,
+        clientId: config.clientId,
+        csrfToken: config.csrfToken,
+        onApplied: (body) => {
+            reconcile(store.state, body.applied);
+            store.emit(['features', 'layers', 'measurements']);
+        },
+        onConflict: (problem) => {
+            // S5 opens the conflict panel here. Until it exists, the queue is
+            // paused and the commands are kept, which is the safe half of the
+            // behaviour; nothing is lost, the user is simply not yet told.
+            console.warn('gis: version conflict', problem);
+        },
+    });
+
+    const store = new Store({ sync });
+
+    store.state.map.id = config.mapId;
+
+    for (const layer of config.layers || []) {
+        store.state.layers[layer.id] = { ...layer, version: layer.version || 1 };
+    }
+
+    return { store, sync };
+}
+
 function boot() {
     const config = readBootstrap();
     const container = document.getElementById('gis-map');
@@ -174,7 +219,7 @@ function boot() {
         }
     });
 
-    window.gis = { map, renderer, feeds, config };
+    window.gis = { map, renderer, feeds, config, ...createStore(config) };
 }
 
 if (document.readyState === 'loading') {

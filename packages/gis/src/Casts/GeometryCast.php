@@ -5,10 +5,12 @@ namespace Gis\Casts;
 use Brick\Geo\Geometry;
 use Brick\Geo\Io\GeoJsonReader;
 use Brick\Geo\Io\WkbReader;
+use Brick\Geo\Io\WkbWriter;
 use Brick\Geo\Io\WktReader;
 use Brick\Geo\Io\WktWriter;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
@@ -162,6 +164,119 @@ final class GeometryCast implements CastsAttributes
             '((LENGTH(ST_AsBinary(`%1$s`)) - 9 - 4 * (1 + ST_NumInteriorRings(`%1$s`))) / 16)',
             $column,
         );
+    }
+
+
+    /**
+     * Read a geometry off the wire.
+     *
+     * Commands carry geometry as base64 WKB by default and GeoJSON on request
+     * (specification section 7). WKB is preferred because it is smaller and
+     * because it removes a second place where coordinate precision could be
+     * silently truncated — a GeoJSON round trip through a JSON encoder is
+     * decimal, and decimal is lossy at the seventh place.
+     *
+     * @param  string  $encoding  wkb | geojson
+     */
+    public static function fromWire(string $value, string $encoding = 'wkb'): Geometry
+    {
+        if ($encoding === 'geojson') {
+            return self::toGeometry($value);
+        }
+
+        $binary = base64_decode($value, strict: true);
+
+        if ($binary === false || $binary === '') {
+            throw new InvalidArgumentException('Geometry is not valid base64 WKB.');
+        }
+
+        return (new WkbReader)->read($binary, self::SRID);
+    }
+
+    /**
+     * Write a geometry for the wire, as base64 WKB.
+     *
+     * The bytes are longitude-latitude, matching what MySQL stores internally
+     * and what every consumer of this API expects.
+     */
+    public static function toWkbBase64(Geometry $geometry): string
+    {
+        return base64_encode((new WkbWriter)->write($geometry));
+    }
+
+    /**
+     * Geodesic area in square metres.
+     *
+     * `ST_Area` on SRID 4326 IS geodesic and returns m² — verified in S1b
+     * against the source cadastre's surveyed areas, which it matched to 0.058%.
+     * It is computed here rather than in PHP for that reason: nothing in
+     * `brick/geo` is geodesic, and GEOS would return square degrees.
+     *
+     * One round trip per written feature. That is acceptable because writes are
+     * a batch of hundreds at most, unlike the read path where a per-row
+     * function call would be the whole cost.
+     */
+    public static function geodesicArea(Geometry $geometry): float
+    {
+        if (! $geometry instanceof \Brick\Geo\Polygon && ! $geometry instanceof \Brick\Geo\MultiPolygon) {
+            // Points and lines are culled by neither area nor length in v1, and
+            // the column contract says zero for them (specification section 6).
+            return 0.0;
+        }
+
+        $row = DB::connection(config('gis.connection'))
+            ->selectOne('select ST_Area('.self::literal($geometry).') as area');
+
+        return (float) ($row->area ?? 0.0);
+    }
+
+    /**
+     * Every vertex in a geometry, hole rings included.
+     *
+     * Counted in PHP on the write path, where the geometry is already parsed —
+     * unlike the read path, where `vertexCountExpression()` gets it out of the
+     * WKB layout because MySQL cannot loop over rings in an expression.
+     */
+    public static function countVertices(Geometry $geometry): int
+    {
+        $count = 0;
+
+        foreach (self::coordinateArrays($geometry->toArray()) as $ring) {
+            $count += count($ring);
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param  array<mixed>  $coordinates
+     * @return iterable<array<mixed>>
+     */
+    private static function coordinateArrays(array $coordinates): iterable
+    {
+        if ($coordinates === []) {
+            return;
+        }
+
+        // A position is a flat list of numbers; anything else is a nesting
+        // level to descend through.
+        if (is_numeric($coordinates[array_key_first($coordinates)])) {
+            yield [$coordinates];
+
+            return;
+        }
+
+        $first = $coordinates[array_key_first($coordinates)];
+
+        if (is_array($first) && $first !== [] && is_numeric($first[array_key_first($first)])) {
+            yield $coordinates;
+
+            return;
+        }
+
+        foreach ($coordinates as $child) {
+            yield from self::coordinateArrays((array) $child);
+        }
     }
 
     /**

@@ -1,9 +1,12 @@
 <?php
 
 use App\Models\User;
+use Gis\Casts\GeometryCast;
 use Gis\Http\Controllers\Api\FeatureReadController;
 use Gis\Models\Feature;
 use Gis\Models\Layer;
+use Gis\Models\Map;
+use Gis\Models\MapLayer;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Spatie\Permission\Models\Permission;
@@ -36,6 +39,60 @@ if (! function_exists('reader')) {
                 ->at(103.320 + $i * 0.002, 3.800)
                 ->create(['layer_id' => $layer->id, 'area_m2' => $area]);
         }
+    }
+
+
+    /**
+     * A map owned by the given user with one editable vector layer placed in
+     * it — the smallest arrangement in which a command is authorised, since
+     * every feature write composes the user's role, the placement's access and
+     * the layer's lock.
+     *
+     * @return array{0: Map, 1: Layer, 2: MapLayer}
+     */
+    function editableMap(?User $user = null): array
+    {
+        $user ??= reader();
+
+        $map = Map::factory()->create(['owner_id' => $user->id]);
+        $layer = Layer::factory()->create(['owner_map_id' => $map->id, 'name' => 'Lot']);
+
+        $placement = MapLayer::factory()->create([
+            'map_id' => $map->id,
+            'layer_id' => $layer->id,
+        ]);
+
+        return [$map, $layer, $placement];
+    }
+
+    /** Base64 WKB for a small square, as a command carries geometry. */
+    function wkbSquare(float $lng = 103.32, float $lat = 3.80, float $side = 0.0002): string
+    {
+        return GeometryCast::toWkbBase64(GeometryCast::toGeometry(sprintf(
+            'POLYGON((%1$F %2$F, %3$F %2$F, %3$F %4$F, %1$F %4$F, %1$F %2$F))',
+            $lng, $lat, $lng + $side, $lat + $side,
+        )));
+    }
+
+    /**
+     * Post a batch, as the client does.
+     *
+     * @param  array<int, array<string, mixed>>  $commands
+     */
+    function sendCommands(Map $map, array $commands, ?User $user = null, array $envelope = []): TestResponse
+    {
+        // Defaults to the map's owner. A fresh `reader()` would be a stranger
+        // to the map and every call would come back 403.
+        $user ??= User::query()->findOrFail($map->owner_id);
+
+        return test()->actingAs($user)
+            ->postJson(route('gis.api.maps.commands', ['map' => $map->id]), [
+                'clientId' => 'a3f9c2',
+                'seq' => 1,
+                'mapVersion' => $map->version,
+                'commands' => $commands,
+                ...$envelope,
+            ]);
     }
 
     function readViewport(array $query = []): TestResponse

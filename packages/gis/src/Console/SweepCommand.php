@@ -2,7 +2,10 @@
 
 namespace Gis\Console;
 
+use Gis\Models\CommandEffect;
+use Gis\Models\CommandLog;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class SweepCommand extends Command
 {
@@ -25,10 +28,28 @@ class SweepCommand extends Command
     public function handle(): int
     {
         $days = (int) config('gis.retention.soft_deleted_days');
+        $logDays = (int) config('gis.retention.command_log_days');
+        $before = Carbon::now()->subDays($logDays);
 
-        $this->info($this->option('dry-run')
-            ? "gis:sweep (dry run): nothing to purge; retention is {$days} days."
-            : "gis:sweep: nothing to purge; retention is {$days} days.");
+        $expired = CommandLog::query()->where('created_at', '<', $before);
+        $count = (clone $expired)->count();
+
+        if ($this->option('dry-run')) {
+            $this->info("gis:sweep (dry run): {$count} command log entries older than {$logDays} days; soft-delete retention is {$days} days.");
+
+            return self::SUCCESS;
+        }
+
+        // Effects first: they reference the log, and a deleted log with live
+        // effects would leave the conflict merge reading history whose commands
+        // are gone.
+        CommandEffect::query()
+            ->whereIn('log_id', (clone $expired)->select('id'))
+            ->delete();
+
+        $expired->delete();
+
+        $this->info("gis:sweep: purged {$count} command log entries older than {$logDays} days; soft-delete retention is {$days} days.");
 
         return self::SUCCESS;
     }

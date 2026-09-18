@@ -622,13 +622,14 @@ All routes are under `/api/geo`, registered by the package's service provider wi
 | DELETE | `/maps/{map}` | Soft delete, restorable for 30 days, owner only |
 | GET | `/layers/{layer}/features` | Binary or GeoJSON feature read by bbox |
 | POST | `/maps/{map}/commands` | All mutations, atomic and idempotent |
+| GET | `/maps/{map}/commands` | Replay: the batches applied since a given map version |
 | POST | `/geometry/ops` | Constructive geometry above the client vertex limit |
 | GET | `/layers` | The layer library: layers this user may place, paged and searchable |
 | POST | `/layers/{layer}/query` | Spatial and attribute query; returns ids, a count or features |
 | POST | `/images` | Multipart upload of an overlay image; returns path and natural dimensions |
 | GET | `/app/static-map` | Existing endpoint; see section 13. Tiles are not served by this API |
 
-The v1 surface is eleven endpoints, the twelfth row being an existing endpoint outside this API. `POST /geometry/ops` (section 9) ships in v1 because `brick/geo` with GEOS is an approved dependency, and `POST /images` is the one multipart write in v1, serving overlay images and marker SVGs (sections 10 and 13). Import, export, share and the job protocol are deferred to v2; their contracts are specified below, marked *(v2)*, so the v1 implementation can be built without foreclosing them.
+The v1 surface is twelve endpoints, the thirteenth row being an existing endpoint outside this API. `POST /geometry/ops` (section 9) ships in v1 because `brick/geo` with GEOS is an approved dependency, and `POST /images` is the one multipart write in v1, serving overlay images and marker SVGs (sections 10 and 13). Import, export, share and the job protocol are deferred to v2; their contracts are specified below, marked *(v2)*, so the v1 implementation can be built without foreclosing them.
 
 The constraint that makes this safe is that **every v2 endpoint above either creates commands or reads features** — none introduces a new write path. Import ultimately produces `feature.create` commands; export reads features. Deferring them removes work without changing the shape of what ships.
 
@@ -901,6 +902,28 @@ Two kinds of client-side editing collapse into single ops here, deliberately:
 Geometry is WKB base64 by default, GeoJSON when `geom=geojson` is sent in the content type. WKB is preferred: smaller, and it removes a second place where coordinate precision could be silently truncated.
 
 Commands addressing a layer take the **placement** id where they concern position or visibility in this map (`reorder`, `setVisible`, `setOpacity`, `removeFromMap`, `setAccess`) and the **layer** id where they concern the layer itself (`setStyle`, `rename`, `delete`, schema commands). The two are distinct and the API does not paper over it: a command that changes what every map sees must look different from one that changes only this map's view.
+
+#### Replay
+
+`GET /api/geo/maps/{map}/commands?since=31` returns the batches applied after
+map version 31, in order, each with the commands it carried and the rows it
+touched. It is the read half of "the command log is shaped for replay"
+(section 16): a client whose connection dropped knows the version it last saw,
+and replaying six commands is cheaper than re-reading a map whose layers hold
+1.4 million features — and it preserves the client's own pending queue, which a
+re-read would silently invalidate.
+
+```json
+{ "mapVersion": 34, "canReplay": true,
+  "batches": [ { "mapVersion": 32, "clientId": "b71e04", "seq": 12,
+                 "userId": 4, "commands": [], "applied": [] } ] }
+```
+
+It answers honestly when it cannot help. If the log no longer reaches back to
+the version the client holds, or the client is further behind than the log will
+serve in one response, it returns `canReplay: false` with a reason and the
+client re-reads. A partial replay would leave the client believing it is current
+when it is not, which is worse than the round trip it saves.
 
 #### Conflicts
 

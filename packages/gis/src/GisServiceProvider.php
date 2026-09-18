@@ -5,7 +5,10 @@ namespace Gis;
 use Gis\Console\ImportBencanaCommand;
 use Gis\Console\SweepCommand;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 
 class GisServiceProvider extends ServiceProvider
@@ -27,7 +30,9 @@ class GisServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'gis');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
+        $this->registerRateLimits();
         $this->registerRoutes();
+        $this->registerBroadcastChannels();
         $this->registerSchedule();
 
         if ($this->app->runningInConsole()) {
@@ -82,6 +87,38 @@ class GisServiceProvider extends ServiceProvider
             'middleware' => $middleware,
             'as' => 'gis.api.',
         ], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/api.php'));
+    }
+
+    /**
+     * Write limits, from config rather than a literal in the route file.
+     *
+     * Reads are deliberately not limited here: the editor issues one per layer
+     * per settled view and the padding in the client's feed is what bounds
+     * them, so a limit low enough to matter would break ordinary panning.
+     */
+    protected function registerRateLimits(): void
+    {
+        RateLimiter::for('gis-writes', fn ($request) => Limit::perMinute(
+            (int) config('gis.rate_limits.writes_per_minute'),
+        )->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
+    }
+
+    /**
+     * Channel authorization for `private-map.{id}`.
+     *
+     * Loaded whether or not a websocket server is running: with the `log`
+     * broadcast driver the channel is inert, and standing it up later is a
+     * driver change rather than a code change (specification section 5).
+     */
+    protected function registerBroadcastChannels(): void
+    {
+        if (! $this->app->bound(\Illuminate\Contracts\Broadcasting\Factory::class)) {
+            return;
+        }
+
+        Broadcast::routes();
+
+        require __DIR__.'/../routes/channels.php';
     }
 
     /**

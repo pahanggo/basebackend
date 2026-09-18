@@ -160,6 +160,13 @@ return [
 
     'retention' => [
         'soft_deleted_days' => 30,
+
+        // The command log is two things with two lifetimes. Idempotency needs
+        // 24 hours; replay-catch-up wants longer, so a client that was closed
+        // over a weekend can still be brought forward rather than re-reading a
+        // map whose layers hold 1.4 million features. The longer figure is what
+        // the sweep enforces.
+        'command_log_days' => 7,
     ],
 
     /*

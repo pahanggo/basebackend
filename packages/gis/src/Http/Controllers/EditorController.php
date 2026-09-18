@@ -5,6 +5,7 @@ namespace Gis\Http\Controllers;
 use Gis\Models\Layer;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EditorController extends Controller
@@ -32,6 +33,11 @@ class EditorController extends Controller
     {
         return [
             'csrfToken' => csrf_token(),
+
+            // Half of the idempotency key, and it must be stable for the life
+            // of one tab: two tabs are two clients, and a reload that reused
+            // the old id could collide with a sequence it did not issue.
+            'clientId' => Str::random(12),
             'apiBase' => url(config('gis.route.api_prefix')),
             'mapId' => null,
 
