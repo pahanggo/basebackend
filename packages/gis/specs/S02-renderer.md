@@ -25,6 +25,8 @@ Two things follow, and both invert the usual priorities:
 - **Simplification is nearly useless here.** Parcels average 6.7 vertices. A quadrilateral cannot be simplified — reducing it yields a triangle, then a line. Vertex count was never the cost.
 - **Area culling is the mechanism.** 41% of lots are under 500 m², which at zoom 12 is 0.35 px². Dropping everything below 4 px² holds the drawn set near 13,000 at every zoom, because zooming out shrinks parcels below the threshold faster than it admits new ones.
 
+  **The 4 px² constant is an open decision, left for this session.** S1b measured it against the imported data on a 1456 x 840 viewport: it holds `lots` at 13,974 and `usages` at 17,541 at zoom 12 — each near target, 31,515 together. Measured alternatives, both layers at zoom 12: 8 px² gives 17,909, 10 px² gives 15,029, 16 px² gives 10,136. The cost is ground coverage, not count — at 10 px² about a fifth of the `lots` layer's covered land goes unpainted at zoom 12, so dense blocks of small parcels thin out rather than reading as a mass. Zoom 16 is unaffected either way, so this is a zoom 12-14 knob only. Decide it with the renderer in front of you, and note that a fixed px² threshold hands a 4K display three times the features — the durable fix is a target count the server solves for per request.
+
 So **the hot path is culling, not painting**: at zoom 12 the index returns 159,654 candidates to produce 12,929 drawn features. Optimise the query and the cull loop; the paint is comfortably within budget once they are right.
 
 Simplification still earns its place for the minority case it was meant for — `usages` reaches 7,886 vertices, and a large estate lot stays on screen at every zoom.
