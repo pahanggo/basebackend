@@ -198,3 +198,20 @@ When creating a new CRUD, first run `php artisan make:migration` to create the m
 Sidebar links, permissions, routes are also generated when calling `backpack:crud`.
 
 Add the translations into the `lang/ms_MY.json` file in Bahasa Melayu.
+
+# GIS package
+
+All GIS work is specified before it is built. Everything lives in `packages/gis/specs/`.
+
+- **`GIS Web Interface — Technical Specification.md`** is the single source of truth for architecture: principles, data model, API contract, performance budgets, security, failure modes.
+- **`S00`–`S15`** are one execution plan per build session: scope, deliverables, constraints, gate, tests. `README.md` indexes them and gives the order and dependencies.
+
+Before touching anything under `packages/gis/`:
+
+1. Read `.ai/rules/gis.md` — the settled decisions. Do not re-litigate them.
+2. Read the session file for the work at hand, then the specification sections it names.
+3. Where a session file and the specification disagree, **the specification wins** and the session file needs fixing.
+
+Do not run `php artisan backpack:crud` for anything in this package — the generator cannot read GEOMETRY columns, generated columns or the fractional-index sort key. The instruction above about the Backpack generator does not apply here.
+
+When a session is finished, record its measured budget numbers in that session file's **Results** section.
