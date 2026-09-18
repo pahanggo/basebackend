@@ -1,4 +1,19 @@
 {
+  "packages/gis/resources/js/main.js": {
+    "file": "assets/main-DWQ8qNjq.js",
+    "name": "main",
+    "src": "packages/gis/resources/js/main.js",
+    "isEntry": true
+  },
+  "packages/gis/resources/scss/gis.scss": {
+    "file": "assets/gis-6d2IUIcL.css",
+    "name": "gis",
+    "names": [
+      "gis.css"
+    ],
+    "src": "packages/gis/resources/scss/gis.scss",
+    "isEntry": true
+  },
   "resources/css/list-bundle.css": {
     "file": "assets/list-bundle-Dw3DfdWY.css",
     "name": "list-bundle",

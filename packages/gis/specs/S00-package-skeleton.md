@@ -26,7 +26,7 @@ Tables (S1), the renderer (S2), any endpoint under `/api/geo` beyond a health ch
 
 ```
 packages/gis/
-  composer.json               (metadata only; autoloading is wired in the root)
+  composer.json               (its own autoload, provider and dependencies)
   src/
     GisServiceProvider.php
     Http/Controllers/EditorController.php
@@ -34,6 +34,7 @@ packages/gis/
   routes/web.php              admin-guarded page route
   routes/api.php              /api/geo, empty but registered
   src/Console/SweepCommand.php
+  config/database.php         the `gis` connection, registered by the provider
   database/migrations/        empty, S1 fills it
   resources/
     js/main.js                boots, logs, nothing else
@@ -44,7 +45,7 @@ packages/gis/
 
 Root-level changes:
 
-- `composer.json` — add `"Gis\\": "packages/gis/src"` to `autoload.psr-4`, add `Gis\GisServiceProvider` to `extra.laravel.providers`, add `brick/geo`. This follows the existing `packages/backpack/*` precedent: the package is autoloaded from the root, not installed through a path repository.
+- `composer.json` — register `packages/gis` as a path repository and require `pahanggo/gis`. The package carries its own `autoload.psr-4`, its own `extra.laravel.providers` and its own `brick/geo` requirement, so nothing about it leaks into the application. This departs from the `packages/backpack/*` precedent, which is autoloaded from the root; see Results.
 - `vite.config.js` — add `packages/gis/resources/js/main.js` and the package stylesheet as inputs.
 
 ## Constraints that apply here
@@ -76,4 +77,49 @@ Root-level changes:
 
 ## Results
 
-_Fill in when complete._
+Done. The editor renders at `/app/gis` behind the admin guard and the `Access GIS`
+permission, with a full-viewport Leaflet basemap and no console errors.
+
+**The package is self-contained.** Rather than the root psr-4 entry the plan
+assumed, it is a Composer **path repository**: `packages/gis` carries its own
+`composer.json`, and the root requires `pahanggo/gis`. Laravel's package
+discovery then reads the package's `extra.laravel.providers`, so there is no
+entry in `config/app.php` — and `brick/geo` is the package's dependency rather
+than the application's. The package also registers its own database connection
+and its own `gis:sweep` schedule from the provider, so neither
+`config/database.php` nor `app/Console/Kernel.php` is touched.
+
+The plan's instruction to add the provider to the root `composer.json`'s
+`extra.laravel.providers` would not have worked: for the root package that block
+is never read. `package:discover` builds only from `vendor/composer/installed.json`.
+
+**The schema lives in its own database**, `webgis`, on a `gis` connection the
+package defines. Consequence: no foreign keys to `users`, since they would cross
+a database boundary, so `gis_maps.owner_id` and `gis_map_user.user_id` are plain
+integers the application layer validates.
+
+| Root file | Why it had to change |
+| --- | --- |
+| `composer.json` / `.lock` | Path repository and the package requirement |
+| `vite.config.js` | Two build inputs |
+| `resources/views/base/layouts/plain.blade.php` | The body class and container wrapper became `@yield`s with their current values as defaults, so the editor can drop the centred container. Backwards compatible; login and the error pages render unchanged |
+| `resources/views/base/inc/menu.blade.php` | The map icon, beside kitchensink, behind `@can('Access GIS')` |
+| `database/seeders/UserSeeder.php` | `Access GIS` added to the Administrator role |
+| `database/factories/UserFactory.php` | It omitted `username`, which is `NOT NULL UNIQUE` — the factory could not insert a row at all. Unrelated to this package, but it blocked every feature test |
+| `phpunit.xml`, `tests/Pest.php` | The `Gis` test suite, and the testing databases |
+| `lang/ms_MY.json` | Two strings |
+
+**Tests run against real MySQL.** SQLite has no SRID-aware geometry and no
+spatial index, so the suite needs MySQL 8 — which means it needs databases of its
+own. `phpunit.xml` points at `basebackend_testing` and `webgis_test`; before
+this session the suite would have run `migrate:fresh` against the working
+`basebackend` database.
+
+**Budgets:** initial transfer is 0.65 kB of JavaScript and 0.84 kB of CSS
+(0.40 / 0.42 kB gzipped), plus the vendored Leaflet, which is loaded separately
+and shared with the `latlng_picker` field. Nothing to compare against yet; S2 is
+the first session with a real budget.
+
+Deviation worth noting: Leaflet's zoom control and the back link both want the
+top-left corner, so the control stack is pushed down 44 px (60 px on coarse
+pointers) in the package stylesheet.

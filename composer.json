@@ -22,6 +22,7 @@
         "laravolt/avatar": "^6.0",
         "livewire/livewire": "^3.6",
         "maatwebsite/excel": "^3.1",
+        "pahanggo/gis": "^1.0",
         "prologue/alerts": "^1.2",
         "spatie/laravel-permission": "^6.0"
     },
@@ -37,6 +38,15 @@
         "phpunit/phpunit": "^12.0.0",
         "spatie/laravel-ignition": "^2.0"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/gis",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",

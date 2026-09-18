@@ -8,6 +8,8 @@ export default defineConfig({
             input: [
                 'resources/scss/style.scss',
                 'resources/css/list-bundle.css',
+                'packages/gis/resources/scss/gis.scss',
+                'packages/gis/resources/js/main.js',
             ],
             refresh: true,
         }),

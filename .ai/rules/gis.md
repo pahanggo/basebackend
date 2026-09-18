@@ -93,3 +93,19 @@ ST_Transform(geom, <metric SRID>)   -- MySQL, 4326 -> metres
 - `geosop` is a subprocess: timeout it, bound the input, pass WKT on **stdin** — never interpolate geometry into a shell argument.
 
 Also note: `composer require --dry-run` still writes to composer.json. Revert it afterwards.
+
+## GIS package: how it is wired in, and where its data lives
+Settled in S0/S1 and verified by the test suite. These override the earlier "add it to the root" wording above.
+
+- **The package is a Composer path repository, not a root psr-4 entry.** `packages/gis/composer.json` carries its own autoload, its own `extra.laravel.providers` and its own `brick/geo` requirement; the root only lists the repository and requires `pahanggo/gis`. After editing the package's `composer.json`, run `composer update pahanggo/gis` — a `dump-autoload` alone will not pick up a new psr-4 prefix.
+- **A root `extra.laravel.providers` entry does nothing.** `package:discover` builds only from `vendor/composer/installed.json`, so the root package's own block is never read. Providers for root-autoloaded packages go in `config/app.php`; discovered packages need neither.
+- **The schema lives in its own database** (`webgis`, `gis` connection), defined in `packages/gis/config/database.php` and registered by the provider — `config/database.php` has no GIS entry. Consequence: **no foreign keys to `users`**; `gis_maps.owner_id` and `gis_map_user.user_id` are plain integers the application layer validates.
+- Migrations set `$this->connection = config('gis.connection')` in their constructor. The migrator swaps the default connection for the duration of `up()`, so plain `Schema::create` lands in the right database while the `migrations` bookkeeping table stays in the application database.
+- **Tests need MySQL 8**, not SQLite: SRID-aware geometry and spatial indexes do not exist there. `phpunit.xml` points at `basebackend_testing` and `webgis_test`. Use `Gis\Testing\RefreshesGisDatabase`, never `RefreshDatabase` directly — the latter leaves the GIS tables standing and the second run fails on "table already exists".
+- The provider registers `gis:sweep` on the schedule itself; `app/Console/Kernel.php` is untouched.
+
+## GIS geometry: what MySQL hands back, and how the cast reads it
+- A plain column read returns MySQL's **internal format**: 4-byte little-endian SRID, then standard WKB. Those WKB bytes are byte-identical to `ST_AsBinary(geom, 'axis-order=long-lat')` — storage is longitude-latitude, even though `ST_AsText` without the option reports latitude first.
+- **Detect bare WKB before assuming a SRID prefix.** A bare WKB point starts `01 01 00 00 00`, whose first four bytes read as a plausible SRID. Read the byte-order flag and the geometry type it implies first; only then strip.
+- **Geometry is interpolated, not bound.** MySQL takes no placeholder inside `ST_GeomFromText`'s options argument, so `GeometryCast::literal()` builds the call as a string. Safe only because the WKT comes from `WktWriter` over parsed coordinates and is checked against a character class with no quote in it. Never interpolate a geometry string from anywhere else.
+- `HasFactory::newFactory()` has no return type. A typed `newFactory(): ?Factory` on a base model is a fatal signature conflict, and PHP reports it as a silent exit with no test output. Use `Gis\Models\HasGisFactory`.

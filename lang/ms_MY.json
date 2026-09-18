@@ -58,5 +58,7 @@
     "created from :from": "dicipta dari :from",
     "created until :to": "dicipta hingga :to",
     "has role :role": "mempunyai peranan :role",
-    "Generated": "Dijana"
+    "Generated": "Dijana",
+    "Map Editor": "Penyunting Peta",
+    "Back to dashboard": "Kembali ke papan pemuka"
 }

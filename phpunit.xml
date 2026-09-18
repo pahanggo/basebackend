@@ -11,6 +11,10 @@
         <testsuite name="Feature">
             <directory suffix="Test.php">./tests/Feature</directory>
         </testsuite>
+        <!-- The GIS package keeps its own tests beside its own source. -->
+        <testsuite name="Gis">
+            <directory suffix="Test.php">./packages/gis/tests</directory>
+        </testsuite>
     </testsuites>
     <coverage processUncoveredFiles="true">
         <include>
@@ -21,8 +25,12 @@
         <server name="APP_ENV" value="testing"/>
         <server name="BCRYPT_ROUNDS" value="4"/>
         <server name="CACHE_DRIVER" value="array"/>
-        <!-- <server name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <server name="DB_DATABASE" value=":memory:"/> -->
+        <!-- Tests run against real MySQL 8: the GIS package needs SRID-aware
+             GEOMETRY columns and spatial indexes, which SQLite cannot provide.
+             These two databases exist only for the suite, and the suite
+             truncates them. Never point them at a working database. -->
+        <server name="DB_DATABASE" value="basebackend_testing"/>
+        <server name="GIS_DB_DATABASE" value="webgis_test"/>
         <server name="MAIL_MAILER" value="array"/>
         <server name="QUEUE_CONNECTION" value="sync"/>
         <server name="SESSION_DRIVER" value="array"/>

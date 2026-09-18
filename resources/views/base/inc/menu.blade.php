@@ -24,6 +24,13 @@
         </a>
     </li>
     @endif
+    @can('Access GIS')
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('gis.editor') }}" title="{{ __('Map Editor') }}">
+            <i class="la la-map"></i>
+        </a>
+    </li>
+    @endcan
     @if (count(config('app.available_locales', [])) > 1)
     <li class="nav-item dropdown">
         <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" title="{{ trans('backpack::crud.language') }}">

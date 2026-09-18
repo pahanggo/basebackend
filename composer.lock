@@ -7,6 +7,62 @@
     "content-hash": "3198e5bbc879abea4bd9442967930c39",
     "packages": [
         {
+            "name": "brick/geo",
+            "version": "0.13.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/brick/geo.git",
+                "reference": "723b6a2f6b97fcb977b2f3cb91a1806dfbef250a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/brick/geo/zipball/723b6a2f6b97fcb977b2f3cb91a1806dfbef250a",
+                "reference": "723b6a2f6b97fcb977b2f3cb91a1806dfbef250a",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "brick/reflection": "~0.5.0",
+                "ext-json": "*",
+                "ext-pdo": "*",
+                "ext-sqlite3": "*",
+                "php-coveralls/php-coveralls": "^2.0",
+                "phpunit/phpunit": "^10.0",
+                "vimeo/psalm": "6.8.8"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Brick\\Geo\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "GIS geometry library",
+            "keywords": [
+                "brick",
+                "geo",
+                "geography",
+                "geometry",
+                "gis"
+            ],
+            "support": {
+                "issues": "https://github.com/brick/geo/issues",
+                "source": "https://github.com/brick/geo/tree/0.13.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/BenMorel",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-03-20T13:03:31+00:00"
+        },
+        {
             "name": "brick/math",
             "version": "0.19.1",
             "source": {
@@ -4129,6 +4185,41 @@
                 }
             ],
             "time": "2026-02-16T23:10:27+00:00"
+        },
+        {
+            "name": "pahanggo/gis",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/gis",
+                "reference": "177d26b80a848f659744911ff9ef0813559b19c0"
+            },
+            "require": {
+                "brick/geo": "^0.13",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Gis\\GisServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Gis\\": "src",
+                    "Gis\\Database\\Factories\\": "database/factories"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "GIS web editor for basebackend: map, layers, features and the geometry service.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "paragonie/constant_time_encoding",

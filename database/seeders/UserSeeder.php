@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
 
         $roles = [
             'Administrator' => [
+                'Access GIS',
                 'Access Reports',
                 'Assume Users',
                 'Manage Users',

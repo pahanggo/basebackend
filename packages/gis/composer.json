@@ -1,0 +1,26 @@
+{
+    "name": "pahanggo/gis",
+    "description": "GIS web editor for basebackend: map, layers, features and the geometry service.",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.3",
+        "brick/geo": "^0.13"
+    },
+    "autoload": {
+        "psr-4": {
+            "Gis\\": "src",
+            "Gis\\Database\\Factories\\": "database/factories"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Gis\\GisServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
