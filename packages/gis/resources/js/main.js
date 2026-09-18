@@ -441,7 +441,6 @@ class Editor {
         this.feeds.forEach((feed) => feed.refresh(this.map));
     }
 
-    /** Place a library layer in this map: one command, one row, nothing copied. */
     /**
      * Remember where the map is looking, once it stops moving.
      *
@@ -509,6 +508,7 @@ class Editor {
             .catch((error) => console.warn('gis: could not remember the view', error));
     }
 
+    /** Place a library layer in this map: one command, one row, nothing copied. */
     async place(layerId, access) {
         const keys = this.store.state.tree.map((id) => this.store.state.placements[id]?.sortKey).filter(Boolean);
 
@@ -545,7 +545,7 @@ class Editor {
             },
             body: JSON.stringify({
                 clientId: this.config.clientId,
-                seq: this.sync ? (this.sync.seq += 1) : 1,
+                seq: this.seq.next(),
                 mapVersion: this.bootstrap.version,
                 commands,
             }),
