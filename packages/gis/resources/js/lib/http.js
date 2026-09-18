@@ -56,6 +56,10 @@ export function postJson(url, body) {
     return send(url, { method: 'POST', body: JSON.stringify(body) });
 }
 
+export function putJson(url, body) {
+    return send(url, { method: 'PUT', body: JSON.stringify(body) });
+}
+
 export function patchJson(url, body) {
     return send(url, { method: 'PATCH', body: JSON.stringify(body) });
 }

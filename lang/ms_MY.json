@@ -90,5 +90,6 @@
     "Add editable": "Tambah boleh sunting",
     "There are unsaved changes that could not be sent. Switching maps now would lose them.": "Terdapat perubahan belum disimpan yang gagal dihantar. Menukar peta sekarang akan menghilangkannya.",
     "Name": "Nama",
-    "Delete": "Padam"
+    "Delete": "Padam",
+    "Fetching features...": "Fetching features..."
 }

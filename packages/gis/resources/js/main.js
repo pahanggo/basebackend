@@ -19,8 +19,10 @@ import { FeatureAccumulator } from './data/accumulator.js';
 import { Store } from './store/store.js';
 import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
-import { configureHttp, getJson } from './lib/http.js';
+import { configureHttp, getJson, putJson } from './lib/http.js';
 import { afterKey } from './lib/sort-key.js';
+import { SeqCounter } from './lib/seq.js';
+import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
 import { LayerLibrary } from './ui/layer-library.js';
 
@@ -43,10 +45,11 @@ function readBootstrap() {
  * nobody is waiting for any more.
  */
 class LayerFeed {
-    constructor(renderer, config, layer) {
+    constructor(renderer, config, layer, activity) {
         this.renderer = renderer;
         this.config = config;
         this.layer = layer;
+        this.activity = activity;
         this.slot = null;
         this.controller = null;
         this.loaded = null;
@@ -128,6 +131,8 @@ class LayerFeed {
             this.entry = null;
         }
 
+        this.activity.start();
+
         try {
             const result = await fetchFeatures({
                 apiBase: this.config.apiBase,
@@ -166,6 +171,10 @@ class LayerFeed {
             if (error.name !== 'AbortError') {
                 console.error('gis: feature read failed', error);
             }
+        } finally {
+            // In `finally`, so an aborted read releases the indicator too —
+            // panning aborts the previous read on every settled view.
+            this.activity.stop();
         }
     }
 
@@ -231,11 +240,12 @@ class LayerFeed {
  * be stable for the life of the tab, or a retry after a switch would look like
  * new work.
  */
-function createStore(config, mapId) {
+function createStore(config, mapId, seq) {
     const sync = mapId === null ? null : new SyncQueue({
         apiBase: config.apiBase,
         mapId,
         clientId: config.clientId,
+        seq,
         csrfToken: config.csrfToken,
         onApplied: (body) => {
             reconcile(store.state, body.applied);
@@ -310,6 +320,12 @@ function visibleVectorLayers(store) {
 /**
  * The editor: one map open at a time, and the machinery to change which.
  */
+/** How long the view must sit still before it is worth remembering. */
+const VIEW_SAVE_MS = 1000;
+
+/** Roles that may change where the map opens for everybody. */
+const MAY_SET_VIEW = new Set(['owner', 'editor']);
+
 class Editor {
     constructor(config, map) {
         this.config = config;
@@ -319,11 +335,20 @@ class Editor {
         this.store = null;
         this.sync = null;
         this.basemapLayer = null;
+        this.activity = new Activity(document.getElementById('gis-activity'));
+
+        // One counter for the tab, because `clientId` is one identity for the
+        // tab. It outlives the queue, which is rebuilt on every map switch.
+        this.seq = new SeqCounter();
+        this.viewTimer = null;
+        this.savedView = null;
+        this.ignoreMovesUntil = 0;
 
         this.browser = new MapBrowser({
             apiBase: config.apiBase,
             strings: config.strings,
             clientId: config.clientId,
+            seq: this.seq,
             currentMapId: () => this.bootstrap?.id ?? null,
             canRestore: () => config.canRestore === true,
             onRestore: (id) => this.restoreMap(id),
@@ -359,7 +384,19 @@ class Editor {
 
         this.bootstrap = bootstrap || await getJson(`${this.config.apiBase}/maps/${mapId}`);
 
-        const { store, sync } = createStore(this.config, this.bootstrap.id);
+        // The view the map arrives with is, by definition, already stored, so
+        // restoring it must not write it straight back.
+        const opened = this.bootstrap.viewState;
+
+        this.savedView = opened
+            ? JSON.stringify({
+                center: opened.center,
+                zoom: opened.zoom,
+                ...(opened.basemap ? { basemap: opened.basemap } : {}),
+            })
+            : null;
+
+        const { store, sync } = createStore(this.config, this.bootstrap.id, this.seq);
 
         this.store = store;
         this.sync = sync;
@@ -395,7 +432,7 @@ class Editor {
         this.renderer.clearGeometry();
 
         this.feeds = visibleVectorLayers(this.store)
-            .map((layer) => new LayerFeed(this.renderer, this.config, layer));
+            .map((layer) => new LayerFeed(this.renderer, this.config, layer, this.activity));
 
         this.refresh();
     }
@@ -405,6 +442,73 @@ class Editor {
     }
 
     /** Place a library layer in this map: one command, one row, nothing copied. */
+    /**
+     * Remember where the map is looking, once it stops moving.
+     *
+     * Debounced, because a drag is a hundred `moveend`s worth of intent and one
+     * worth of information, and skipped when the view has not actually changed
+     * — opening a map calls `setView`, which fires `moveend` for a position the
+     * server already holds.
+     *
+     * Not versioned and not a command: see `MapController::view()`. Losing a
+     * remembered view costs the user one gesture, so this never blocks, never
+     * retries and never surfaces an error.
+     */
+    rememberView() {
+        if (this.bootstrap === null || !MAY_SET_VIEW.has(this.store?.state.map?.role)) {
+            return;
+        }
+
+        // A move the user did not make is not a view worth remembering. The
+        // only one this code causes is `invalidateSize()` after the container
+        // changes size, which pans to keep the centre anchored and fires
+        // `moveend` for it — and a window resize or a dock opening must not
+        // decide where this map opens tomorrow.
+        if (performance.now() < this.ignoreMovesUntil) {
+            return;
+        }
+
+        if (this.viewTimer !== null) {
+            clearTimeout(this.viewTimer);
+        }
+
+        this.viewTimer = setTimeout(() => {
+            this.viewTimer = null;
+            this.saveView();
+        }, VIEW_SAVE_MS);
+    }
+
+    /** Ignore the moves the next container resize is about to cause. */
+    ignoreMoves(windowMs = 600) {
+        this.ignoreMovesUntil = performance.now() + windowMs;
+    }
+
+    saveView() {
+        const centre = this.map.getCenter();
+        const view = {
+            center: [Number(centre.lng.toFixed(6)), Number(centre.lat.toFixed(6))],
+            zoom: this.map.getZoom(),
+        };
+
+        const basemap = this.bootstrap.viewState?.basemap;
+
+        if (basemap) {
+            view.basemap = basemap;
+        }
+
+        const signature = JSON.stringify(view);
+
+        if (signature === this.savedView) {
+            return;
+        }
+
+        this.savedView = signature;
+        this.bootstrap.viewState = { ...this.bootstrap.viewState, ...view };
+
+        putJson(`${this.config.apiBase}/maps/${this.bootstrap.id}/view`, view)
+            .catch((error) => console.warn('gis: could not remember the view', error));
+    }
+
     async place(layerId, access) {
         const keys = this.store.state.tree.map((id) => this.store.state.placements[id]?.sortKey).filter(Boolean);
 
@@ -491,14 +595,20 @@ async function boot() {
 
     editor.renderer = renderer;
 
-    map.on('moveend zoomend', () => editor.refresh());
+    map.on('moveend zoomend', () => {
+        editor.refresh();
+        editor.rememberView();
+    });
 
     // Docks and toolbars resize the map container without the window changing,
     // so the map has to be told (specification section 17).
     let resizeTimer = null;
     new ResizeObserver(() => {
         window.clearTimeout(resizeTimer);
-        resizeTimer = window.setTimeout(() => map.invalidateSize(), 100);
+        resizeTimer = window.setTimeout(() => {
+            editor.ignoreMoves();
+            map.invalidateSize();
+        }, 100);
     }).observe(container);
 
     document.getElementById('gis-open-maps')?.addEventListener('click', () => editor.browser.open());

@@ -48,6 +48,27 @@ class CommandFailed extends RuntimeException
         );
     }
 
+    /**
+     * The client spent one `(clientId, seq)` on two different things.
+     *
+     * Loud on purpose. The stored response belongs to some other unit of work —
+     * a map creation, most likely — so returning it would answer a command
+     * batch with something that has no `applied` list, and the client would
+     * quietly reconcile nothing. That failure is invisible: the command simply
+     * never happens, and a reload fixes it because a reload issues a new
+     * `clientId`. It cost an afternoon once.
+     */
+    public static function sequenceReused(string $clientId, int $seq): self
+    {
+        return new self(
+            'seq_reused',
+            409,
+            'Sequence number already used',
+            "This client has already used seq {$seq} for different work. Every unit of work needs its own sequence number.",
+            ['clientId' => $clientId, 'seq' => $seq],
+        );
+    }
+
     public static function unknownOp(string $op): self
     {
         return new self(

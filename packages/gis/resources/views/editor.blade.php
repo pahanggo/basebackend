@@ -36,6 +36,14 @@
                 <i class="la la-plus"></i> {{ __('Add from library') }}
             </button>
         </div>
+
+        {{-- Shown while a feature read is in flight. Rendered here rather than
+             built in JavaScript so the label is translated server-side and the
+             client holds no English literal of its own. --}}
+        <div id="gis-activity" class="gis-activity" role="status" aria-live="polite" hidden>
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>{{ __('Fetching features...') }}</span>
+        </div>
     </div>
 
     <script type="application/json" id="gis-bootstrap">@json($bootstrap)</script>

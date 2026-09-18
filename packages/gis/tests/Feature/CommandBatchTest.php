@@ -362,3 +362,70 @@ it('refuses a map the acting user is not a member of', function () {
         ['op' => 'feature.create', 'tempId' => 'tmp:1', 'layerId' => $layer->id, 'geom' => wkbSquare()],
     ], $stranger)->assertStatus(403)->assertJsonPath('code', 'command_unauthorized');
 });
+
+it('refuses a sequence number the client already spent on creating a map', function () {
+    // The two used to collide: the map browser counted from one and so did the
+    // outbound queue, both under the tab's single clientId. The first command
+    // after creating a map was read as a replay of the creation, so the server
+    // returned `{mapId: n}`, the client reconciled an `applied` list that was
+    // not there, and the layer silently never appeared — until a reload, which
+    // issues a fresh clientId. The client now counts once; this is the server
+    // refusing to paper over it if anything ever counts twice again.
+    $user = gisAdministrator();
+
+    $created = test()->actingAs($user)->postJson(route('gis.api.maps.store'), [
+        'name' => 'New map',
+        'clientId' => 'tab-abc123',
+        'seq' => 1,
+    ])->assertCreated();
+
+    $mapId = $created->json('id');
+    $layer = Layer::factory()->global()->create(['name' => 'Lot']);
+
+    $response = test()->actingAs($user)->postJson(route('gis.api.maps.commands', ['map' => $mapId]), [
+        'clientId' => 'tab-abc123',
+        'seq' => 1,
+        'mapVersion' => 1,
+        'commands' => [[
+            'op' => 'layer.share',
+            'layerId' => $layer->id,
+            'mapId' => $mapId,
+            'access' => 'read',
+            'sortKey' => 'a0',
+        ]],
+    ]);
+
+    $response->assertStatus(409);
+    expect($response->json('code'))->toBe('seq_reused');
+
+    // And nothing was half-done.
+    expect(MapLayer::query()->where('map_id', $mapId)->count())->toBe(0);
+});
+
+it('places the layer when the sequence carries on from the creation', function () {
+    $user = gisAdministrator();
+
+    $created = test()->actingAs($user)->postJson(route('gis.api.maps.store'), [
+        'name' => 'New map',
+        'clientId' => 'tab-abc123',
+        'seq' => 1,
+    ])->assertCreated();
+
+    $mapId = $created->json('id');
+    $layer = Layer::factory()->global()->create(['name' => 'Lot']);
+
+    test()->actingAs($user)->postJson(route('gis.api.maps.commands', ['map' => $mapId]), [
+        'clientId' => 'tab-abc123',
+        'seq' => 2,
+        'mapVersion' => 1,
+        'commands' => [[
+            'op' => 'layer.share',
+            'layerId' => $layer->id,
+            'mapId' => $mapId,
+            'access' => 'read',
+            'sortKey' => 'a0',
+        ]],
+    ])->assertOk();
+
+    expect(MapLayer::query()->where('map_id', $mapId)->count())->toBe(1);
+});

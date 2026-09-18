@@ -28,11 +28,16 @@ export class MapBrowser {
      * @param {Function} [options.onRestore] issues `map.restore`; administrators only
      * @param {Function} [options.canRestore] whether to offer the deleted view
      */
-    constructor({ apiBase, strings, onLoad, currentMapId, clientId, onRestore = null, canRestore = () => false }) {
+    constructor({ apiBase, strings, onLoad, currentMapId, clientId, seq, onRestore = null, canRestore = () => false }) {
         this.apiBase = apiBase;
         this.strings = strings;
         this.onLoad = onLoad;
         this.currentMapId = currentMapId;
+
+        // The client's one sequence counter. Creating a map is a unit of work
+        // against the same `(clientId, seq)` key space the command queue uses,
+        // so it must not count on its own.
+        this.seq = seq;
         this.clientId = clientId;
         this.onRestore = onRestore;
         this.canRestore = canRestore;
@@ -249,7 +254,7 @@ export class MapBrowser {
             const body = await postJson(`${this.apiBase}/maps`, {
                 name,
                 clientId: this.clientId,
-                seq: this.nextSeq(),
+                seq: this.seq.next(),
                 ...(copyOf === null ? {} : { from: { kind: 'copy', mapId: copyOf } }),
             });
 
@@ -299,9 +304,4 @@ export class MapBrowser {
         this.onLoad(map.id, null);
     }
 
-    nextSeq() {
-        this.seq = (this.seq || 0) + 1;
-
-        return this.seq;
-    }
 }

@@ -16,6 +16,8 @@
  * original response rather than applying twice (specification section 16).
  */
 
+import { SeqCounter } from '../lib/seq.js';
+
 export const DEBOUNCE_MS = 400;
 export const MAX_BATCH = 500;
 
@@ -51,6 +53,7 @@ export class SyncQueue {
         onError = null,
         fetchImpl = null,
         debounceMs = DEBOUNCE_MS,
+        seq = null,
     }) {
         this.apiBase = apiBase;
         this.mapId = mapId;
@@ -66,7 +69,11 @@ export class SyncQueue {
         this.inFlight = null;
         this.paused = false;
         this.timer = null;
-        this.seq = 0;
+
+        // Shared with everything else that spends this client's key space — a
+        // queue that counted on its own would collide with the map creation
+        // that preceded it. Its own counter only when standalone, as in tests.
+        this.seq = seq ?? new SeqCounter();
         this.mapVersion = 0;
         this.attempts = 0;
     }
@@ -127,11 +134,11 @@ export class SyncQueue {
         // retry has to carry the SAME (clientId, seq) or the server cannot tell
         // it from a second, identical piece of work. That pair is the whole
         // idempotency mechanism.
-        this.seq += 1;
+        const seq = this.seq.next();
 
         const envelope = {
             clientId: this.clientId,
-            seq: this.seq,
+            seq,
             mapVersion: this.mapVersion,
             commands: batch.map((command) => command.serialize()),
         };
@@ -219,7 +226,7 @@ export class SyncQueue {
 
         // The seq is rolled back with them, so the retry carries the pair the
         // server already knows about.
-        this.seq -= 1;
+        this.seq.rollback();
 
         const delay = Math.min(30000, this.debounceMs * 2 ** this.attempts);
 
@@ -239,7 +246,7 @@ export class SyncQueue {
             pending: this.queue.map((command) => command.op),
             inFlight: this.inFlight?.envelope?.commands?.map((command) => command.op) ?? [],
             paused: this.paused,
-            seq: this.seq,
+            seq: this.seq.value,
             mapVersion: this.mapVersion,
         };
     }

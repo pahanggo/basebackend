@@ -9,6 +9,8 @@ use Gis\Models\MapUser;
 use Gis\Testing\RefreshesGisDatabase;
 use Illuminate\Support\Facades\Http;
 
+require_once __DIR__.'/../Helpers.php';
+
 uses(RefreshesGisDatabase::class);
 
 function listMaps(User $user, array $query = []): Illuminate\Testing\TestResponse
@@ -386,4 +388,60 @@ it('marks a layer as shared when it is placed in more than one map', function ()
     expect($entry['shared'])->toBeTrue();
     expect($entry['ownedHere'])->toBeFalse();
     expect($entry['access'])->toBe('read');
+});
+
+it('remembers where the map is looking without touching its version', function () {
+    // The map version is the replay sequence for its command log, so a pan must
+    // not bump it: that would thread holes through the sequence and invalidate
+    // the version every other client holds, many times a minute.
+    [$map] = editableMap();
+    $before = $map->version;
+
+    test()->actingAs(User::query()->findOrFail($map->owner_id))
+        ->putJson(route('gis.api.maps.view', ['map' => $map->id]), [
+            'center' => [103.4, 3.9],
+            'zoom' => 16,
+        ])
+        ->assertNoContent();
+
+    $map->refresh();
+
+    expect($map->version)->toBe($before);
+    expect($map->view_state['center'])->toBe([103.4, 3.9]);
+    expect($map->view_state['zoom'])->toBe(16);
+});
+
+it('keeps the basemap when a client sends only where it is looking', function () {
+    [$map] = editableMap();
+    $map->forceFill(['view_state' => ['center' => [103.3, 3.8], 'zoom' => 12, 'basemap' => 'google-satellite']])->saveQuietly();
+
+    test()->actingAs(User::query()->findOrFail($map->owner_id))
+        ->putJson(route('gis.api.maps.view', ['map' => $map->id]), ['center' => [103.4, 3.9], 'zoom' => 16])
+        ->assertNoContent();
+
+    expect($map->fresh()->view_state['basemap'])->toBe('google-satellite');
+});
+
+it('will not let a viewer move where the map opens for everyone', function () {
+    [$map] = editableMap();
+    $stranger = reader();
+
+    MapUser::query()->create(['map_id' => $map->id, 'user_id' => $stranger->id, 'role' => 'viewer']);
+
+    test()->actingAs($stranger)
+        ->putJson(route('gis.api.maps.view', ['map' => $map->id]), ['center' => [103.4, 3.9], 'zoom' => 16])
+        ->assertStatus(403);
+});
+
+it('refuses a view that is not on the planet', function () {
+    [$map] = editableMap();
+    $owner = User::query()->findOrFail($map->owner_id);
+
+    test()->actingAs($owner)
+        ->putJson(route('gis.api.maps.view', ['map' => $map->id]), ['center' => [200.0, 3.9], 'zoom' => 16])
+        ->assertStatus(422);
+
+    test()->actingAs($owner)
+        ->putJson(route('gis.api.maps.view', ['map' => $map->id]), ['center' => [103.4, 3.9], 'zoom' => 40])
+        ->assertStatus(422);
 });

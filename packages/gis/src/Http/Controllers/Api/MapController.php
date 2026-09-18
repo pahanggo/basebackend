@@ -235,6 +235,50 @@ class MapController extends Controller
     }
 
     /**
+     * Where the map opens next time: centre, zoom, basemap, overlays.
+     *
+     * **Deliberately not `update()`, and deliberately unversioned.** Two
+     * reasons, and both matter.
+     *
+     * The map's `version` is the replay sequence for its command log — every
+     * batch bumps it once and `GET /maps/{map}/commands?since=n` is a range
+     * scan over it. Bumping it for a pan would thread holes through that
+     * sequence and invalidate the version every other client is holding, many
+     * times a minute, for something nobody is editing.
+     *
+     * And a conflict dialog for a pan would be absurd. Two people looking at
+     * one map do not need to agree on where it opens; the last one to move it
+     * wins and neither loses anything. Optimistic locking is for content.
+     *
+     * Restricted to the roles that may change the map, so a viewer moving
+     * around does not move everyone's starting view.
+     */
+    public function view(Request $request, Map $map): JsonResponse
+    {
+        if ($request->user()->cannot('update', $map)) {
+            return $this->forbidden('You may not change that map.');
+        }
+
+        $validated = $request->validate([
+            'center' => ['required', 'array', 'size:2'],
+            'center.0' => ['required', 'numeric', 'between:-180,180'],
+            'center.1' => ['required', 'numeric', 'between:-90,90'],
+            'zoom' => ['required', 'integer', 'between:0,24'],
+            'basemap' => ['sometimes', 'string', 'max:64'],
+            'overlays' => ['sometimes', 'array'],
+            'overlays.*' => ['string', 'max:64'],
+        ]);
+
+        // Merged, so a client that knows only where it is looking does not
+        // erase the basemap the user chose.
+        $map->forceFill([
+            'view_state' => [...($map->view_state ?? []), ...$validated],
+        ])->saveQuietly();
+
+        return new JsonResponse(null, 204);
+    }
+
+    /**
      * Soft delete, restorable for 30 days by an administrator.
      *
      * Refused for the map the requesting client currently has open, which the

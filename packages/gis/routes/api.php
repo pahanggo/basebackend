@@ -22,6 +22,10 @@ Route::get('maps/{map}', [MapController::class, 'show'])->name('maps.show');
 Route::patch('maps/{map}', [MapController::class, 'update'])->middleware('throttle:gis-writes')->name('maps.update');
 Route::delete('maps/{map}', [MapController::class, 'destroy'])->middleware('throttle:gis-writes')->name('maps.destroy');
 
+// Where the map opens. Separate from the versioned update because panning is
+// not an edit: see MapController::view().
+Route::put('maps/{map}/view', [MapController::class, 'view'])->middleware('throttle:gis-writes')->name('maps.view');
+
 Route::get('layers', LayerLibraryController::class)->name('layers.index');
 Route::get('layers/{layer}/features', FeatureReadController::class)->name('layers.features');
 

@@ -106,3 +106,34 @@
 .modal .table-responsive {
     max-height: 60vh;
 }
+
+// Bottom left, opposite Leaflet's attribution, while a feature read is in
+// flight. `inline-flex` beats the `hidden` attribute's own `display: none`, so
+// the hidden case has to be restated or the indicator never goes away.
+.gis-activity {
+    position: absolute;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: calc(12px + env(safe-area-inset-left));
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    color: #23282c;
+    font-size: 13px;
+    line-height: 1;
+
+    &[hidden] {
+        display: none;
+    }
+
+    .spinner-border {
+        width: 14px;
+        height: 14px;
+        border-width: 2px;
+    }
+}

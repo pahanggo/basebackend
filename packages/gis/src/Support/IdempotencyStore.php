@@ -2,6 +2,7 @@
 
 namespace Gis\Support;
 
+use Gis\Commands\CommandFailed;
 use Gis\Models\CommandLog;
 use Gis\Models\Map;
 use Illuminate\Support\Carbon;
@@ -41,6 +42,16 @@ class IdempotencyStore
 
         if ($log === null) {
             return null;
+        }
+
+        // The key was spent on something that was not a command batch — the
+        // only other thing that mints one is creating a map. Replaying it would
+        // hand this batch a response with no `applied` list, and the client
+        // would reconcile nothing and report success, which is the worst shape
+        // a bug can take. `seq` is documented as monotonic per client; this is
+        // where that is actually enforced.
+        if (! array_key_exists('applied', $log->response)) {
+            throw CommandFailed::sequenceReused($clientId, $seq);
         }
 
         // Outside the window the key is no longer honoured, and the batch would
