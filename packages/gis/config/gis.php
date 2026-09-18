@@ -101,8 +101,15 @@ return [
 
     'read' => [
         'min_area_px' => 4,
-        'max_features_per_response' => 20000,
+        'max_features_per_response' => 30000,
         'edit_min_zoom' => 16,
+
+        // The viewport's share of a layer's extent below which the feature
+        // read forces `ix_layer_bbox` instead of letting MySQL choose. Tuned
+        // against `min_area_px`: raising that constant makes the area
+        // threshold more selective and moves the crossover down. See
+        // FeatureReadController::shouldForceBoundingBoxIndex().
+        'bbox_index_max_share' => 0.01,
     ],
 
     'write' => [

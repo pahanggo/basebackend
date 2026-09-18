@@ -32,6 +32,10 @@ it('returns valid GeoJSON with longitude first', function () {
 });
 
 it('culls by area, and the threshold follows the zoom', function () {
+    // Pinned, because the deployment's own value is a tuning decision and this
+    // is testing the mechanism.
+    config(['gis.read.min_area_px' => 4]);
+
     // At zoom 12 a pixel is about 38 m, so 4 px is roughly 5,800 m2: the
     // million-square-metre parcel and the three middling ones survive, the
     // five tiny ones do not.
@@ -49,6 +53,8 @@ it('culls by area, and the threshold follows the zoom', function () {
 });
 
 it('suppresses the cull only when asked explicitly', function () {
+    config(['gis.read.min_area_px' => 4]);
+
     expect(decodeStream(readViewport(['zoom' => 12, 'minArea' => 0]))['cull']['returned'])->toBe(9);
 });
 

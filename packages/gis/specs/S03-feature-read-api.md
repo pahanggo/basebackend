@@ -129,10 +129,46 @@ is a feature-count budget in disguise:
 | 10 px², cap 10,000 | 10,000 | 312 ms |
 | 16 px² | 7,434 | 208 ms |
 
-150 ms is about 5,000 features. Two levers exist and neither was pulled here:
-the cull constant, which is the user's open decision, and forcing
-`ix_layer_bbox`, which is 1.5x faster at 4 px² but is the kind of tuning that
-ages badly and should be taken with the constant rather than before it.
+150 ms is about 5,000 features.
+
+**Follow-up: the planner's index choice was the larger problem, and it is now
+made here.** `ORDER BY area_m2 DESC LIMIT n` invites MySQL to read
+`ix_layer_area` backwards and stop early, which is right when the area
+threshold is selective and ruinous when it is not. At zoom 16 the threshold
+admits 385,510 of the layer's 672,109 features, so the scan walked most of them
+looking for the few thousand inside a 3 km viewport — 1.8 s a layer, and 3-8 s
+by the time both layers and the session lock were accounted for. Measured on
+`lots`:
+
+| Zoom | Planner | Forcing `ix_layer_bbox` |
+| --- | --- | --- |
+| 16 | 1.82 s | **0.16 s** |
+| 14 | 1.09 s | **0.29 s** |
+| 12 | 0.03 s | 0.38 s |
+| 10 | 0.03 s | 0.74 s |
+
+The plans trade places on whether the viewport or the threshold is the more
+selective filter, and MySQL cannot tell: it estimates 770,775 rows for either,
+having no statistics on these correlated columns. The controller decides
+instead, from the viewport's share of the layer's extent
+(`gis.read.bbox_index_max_share`, default 1%).
+
+**That constant is tied to `min_area_px`** — raising the cull makes the
+threshold more selective and moves the crossover down — so the two are tuned
+together. The principled fix, if this becomes a nuisance, is to store an area
+distribution per layer at import and estimate both row counts properly rather
+than inferring one from geometry.
+
+After it, at `min_area_px = 32`, per layer:
+
+| Zoom | `lots` | `usages` |
+| --- | --- | --- |
+| 18 | 119 ms | 105 ms |
+| 17 | 137 ms | 157 ms |
+| 16 | 180 ms | 243 ms |
+| 14 | 350 ms | 366 ms |
+| 12 | 16 ms | 68 ms |
+| 10 | 10 ms | 17 ms |
 
 ### The cap is the answer to a question S1b left open
 

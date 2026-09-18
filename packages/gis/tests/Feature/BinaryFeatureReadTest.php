@@ -160,7 +160,7 @@ it('carries no attribute tail unless attributes were asked for', function () {
 });
 
 it('culls and caps exactly as the readable encoding does', function () {
-    config(['gis.read.max_features_per_response' => 3]);
+    config(['gis.read.max_features_per_response' => 3, 'gis.read.min_area_px' => 4]);
 
     expect(header_(readBinary())['count'])->toBe(3);
     expect(header_(readBinary(['zoom' => 12]))['count'])->toBe(3);
