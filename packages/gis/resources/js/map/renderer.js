@@ -125,20 +125,32 @@ export const GisRenderer = L.Layer.extend({
     },
 
     /**
-     * Size the canvases to the viewport and pin them to its top-left corner.
+     * Pin the canvases to the viewport's top-left corner.
      *
-     * Drawing then happens in container coordinates, so a projected world pixel
-     * becomes a canvas pixel by subtracting one origin.
+     * This has to happen on **every** draw, not only on `moveend`. The canvases
+     * live inside Leaflet's map pane, and Leaflet pans by moving that pane, so
+     * they are already carried along with the basemap. The paint then shifts
+     * the cached path by the same distance again — and the features slide at
+     * twice the speed of the tiles under them.
+     *
+     * Repositioning the container to the current top-left cancels the pane's
+     * movement, leaving the transform as the only thing that moves the
+     * features. Drawing is then in container coordinates, so a projected world
+     * pixel becomes a canvas pixel by subtracting one origin.
      */
+    _position() {
+        L.DomUtil.setPosition(this._container, this._map.containerPointToLayerPoint([0, 0]));
+    },
+
+    /** Size the canvases to the viewport. */
     _reset() {
         if (!this._map) {
             return;
         }
 
         const size = this._map.getSize();
-        const topLeft = this._map.containerPointToLayerPoint([0, 0]);
 
-        L.DomUtil.setPosition(this._container, topLeft);
+        this._position();
 
         const ratio = window.devicePixelRatio || 1;
 
@@ -195,6 +207,8 @@ export const GisRenderer = L.Layer.extend({
         if (!this._map || !this._size) {
             return;
         }
+
+        this._position();
 
         const context = this._feature.getContext('2d');
         const zoom = this._map.getZoom();

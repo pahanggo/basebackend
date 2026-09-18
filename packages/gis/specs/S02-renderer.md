@@ -137,7 +137,7 @@ being absolute world pixels: canvas paths hold their points as 32-bit floats,
 and at zoom 18 an absolute world pixel has lost the precision to land on the
 right one.
 
-### Four measurements that changed the design
+### Five measurements that changed the design
 
 **1. `closePath()` cost 2,151 ms of a 2,177 ms repaint.** Building one
 accumulating `Path2D` for 16,180 polygons, each ring closed with `closePath()`,
@@ -162,7 +162,20 @@ rounding.
 `Uint32Array` took the query from 17 ms to 2.9 ms and now allocates nothing per
 frame. The cull compacts in place into the same buffer for the same reason.
 
-**4. Refetching on every `moveend` freezes the tab.** The first feed did, and a
+**4. The cached path has to be paired with repositioning the container, or the
+features pan at twice the speed of the basemap.** The canvases live inside
+Leaflet's map pane, and Leaflet pans by moving that pane — so they are already
+carried along with the tiles. Translating the cached path by the same distance
+again moves them twice. The container is therefore repositioned to the
+viewport's top-left on **every** draw, cancelling the pane's movement and
+leaving the transform as the only thing that moves features. Doing it only on
+`moveend`, as the first version did, is what produced the doubling.
+
+This is exactly the class of defect the missing browser tests would have caught
+and no test here can: the arithmetic was correct throughout, and the paint
+matched `latLngToContainerPoint` to half a pixel the whole time it was wrong.
+
+**5. Refetching on every `moveend` freezes the tab.** The first feed did, and a
 drag of a few pixels queued a multi-megabyte response; the application's
 file-based sessions serialise them, so forty small pans became forty queued
 requests. The read now covers a quarter-viewport of padding on each side and
