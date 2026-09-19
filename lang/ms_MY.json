@@ -137,5 +137,7 @@
     "This map was changed elsewhere, so saving has stopped to avoid overwriting it. Reload the page to continue; changes made since will be lost.": "Peta ini telah diubah di tempat lain, jadi penyimpanan dihentikan untuk mengelak menimpanya. Muat semula halaman untuk meneruskan; perubahan selepas itu akan hilang.",
     "Leave": "Keluar",
     "Leave the map and go back to the dashboard?": "Keluar dari peta dan kembali ke papan pemuka?",
-    "Some changes have not been saved yet. Leaving now would lose them.": "Ada perubahan yang belum disimpan. Keluar sekarang akan menghilangkannya."
+    "Some changes have not been saved yet. Leaving now would lose them.": "Ada perubahan yang belum disimpan. Keluar sekarang akan menghilangkannya.",
+    "Rename this map": "Namakan semula peta ini",
+    "The map could not be renamed.": "Peta tidak dapat dinamakan semula."
 }

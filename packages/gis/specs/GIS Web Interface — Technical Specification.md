@@ -1155,7 +1155,7 @@ The ids are the service's and carry its vendors and its typos (`alidade-smooth-d
 | Operation | Notes |
 | --- | --- |
 | Create | Empty vector layer, an uploaded image overlay, or a tile/WMS source |
-| Rename | Inline edit in the tree |
+| Rename | Inline edit in the tree. **The map's own name is renamed the same way**, from the heading above the tree — it is the same kind of change, and a modal for one text field is a heavier gesture than the thing it changes. A rename moves the slug, so the response carries the new one and the address bar follows |
 | Duplicate | Copies geometry and style into a new layer owned by this map; prompts above 5,000 features |
 | Add from library | Search layers this user may place and add one to this map as `read` or `edit`. No features are copied |
 | Share into another map | The same operation pushed from the owning map rather than pulled from the target |

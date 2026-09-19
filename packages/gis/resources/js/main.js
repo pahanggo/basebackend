@@ -19,7 +19,7 @@ import { FeatureAccumulator } from './data/accumulator.js';
 import { Store } from './store/store.js';
 import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
-import { configureHttp, getJson, putJson } from './lib/http.js';
+import { configureHttp, getJson, patchJson, putJson } from './lib/http.js';
 import { afterKey } from './lib/sort-key.js';
 import { SeqCounter } from './lib/seq.js';
 import { LayerTree } from './ui/layer-tree.js';
@@ -459,6 +459,7 @@ class Editor {
             onIsolate: (on) => this.setIsolate(on),
             onOpenMaps: () => this.browser.open(),
             onCollapse: (collapsed) => this.rememberPanels({ layers: !collapsed }, true),
+            onRenameMap: (name) => this.renameMap(name),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -633,6 +634,43 @@ class Editor {
 
         if (save) {
             this.saveView();
+        }
+    }
+
+    /**
+     * Rename the open map.
+     *
+     * Not a command, for the same reason the view write is not: `PATCH /maps`
+     * carries its own version and the map's `version` is the command log's
+     * replay sequence. A rename is one field on one row and has nothing to
+     * merge, so it does not need the command vocabulary.
+     *
+     * **The slug follows the name, so the address bar has to as well** — and
+     * the server owns both, since it may have had to disambiguate a duplicate.
+     *
+     * @returns {Promise<string|null>} the name that was actually stored
+     */
+    async renameMap(name) {
+        try {
+            const body = await patchJson(`${this.config.apiBase}/maps/${this.bootstrap.id}`, {
+                name,
+                version: this.bootstrap.version,
+            });
+
+            Object.assign(this.bootstrap, { name: body.name, slug: body.slug, version: body.version });
+            this.store.state.map.name = body.name;
+            this.store.state.map.version = body.version;
+            this.rememberInUrl();
+            this.browser.invalidate?.();
+
+            return body.name;
+        } catch (error) {
+            await notify({
+                title: this.config.strings.renameMap,
+                text: error?.problem?.detail || this.config.strings.renameFailed,
+            });
+
+            return null;
         }
     }
 

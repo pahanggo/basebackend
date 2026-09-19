@@ -232,7 +232,15 @@ class MapController extends Controller
             'view_state' => $validated['viewState'] ?? null,
         ], fn ($value) => $value !== null) + ['version' => $map->version + 1])->save();
 
-        return new JsonResponse(['id' => $map->id, 'version' => $map->version]);
+        // The slug is derived from the name, so a rename changes it — and the
+        // client has to be told, or its address bar and its next deep link
+        // both go on naming the old one.
+        return new JsonResponse([
+            'id' => $map->id,
+            'name' => $map->name,
+            'slug' => $map->slug,
+            'version' => $map->version,
+        ]);
     }
 
     /**

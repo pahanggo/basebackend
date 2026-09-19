@@ -49,7 +49,7 @@ export class LayerTree {
     constructor({
         container, strings, onChanged,
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
-        onIsolate = null, onOpenMaps = null, onCollapse = null,
+        onIsolate = null, onOpenMaps = null, onCollapse = null, onRenameMap = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -60,6 +60,7 @@ export class LayerTree {
         this.onOpacityPreview = onOpacityPreview;
         this.onIsolate = onIsolate;
         this.onCollapse = onCollapse;
+        this.onRenameMap = onRenameMap;
         this.collapsedSection = false;
         this.zoom = zoom;
         this.zoomLimits = zoomLimits;
@@ -94,7 +95,22 @@ export class LayerTree {
         this.list.viewport.setAttribute('aria-label', strings.layers);
         this.list.viewport.setAttribute('aria-multiselectable', 'true');
 
-        this.mapName = el('h2', { class: 'gis-tree-mapname' });
+        // Renamed in place, like a layer. There is no other way to rename a
+        // map, and a modal for one text field would be a heavier gesture than
+        // the thing it changes.
+        this.mapName = el('h2', {
+            class: 'gis-tree-mapname',
+            tabindex: '0',
+            role: 'button',
+            title: strings.renameMap,
+            ondblclick: () => this.startMapRename(),
+            onkeydown: (event) => {
+                if (event.key === 'Enter' || event.key === 'F2') {
+                    event.preventDefault();
+                    this.startMapRename();
+                }
+            },
+        });
 
         // The map you are in, and the way to a different one. Choosing a map
         // is not an action on the map's chrome, so it belongs next to the
@@ -184,6 +200,71 @@ export class LayerTree {
         this.scroller.addEventListener('keydown', (event) => this.onKeyDown(event));
 
         this.drag = attachTreeDrag(this);
+    }
+
+    /**
+     * Edit the map's name where it is written.
+     *
+     * The same gesture as a layer rename — double-click, or Enter on the
+     * focused name — because they are the same kind of change and learning one
+     * should teach the other.
+     */
+    startMapRename() {
+        if (!this.onRenameMap || this.mapName.hidden) {
+            return;
+        }
+
+        const current = this.mapName.textContent;
+
+        const input = el('input', {
+            type: 'text',
+            class: 'form-control form-control-sm gis-tree-mapname-input',
+            value: current,
+            'aria-label': this.strings.renameMap,
+        });
+
+        this.mapName.hidden = true;
+        this.mapName.after(input);
+        input.focus();
+        input.select();
+
+        let done = false;
+
+        const finish = async (commit) => {
+            if (done) {
+                return;
+            }
+
+            done = true;
+
+            const value = input.value.trim();
+
+            input.remove();
+            this.mapName.hidden = false;
+
+            if (commit && value !== '' && value !== current) {
+                // Optimistic, then corrected: the server owns the slug, and
+                // may hand back a name it had to disambiguate.
+                this.mapName.textContent = value;
+
+                const applied = await this.onRenameMap(value);
+
+                this.mapName.textContent = applied ?? current;
+            }
+        };
+
+        input.addEventListener('blur', () => finish(true));
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                finish(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+            }
+
+            event.stopPropagation();
+        });
     }
 
     /**

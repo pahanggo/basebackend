@@ -105,6 +105,25 @@ it('does not resolve a map by slug on the JSON API, which is keyed by id', funct
     $this->actingAs($user)->getJson('/api/geo/maps/pahang')->assertNotFound();
 });
 
+it('hands the new name and slug back when a map is renamed', function () {
+    [$map] = editableMap();
+    $user = User::findOrFail($map->owner_id);
+
+    // The client's address bar and its next deep link both name the old slug
+    // until it is told otherwise, so the response has to carry it.
+    $body = $this->actingAs($user)
+        ->patchJson(route('gis.api.maps.update', ['map' => $map->id]), [
+            'name' => 'Rancangan Tempatan Kuantan',
+            'version' => $map->version,
+        ])
+        ->assertOk()
+        ->json();
+
+    expect($body['name'])->toBe('Rancangan Tempatan Kuantan');
+    expect($body['slug'])->toBe('rancangan-tempatan-kuantan');
+    expect($body['version'])->toBe($map->version + 1);
+});
+
 it('carries the slug in the bootstrap and the listing', function () {
     [$map] = editableMap();
     $user = User::findOrFail($map->owner_id);

@@ -156,6 +156,8 @@ class EditorController extends Controller
             'readOnly' => __('Read-only'),
             'layerActions' => __('Layer actions'),
             'rename' => __('Rename'),
+            'renameMap' => __('Rename this map'),
+            'renameFailed' => __('The map could not be renamed.'),
             'lock' => __('Lock'),
             'unlock' => __('Unlock'),
             'opacity' => __('Opacity'),

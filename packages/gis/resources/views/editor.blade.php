@@ -36,7 +36,7 @@
             </button>
 
             <a href="{{ backpack_url('dashboard') }}" class="gis-back" title="{{ __('Back to dashboard') }}">
-                <i class="la la-tachometer-alt" aria-hidden="true"></i>
+                <i class="la la-home" aria-hidden="true"></i>
                 <span class="sr-only">{{ __('Back to dashboard') }}</span>
             </a>
         </div>
