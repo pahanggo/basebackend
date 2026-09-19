@@ -13,7 +13,7 @@
 import { createRenderer } from './map/renderer.js';
 import { ensurePane, syncPanes } from './map/panes.js';
 import { SpatialIndex } from './map/spatial-index.js';
-import { projectLng, projectLat } from './map/geometry.js';
+import { projectLng, projectLat, unprojectX, unprojectY } from './map/geometry.js';
 import { fetchFeatures } from './data/features.js';
 import { FeatureAccumulator } from './data/accumulator.js';
 import { isUsable, slotMap, paintTable } from './map/style/classify.js';
@@ -39,9 +39,9 @@ import { DrawSession } from './map/draw/draw-session.js';
 import { Toolbar } from './ui/toolbar.js';
 import { ConflictPanel } from './ui/conflict-panel.js';
 import { Legend } from './ui/legend.js';
+import { AttributeTable } from './ui/attribute-table.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
-import { run as runOperation } from './map/ops/index.js';
 import { Snapper } from './map/snap.js';
 import { layerSetSource } from './store/commands/layer.js';
 
@@ -76,6 +76,10 @@ class LayerFeed {
         // one thing about the read — whether to ask for a class column — and
         // everything else it decides is paint.
         this.classification = classification;
+
+        // Set while the attribute table is open on this layer. It more than
+        // doubles the response, so it is a mode rather than a default.
+        this.withProperties = false;
         this.slot = null;
         this.controller = null;
         this.loaded = null;
@@ -105,6 +109,27 @@ class LayerFeed {
         this.entry = null;
         this.loaded = null;
         this.accumulator = null;
+    }
+
+    /**
+     * Ask for, or stop asking for, each feature's attributes.
+     *
+     * Forces the next refresh to be non-additive: what is held was read
+     * without them, and appending rows that have attributes to rows that do
+     * not would give the table a column of blanks for everything already on
+     * screen.
+     *
+     * @returns {boolean} whether anything changed
+     */
+    setWithProperties(wanted) {
+        if (this.withProperties === wanted) {
+            return false;
+        }
+
+        this.withProperties = wanted;
+        this.loaded = null;
+
+        return true;
     }
 
     /** The attribute the read must report per feature, or null. */
@@ -272,6 +297,7 @@ class LayerFeed {
                     ? [this.loaded.west, this.loaded.south, this.loaded.east, this.loaded.north]
                     : null,
                 classify: this.classifyField(),
+                withProperties: this.withProperties,
                 onChunk: ({ geometry, from, to }) => {
                     if (this.entry === null) {
                         this.entry = { geometry, index: new SpatialIndex(geometry), visible: true, style: this.layer.style };
@@ -616,6 +642,7 @@ class Editor {
             onClassify: (row) => this.sublayers.open(row),
             onAddOverlay: (file) => this.addImageOverlay(file),
             onEditOverlay: (row) => this.editOverlay(row),
+            onAttributes: (row) => this.openAttributes(row),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -1043,6 +1070,7 @@ class Editor {
 
         this.store = store;
         this.legend?.attach(store);
+        this.table?.attach(store);
         this.sync = sync;
 
         // A map switch is the one case where nothing carries over, so the
@@ -1221,8 +1249,14 @@ class Editor {
         this.refresh();
     }
 
-    refresh() {
-        this.feeds.forEach((feed) => feed.refresh(this.map));
+    async refresh() {
+        await Promise.all(this.feeds.map((feed) => feed.refresh(this.map)));
+
+        // Panning changes which features are loaded, and the table is a view
+        // of exactly those.
+        if (this.table?.isOpen) {
+            this.table.refresh();
+        }
     }
 
     /**
@@ -1464,7 +1498,11 @@ class Editor {
         this.activity.start();
 
         try {
-            const result = await runOperation(op, [geometry], options);
+            // Loaded here rather than imported at the top: `@turf/buffer`
+            // alone drags in a polygon-clipping library, and nothing needs it
+            // until somebody presses one of these four buttons.
+            const { run } = await import('./map/ops/index.js');
+            const result = await run(op, [geometry], options);
 
             if (result === null) {
                 notify(this.config.strings.operationEmpty);
@@ -1544,6 +1582,61 @@ class Editor {
 
         target.version += 1;
         this.refreshLayer(target.layerId);
+    }
+
+    /**
+     * Show a layer's attributes, which means loading them.
+     *
+     * They are off by default because for the imported data they are more than
+     * half the payload, so opening the table is what pays for them — and
+     * closing it stops paying.
+     */
+    async openAttributes(row) {
+        const feed = this.feeds.find((candidate) => candidate.layer.id === row.layer.id);
+
+        if (!feed) {
+            notify(this.config.strings.tableNeedsVisible);
+
+            return;
+        }
+
+        this.table.open(row.layer, feed);
+
+        if (feed.setWithProperties(true)) {
+            await feed.refresh(this.map);
+        }
+
+        this.table.refresh();
+    }
+
+    /** Stop loading attributes for whichever layer the table was showing. */
+    closeAttributes() {
+        for (const feed of this.feeds) {
+            if (feed.setWithProperties(false)) {
+                feed.refresh(this.map);
+            }
+        }
+    }
+
+    /** Fit the map to one row's feature. */
+    zoomToFeature(row) {
+        const feed = this.table.feed;
+        const bbox = feed?.entry?.geometry?.bbox;
+
+        if (!bbox) {
+            return;
+        }
+
+        const f = row.feature;
+        const west = unprojectX(bbox[f * 4]);
+        const east = unprojectX(bbox[f * 4 + 2]);
+        // Projection inverts latitude, so the stored vertical pair is already
+        // north then south.
+        const north = unprojectY(bbox[f * 4 + 1]);
+        const south = unprojectY(bbox[f * 4 + 3]);
+
+        this.ignoreMoves();
+        this.map.fitBounds([[south, west], [north, east]], { maxZoom: 19 });
     }
 
     /** Force one layer to read again, discarding what it holds. */
@@ -1828,6 +1921,13 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.table = new AttributeTable({
+        container: document.getElementById('gis-map'),
+        strings: config.strings,
+        onClose: () => editor.closeAttributes(),
+        onZoomTo: (row) => editor.zoomToFeature(row),
+    });
+
     editor.legend = new Legend({
         container: document.getElementById('gis-map'),
         strings: config.strings,

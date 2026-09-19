@@ -10,7 +10,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { route, available, countVertices, runLocally } from '../../resources/js/map/ops/index.js';
+import { route, available, countVertices } from '../../resources/js/map/ops/routing.js';
+import { runLocally } from '../../resources/js/map/ops/index.js';
 import { ringArea, distance } from '../../resources/js/lib/measure.js';
 
 const CAPS = { geos: true, inlineOpVertexLimit: 20000 };

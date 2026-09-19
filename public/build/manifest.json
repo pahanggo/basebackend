@@ -1,12 +1,24 @@
 {
   "packages/gis/resources/js/main.js": {
-    "file": "assets/main-BzAI55z9.js",
+    "file": "assets/main-D0LjHfL3.js",
     "name": "main",
     "src": "packages/gis/resources/js/main.js",
-    "isEntry": true
+    "isEntry": true,
+    "dynamicImports": [
+      "packages/gis/resources/js/map/ops/index.js"
+    ]
+  },
+  "packages/gis/resources/js/map/ops/index.js": {
+    "file": "assets/ops-CGbOXjVf.js",
+    "name": "ops",
+    "src": "packages/gis/resources/js/map/ops/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "packages/gis/resources/js/main.js"
+    ]
   },
   "packages/gis/resources/scss/gis.scss": {
-    "file": "assets/gis-Bf7VXgBo.css",
+    "file": "assets/gis-vlE74VAQ.css",
     "name": "gis",
     "names": [
       "gis.css"

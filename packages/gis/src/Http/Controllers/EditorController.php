@@ -247,6 +247,13 @@ class EditorController extends Controller
             'operationEmpty' => __('That left nothing behind.'),
             'operationFailed' => __('The operation could not be completed.'),
             'legend' => __('Legend'),
+
+            // The attribute table.
+            'attributes' => __('Attributes'),
+            'filter' => __('Filter'),
+            'tableLoading' => __('Loading…'),
+            'tableCount' => __(':shown of :loaded features in view'),
+            'tableNeedsVisible' => __('Make the layer visible before opening its attributes.'),
         ];
     }
 }

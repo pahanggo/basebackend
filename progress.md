@@ -29,6 +29,34 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S9a — Attribute table
+
+A bottom dock over the map: every column from the layer's schema, per-column
+filters, multi-column sort, and inline editing. Rows are virtualized through
+the same recycler as the layer tree — 4,869 features loaded, 22 rows in the
+DOM. Sorting those 4,869 by a numeric column takes 18 ms against a 200 ms
+budget at 10,000.
+
+**It shows the viewport, and the count says so.** A paged server-sorted table
+over 2.9 million features is a different endpoint and a different session;
+sorting a viewport and calling it the layer would be the comfortable lie that
+produces a wrong answer nobody can see.
+
+**Attributes load only while the table is open**, because for this data they
+are more than half the payload. Verified: closing it stops asking.
+
+**A latent bug this made real.** `compact()` rebuilt every typed array and left
+the attribute tail alone. Nothing had noticed because nothing had ever asked
+for attributes — but with the table open, the first pan that evicted anything
+would have left every row describing a different feature than the one it was
+shown against. I had flagged this exact hazard in S5d's notes; here it became
+reachable, so it is fixed and tested.
+
+**Bundle:** wiring the geometry operations had quietly pulled all of Turf into
+the initial bundle — 135 kB gzipped. The routing is now split from the heavy
+half, so Turf loads on the click that needs it: initial bundle back to 43.6 kB
+gzipped against a 300 kB budget.
+
 ### S8a — Legend
 
 A legend pinned to a corner of the map, generated from the resolved style of

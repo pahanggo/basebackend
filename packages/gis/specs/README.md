@@ -31,7 +31,8 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S7](S07-geometry-operations.md) | Geometry operations — **done** | S6 |
 | [S8a](S08-styling-labels-legend.md) | Legend — **done** | S5d, S2 |
 | [S8b](S08-styling-labels-legend.md) | Labels, graduated and rule-based modes, markers | S8a |
-| [S9](S09-attributes-selection-query.md) | Attribute table and selection | S5, S8 |
+| [S9a](S09-attributes-selection-query.md) | Attribute table — **done** | S5, S8a |
+| [S9b](S09-attributes-selection-query.md) | Selection, schema editing, popups | S9a |
 | [S9b](S09b-query.md) | Spatial and attribute query | S9 |
 | [S10](S10-measurement-units.md) | Measurement and units | S6 |
 | [S11](S11-responsive-a11y-performance.md) | Responsive, a11y, performance | all v1 |

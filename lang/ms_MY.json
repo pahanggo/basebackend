@@ -190,5 +190,10 @@
     "Simplify to what tolerance, in metres?": "Permudah pada toleransi berapa meter?",
     "That left nothing behind.": "Tiada apa yang tinggal.",
     "The operation could not be completed.": "Operasi tidak dapat diselesaikan.",
-    "Legend": "Petunjuk"
+    "Legend": "Petunjuk",
+    "Attributes": "Atribut",
+    "Filter": "Tapis",
+    "Loading…": "Memuatkan…",
+    ":shown of :loaded features in view": ":shown daripada :loaded fitur dalam paparan",
+    "Make the layer visible before opening its attributes.": "Pastikan lapisan kelihatan sebelum membuka atributnya."
 }

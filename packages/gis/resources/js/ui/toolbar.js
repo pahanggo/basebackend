@@ -17,7 +17,7 @@ import { el, clear } from '../lib/dom.js';
 import { TOOLS } from '../map/draw/draw-session.js';
 import { destination } from '../lib/measure.js';
 import { rectangleRing, circleRing } from '../map/draw/shapes.js';
-import { available } from '../map/ops/index.js';
+import { available } from '../map/ops/routing.js';
 
 /** Line Awesome icons, one per operation on a selected feature. */
 const OP_ICONS = {

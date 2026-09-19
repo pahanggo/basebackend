@@ -96,6 +96,9 @@ export function parseInWorker(buffer, { binary = false } = {}) {
  *        caller already has, so a pan asks only for what is new
  * @param {FeatureAccumulator|null} options.into append into this rather than
  *        starting a fresh set, which is what makes a pan additive
+ * @param {boolean} options.withProperties include each feature's attributes.
+ *        More than half the payload for the imported data, so only while the
+ *        attribute table needs them
  * @param {string|null} options.classify an attribute to report per feature, so
  *        a layer can be split into sublayers. One byte each, against the whole
  *        attribute document's two thirds of the payload
@@ -112,6 +115,7 @@ export async function fetchFeatures({
     held = null,
     into = null,
     classify = null,
+    withProperties = false,
 }) {
     const params = new URLSearchParams({
         bbox: bbox.map((n) => n.toFixed(6)).join(','),
@@ -128,6 +132,13 @@ export async function fetchFeatures({
 
     if (classify) {
         params.set('classify', classify);
+    }
+
+    if (withProperties) {
+        // Off by default, and it costs: for the imported cadastre the
+        // attribute document is more than half the payload. It is asked for
+        // only while the attribute table is open on that layer.
+        params.set('fields', '1');
     }
 
     // Content negotiation, not a `?format=` parameter: the two encodings are

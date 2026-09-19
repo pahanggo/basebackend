@@ -56,6 +56,7 @@ export class LayerTree {
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
         onIsolate = null, onOpenMaps = null, onCollapse = null, onRenameMap = null,
         onClassify = null, onClassPreview = null, onAddOverlay = null, onEditOverlay = null,
+        onAttributes = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -71,6 +72,7 @@ export class LayerTree {
         this.onClassPreview = onClassPreview;
         this.onAddOverlay = onAddOverlay;
         this.onEditOverlay = onEditOverlay;
+        this.onAttributes = onAttributes;
         this.onIsolate = onIsolate;
         this.onCollapse = onCollapse;
         this.onRenameMap = onRenameMap;
@@ -1281,6 +1283,10 @@ export class LayerTree {
                 () => this.onEditOverlay(row.layer.locked ? null : row),
                 'la-vector-square',
             ));
+        }
+
+        if (!group && row.layer.kind === 'vector' && this.onAttributes) {
+            items.push(item(this.strings.attributes, () => this.onAttributes(row), 'la-table'));
         }
 
         if (!group && row.layer.extent !== null && this.onZoomTo) {

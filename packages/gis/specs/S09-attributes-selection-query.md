@@ -61,6 +61,48 @@ packages/gis/
 - Feature: an attribute value containing a script tag renders inert in popup, label and table.
 
 
-## Results
+## Results — the attribute table (S9a)
 
-_Fill in when complete._
+**Partly done.** The table, its sorting, its filtering and inline editing are
+built; selection, schema editing and popups are not.
+
+Measured on `Gunatanah Semasa` at a Kuantan viewport, 4,869 features loaded:
+
+| Metric | Result |
+| --- | --- |
+| Rows in the DOM | 22, of 4,869 |
+| Sort by a numeric column | 18 ms (budget: 200 ms at 10,000 rows) |
+| Text filter, case-insensitive | `Badan` → 5, `perumahan` → 4,072 |
+| Numeric range filter | `100-600` on `luas_hektar` → 9 |
+| Closing the table | stops asking for `fields=1` on the next read |
+
+**It shows what is loaded, which is the viewport, and it says so in the
+count.** The alternative is a paged, server-sorted table over a layer of 2.9
+million features, which is a different endpoint and a different session.
+Sorting a viewport and calling it the layer would be the more comfortable lie
+and the one that produces a wrong answer nobody can see — a "smallest lot"
+that is only the smallest of what happened to be on screen. The note reads
+":shown of :loaded features in view" for exactly that reason.
+
+**Attributes are loaded only while the table is open.** They are more than half
+the payload for this data, so opening the table is what pays for them and
+closing it stops. Turning them on forces the next read to be non-additive:
+appending rows that have attributes to rows that do not would give the table a
+column of blanks for everything already on screen.
+
+**A latent bug this made real.** `FeatureAccumulator.compact()` rebuilt every
+typed array and left the attribute tail alone. Nothing had noticed because
+nothing had ever asked for attributes — but with the table open, the first pan
+that evicted anything would have left every row describing a different feature
+than the one it was shown against. Silent, and wrong in a way that looks right.
+
+### Still to build in S9
+
+- **Selection**: one set shared across map, table and tree; marquee, lasso,
+  by-attribute and by-spatial-relation.
+- **Bulk edit** across a selection as one command — it needs the selection.
+- **Schema commands**: add, rename, retype, delete field, with the generated
+  column migration where a field is indexed. Specified in §7 and unbuilt.
+- **Feature popups** from a per-layer template. The attributes are already
+  fetched on selection (S7's `ids` read), so this is presentation.
+- **Column show/hide, reorder, freeze.**

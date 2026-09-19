@@ -99,3 +99,29 @@ test('leaves the class array absent when the read did not classify', () => {
 
     assert.equal(accumulator.geometry.classes, undefined);
 });
+
+test('the attribute tail is compacted with everything else', () => {
+    // It is a plain array beside the typed ones, so it has to be rebuilt
+    // explicitly. Forgetting it does not shrink it: it keeps its old contents
+    // at their old positions, and every row in the attribute table then
+    // belongs to a different feature than the one it is shown against.
+    const accumulator = new FeatureAccumulator();
+
+    accumulator.append(chunk([0, 0, 0, 0, 0]), [
+        { lot: 'A' }, { lot: 'B' }, { lot: 'C' }, { lot: 'D' }, { lot: 'E' },
+    ], ['x']);
+
+    accumulator.compact((f) => f % 2 === 1);
+
+    assert.equal(accumulator.geometry.count, 2);
+    assert.deepEqual(accumulator.properties, [{ lot: 'B' }, { lot: 'D' }]);
+});
+
+test('an accumulator with no attributes stays without them', () => {
+    const accumulator = new FeatureAccumulator();
+
+    accumulator.append(chunk([0, 0]), null, ['x']);
+    accumulator.compact((f) => f === 0);
+
+    assert.equal(accumulator.properties, null);
+});

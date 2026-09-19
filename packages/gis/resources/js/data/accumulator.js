@@ -190,6 +190,11 @@ export class FeatureAccumulator {
      * everything held, and it forces the renderer to rebuild its paths, since
      * `Path2D` has no way to remove a subpath.
      *
+     * **Everything the accumulator holds per feature has to be compacted here.**
+     * The typed arrays are rebuilt below; the attribute tail is a plain array
+     * and is rebuilt with them. Anything added later and forgotten here does
+     * not shrink — it silently starts describing the wrong features.
+     *
      * @param {(f: number) => boolean} shouldKeep
      * @returns {number} how many features were dropped
      */
@@ -219,6 +224,16 @@ export class FeatureAccumulator {
         }
 
         const dropped = g.count - survivors.length;
+
+        // The attribute tail is a plain array beside the typed ones rather
+        // than inside `geometry`, because it holds objects — so it has to be
+        // compacted explicitly here. Forgetting it does not shrink it: it
+        // keeps its old contents at their old positions, and from the first
+        // eviction onwards every row in the attribute table belongs to a
+        // different feature than the one it is shown against.
+        if (this.properties !== null) {
+            this.properties = survivors.map((f) => this.properties[f]);
+        }
         const next = {
             count: survivors.length,
             coords: new Float64Array(vertices * 2),
