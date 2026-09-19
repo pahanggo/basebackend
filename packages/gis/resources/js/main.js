@@ -11,7 +11,7 @@
  */
 
 import { createRenderer } from './map/renderer.js';
-import { ensurePane } from './map/panes.js';
+import { ensurePane, syncPanes } from './map/panes.js';
 import { SpatialIndex } from './map/spatial-index.js';
 import { projectLng, projectLat } from './map/geometry.js';
 import { fetchFeatures } from './data/features.js';
@@ -22,6 +22,9 @@ import { reconcile } from './store/commands/index.js';
 import { configureHttp, getJson, putJson } from './lib/http.js';
 import { afterKey } from './lib/sort-key.js';
 import { SeqCounter } from './lib/seq.js';
+import { LayerTree } from './ui/layer-tree.js';
+import { ControlPanel } from './ui/control-panel.js';
+import { effectiveVisible, buildIndex, childrenOf } from './ui/tree-model.js';
 import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
 import { LayerLibrary } from './ui/layer-library.js';
@@ -240,7 +243,19 @@ class LayerFeed {
  * be stable for the life of the tab, or a retry after a switch would look like
  * new work.
  */
+/**
+ * The store and its outbound queue, which reference each other.
+ *
+ * The store is built first and the queue given a getter rather than the store
+ * itself, because `onApplied` runs long after this function returns and needs
+ * whatever the store is *then*. Closing over a `const` declared below its own
+ * use is a `ReferenceError` at the moment the server first confirms a batch —
+ * which is to say, in production and not in any test that never reaches the
+ * network.
+ */
 function createStore(config, mapId, seq) {
+    const store = new Store();
+
     const sync = mapId === null ? null : new SyncQueue({
         apiBase: config.apiBase,
         mapId,
@@ -249,17 +264,20 @@ function createStore(config, mapId, seq) {
         csrfToken: config.csrfToken,
         onApplied: (body) => {
             reconcile(store.state, body.applied);
-            store.emit(['features', 'layers', 'measurements']);
+            store.emit(['features', 'layers', 'measurements', 'tree']);
         },
         onConflict: (problem) => {
-            // S5b opens the conflict panel here. Until it exists the queue is
-            // paused and the commands are kept, which is the safe half of the
-            // behaviour: nothing is lost, the user is simply not yet told.
+            // The queue is paused and the commands are kept, which is the safe
+            // half of the behaviour: nothing is lost. The resolution panel that
+            // uses `store/conflicts.js` is S6's, alongside the editing that
+            // makes a conflict likely in the first place.
             console.warn('gis: version conflict', problem);
         },
     });
 
-    return { store: new Store({ sync }), sync };
+    store.sync = sync;
+
+    return { store, sync };
 }
 
 /**
@@ -285,6 +303,7 @@ function hydrate(store, bootstrap) {
             style: entry.style,
             attrSchema: entry.attrSchema,
             featureCount: entry.featureCount,
+            extent: entry.extent ?? null,
             ownerMapId: entry.ownerMapId,
             ownedHere: entry.ownedHere,
             shared: entry.shared,
@@ -308,13 +327,41 @@ function hydrate(store, bootstrap) {
     }
 }
 
-/** The vector layers this map shows, in tree order. S5b replaces this with the tree. */
-function visibleVectorLayers(store) {
-    return store.state.tree
-        .map((id) => store.state.placements[id])
-        .filter((placement) => placement.visible)
+/**
+ * The vector layers this map actually draws, in tree order.
+ *
+ * Effective visibility, not the placement's own flag: a layer inside a hidden
+ * group, or outside its zoom band, is not drawn and must not be fetched for
+ * either. Isolate is applied here too, because it hides layers without
+ * changing their stored visibility — that is the whole point of it.
+ */
+function visibleVectorLayers(store, { zoom = null, isolated = null } = {}) {
+    return childrenInTreeOrder(store.state, buildIndex(store.state))
+        .filter((placement) => isolated === null || isolated.has(placement.id))
+        .filter((placement) => effectiveVisible(store.state, placement, zoom))
         .map((placement) => store.state.layers[placement.layerId])
         .filter((layer) => layer && layer.kind === 'vector');
+}
+
+/**
+ * Every placement, depth-first in tree order.
+ *
+ * Through the index, not a scan per node. Without it this is quadratic, and it
+ * runs on every visibility toggle — which is the one interaction the session
+ * gate puts a 50 ms budget on.
+ */
+function childrenInTreeOrder(state, index) {
+    const out = [];
+    const walk = (parentId) => {
+        for (const placement of childrenOf(state, parentId, index)) {
+            out.push(placement);
+            walk(placement.id);
+        }
+    };
+
+    walk(null);
+
+    return out;
 }
 
 /**
@@ -361,6 +408,80 @@ class Editor {
             currentMapId: () => this.bootstrap?.id ?? null,
             onPlace: (layerId, access) => this.place(layerId, access),
         });
+
+        this.tree = new LayerTree({
+            container: document.getElementById('gis-sidebar'),
+            strings: config.strings,
+            zoom: () => this.map.getZoom(),
+            onZoomTo: (layer) => this.zoomToLayer(layer),
+            onChanged: (options) => this.treeChanged(options),
+        });
+
+        this.panel = new ControlPanel({
+            container: document.getElementById('gis-app'),
+            strings: config.strings,
+            onBasemap: (id) => this.setBasemap(id),
+            onOverlays: (ids) => this.setOverlays(ids),
+            onGoTo: (point) => this.goTo(point),
+            onIsolate: (on) => this.setIsolate(on),
+        });
+
+        // Client-only and not persisted. Restoring brings back the previous
+        // per-layer visibility rather than turning everything on, which is why
+        // it is a filter over the draw set and never a write.
+        this.isolated = null;
+        this.overlayLayers = new Map();
+    }
+
+    /**
+     * Something in the tree changed what is drawn.
+     *
+     * `reload` is for the two commands whose result the client cannot predict:
+     * grouping and ungrouping both reparent rows around an id the server
+     * assigns, so the tree is re-read rather than guessed at.
+     */
+    async treeChanged({ reload = false } = {}) {
+        if (reload) {
+            await this.sync?.flush();
+            this.bootstrap = await getJson(`${this.config.apiBase}/maps/${this.bootstrap.id}`);
+            hydrate(this.store, this.bootstrap);
+            this.tree.rebuild();
+        }
+
+        syncPanes(this.map, this.store.state);
+        this.rebuildFeeds();
+    }
+
+    zoomToLayer(layer) {
+        if (!layer?.extent) {
+            return;
+        }
+
+        const [west, south, east, north] = layer.extent;
+
+        this.ignoreMoves();
+        this.map.fitBounds([[south, west], [north, east]]);
+    }
+
+    goTo(point) {
+        this.map.setView([point.lat, point.lng], Math.max(this.map.getZoom(), 16));
+    }
+
+    /**
+     * Solo the selected layers.
+     *
+     * Not persisted and never a command: the stored `visible` flags are left
+     * exactly as they were, so turning it off restores what the user had
+     * rather than turning everything on (specification section 8).
+     */
+    setIsolate(on) {
+        this.isolated = on === null ? null : this.tree.selectedWithDescendants();
+
+        if (this.isolated && this.isolated.size === 0) {
+            this.isolated = null;
+        }
+
+        this.rebuildFeeds();
     }
 
     /**
@@ -393,6 +514,7 @@ class Editor {
                 center: opened.center,
                 zoom: opened.zoom,
                 ...(opened.basemap ? { basemap: opened.basemap } : {}),
+                ...(opened.overlays?.length ? { overlays: opened.overlays } : {}),
             })
             : null;
 
@@ -402,10 +524,68 @@ class Editor {
         this.sync = sync;
 
         hydrate(this.store, this.bootstrap);
+        this.tree.attach(this.store);
+        this.panel.setProviders(
+            this.bootstrap.basemaps,
+            this.bootstrap.viewState?.basemap || this.bootstrap.basemaps.default,
+            this.bootstrap.viewState?.overlays || [],
+        );
         this.applyBasemap();
+        this.applyOverlays(this.bootstrap.viewState?.overlays || []);
+        syncPanes(this.map, this.store.state);
         this.rebuildFeeds();
 
         return true;
+    }
+
+    /**
+     * Switch the basemap and remember it.
+     *
+     * Through the unversioned view write, never a command: the map's `version`
+     * is the replay sequence for its command log, and threading a hole through
+     * it because somebody changed basemap would invalidate every other client
+     * many times a session.
+     */
+    setBasemap(id) {
+        this.bootstrap.viewState = { ...this.bootstrap.viewState, basemap: id };
+        this.applyBasemap();
+        this.saveView();
+    }
+
+    setOverlays(ids) {
+        this.bootstrap.viewState = { ...this.bootstrap.viewState, overlays: ids };
+        this.applyOverlays(ids);
+        this.saveView();
+    }
+
+    /**
+     * Weather overlays, stacked above the basemap and below the vector layers.
+     *
+     * They are independently toggled rather than mutually exclusive, which is
+     * the whole reason the server classifies them apart from basemaps by their
+     * `owm-` prefix instead of putting everything in one list.
+     */
+    applyOverlays(ids) {
+        const wanted = new Set(ids);
+
+        for (const [id, layer] of this.overlayLayers) {
+            if (!wanted.has(id)) {
+                this.map.removeLayer(layer);
+                this.overlayLayers.delete(id);
+            }
+        }
+
+        for (const id of wanted) {
+            if (this.overlayLayers.has(id)) {
+                continue;
+            }
+
+            const url = this.bootstrap.basemaps.urlTemplate.replace(/\/tiles\/[^/]+\//, `/tiles/${id}/`);
+            const layer = L.tileLayer(url, { maxZoom: 20, opacity: 0.7, crossOrigin: 'anonymous' });
+
+            layer.addTo(this.map);
+            this.overlayLayers.set(id, layer);
+        }
     }
 
     applyBasemap() {
@@ -431,8 +611,10 @@ class Editor {
     rebuildFeeds() {
         this.renderer.clearGeometry();
 
-        this.feeds = visibleVectorLayers(this.store)
-            .map((layer) => new LayerFeed(this.renderer, this.config, layer, this.activity));
+        this.feeds = visibleVectorLayers(this.store, {
+            zoom: this.map.getZoom(),
+            isolated: this.isolated,
+        }).map((layer) => new LayerFeed(this.renderer, this.config, layer, this.activity));
 
         this.refresh();
     }
@@ -494,6 +676,13 @@ class Editor {
         if (basemap) {
             view.basemap = basemap;
         }
+
+        // ALWAYS sent, empty list included. The server merges what it is given
+        // so that a client which knows only where it is looking cannot erase
+        // the basemap — which means an absent key reads as "unchanged", and
+        // turning the last overlay off would never be saved. "None" is a state
+        // the user chose, not an absence of information.
+        view.overlays = this.bootstrap.viewState?.overlays ?? [];
 
         const signature = JSON.stringify(view);
 
@@ -610,6 +799,20 @@ async function boot() {
             map.invalidateSize();
         }, 100);
     }).observe(container);
+
+    document.getElementById('gis-toggle-sidebar')?.addEventListener('click', (event) => {
+        const sidebar = document.getElementById('gis-sidebar');
+        const open = sidebar.classList.toggle('is-open') || !sidebar.classList.contains('is-closed');
+
+        sidebar.classList.toggle('is-closed', !open);
+        event.currentTarget.setAttribute('aria-expanded', String(open));
+
+        // The map's container changed width, and Leaflet only finds out if it
+        // is told. The move it makes is ours, not the user's, so it must not
+        // decide where the map opens tomorrow.
+        editor.ignoreMoves();
+        map.invalidateSize();
+    });
 
     document.getElementById('gis-open-maps')?.addEventListener('click', () => editor.browser.open());
     document.getElementById('gis-add-layer')?.addEventListener('click', () => editor.library.open());

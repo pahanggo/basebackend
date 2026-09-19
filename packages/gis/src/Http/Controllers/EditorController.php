@@ -124,6 +124,39 @@ class EditorController extends Controller
             'addReadOnly' => __('Add read-only'),
             'addEditable' => __('Add editable'),
             'unsyncedChanges' => __('There are unsaved changes that could not be sent. Switching maps now would lose them.'),
+
+            // The layer tree.
+            'filterLayers' => __('Filter layers'),
+            'expand' => __('Expand'),
+            'collapse' => __('Collapse'),
+            'visible' => __('Visible'),
+            'locked' => __('Locked'),
+            'shared' => __('Shared'),
+            'readOnly' => __('Read-only'),
+            'layerActions' => __('Layer actions'),
+            'rename' => __('Rename'),
+            'lock' => __('Lock'),
+            'unlock' => __('Unlock'),
+            'opacity' => __('Opacity'),
+            'zoomRange' => __('Zoom range'),
+            'minZoom' => __('Minimum zoom'),
+            'maxZoom' => __('Maximum zoom'),
+            'zoomToLayer' => __('Zoom to layer'),
+            'groupSelected' => __('Group selected layers'),
+            'newGroup' => __('New group'),
+            'ungroup' => __('Ungroup'),
+            'removeFromMap' => __('Remove from this map'),
+            'confirmRemove' => __('Remove ":name" from this map? The layer itself is kept.'),
+
+            // The map control panel.
+            'mapControls' => __('Map controls'),
+            'basemap' => __('Basemap'),
+            'overlays' => __('Overlays'),
+            'view' => __('View'),
+            'goTo' => __('Go to coordinate'),
+            'goToPlaceholder' => __('Latitude, longitude'),
+            'coordinateInvalid' => __('That is not a coordinate this can read.'),
+            'isolate' => __('Isolate selected'),
         ];
     }
 }

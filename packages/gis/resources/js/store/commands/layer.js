@@ -134,3 +134,200 @@ export function layerReorder({ id, version, parentId, sortKey, previous = null }
         },
     };
 }
+
+/**
+ * PLACEMENT. Opacity, on every layer kind.
+ *
+ * Vector, raster, image and group alike, because opacity multiplies down the
+ * chain: a group at 50% halves everything under it. Like visibility this is
+ * this map's view of the layer rather than a change to the layer, so a `read`
+ * placement may still set it.
+ */
+export function layerSetOpacity({ id, version, opacity, previousOpacity = null }) {
+    return {
+        op: 'layer.setOpacity',
+        topics: ['layers', `placements:${id}`],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const was = previousOpacity ?? placement?.opacity ?? 1;
+
+            if (placement) {
+                placement.opacity = opacity;
+                placement.version += 1;
+            }
+
+            return layerSetOpacity({
+                id,
+                version: (placement?.version ?? version) + 1,
+                opacity: was,
+                previousOpacity: opacity,
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.setOpacity', id, version, opacity };
+        },
+    };
+}
+
+/**
+ * PLACEMENT. The zoom band a layer is visible in.
+ *
+ * Both ends are nullable and null means unbounded, so the inverse has to carry
+ * nulls rather than treat them as "unset" — otherwise undoing a narrowing
+ * would leave the old bound in place.
+ */
+export function layerSetZoomRange({ id, version, minZoom, maxZoom, previous = null }) {
+    return {
+        op: 'layer.setZoomRange',
+        topics: ['layers', 'tree', `placements:${id}`],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const was = previous ?? {
+                minZoom: placement?.minZoom ?? null,
+                maxZoom: placement?.maxZoom ?? null,
+            };
+
+            if (placement) {
+                placement.minZoom = minZoom;
+                placement.maxZoom = maxZoom;
+                placement.version += 1;
+            }
+
+            return layerSetZoomRange({
+                id,
+                version: (placement?.version ?? version) + 1,
+                minZoom: was.minZoom,
+                maxZoom: was.maxZoom,
+                previous: { minZoom, maxZoom },
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.setZoomRange', id, version, minZoom, maxZoom };
+        },
+    };
+}
+
+/**
+ * LAYER. The lock, which blocks editing everywhere the layer appears.
+ *
+ * A locked layer stays visible and selectable — it is not a hidden layer and
+ * not a read-only placement. Those are three different statements and the tree
+ * shows them differently.
+ */
+export function layerSetLocked({ id, version, locked }) {
+    return {
+        op: 'layer.setLocked',
+        topics: ['layers', `layers:${id}`],
+
+        apply(state) {
+            const layer = state.layers[id];
+
+            if (layer) {
+                layer.locked = locked;
+                layer.version += 1;
+            }
+
+            return layerSetLocked({ id, version: (layer?.version ?? version) + 1, locked: !locked });
+        },
+
+        serialize() {
+            return { op: 'layer.setLocked', id, version, locked };
+        },
+    };
+}
+
+/**
+ * PLACEMENT. Drops this map's placement; the layer survives elsewhere.
+ *
+ * Not a delete, and the tree must not present it as one. The inverse cannot be
+ * a local re-insert: the placement comes back with a server-assigned id, so
+ * undoing this is a `layer.share` and identity does not round-trip
+ * (specification section 16).
+ */
+export function layerRemoveFromMap({ id, version, layerId, parentId = null, sortKey = null, access = 'read' }) {
+    return {
+        op: 'layer.removeFromMap',
+        topics: ['layers', 'tree', `placements:${id}`],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const was = placement
+                ? { parentId: placement.parentId, sortKey: placement.sortKey, access: placement.access }
+                : { parentId, sortKey, access };
+
+            delete state.placements[id];
+            state.tree = state.tree.filter((node) => node !== id);
+
+            return layerShare({ layerId: layerId ?? placement?.layerId, ...was });
+        },
+
+        serialize() {
+            return { op: 'layer.removeFromMap', id, version };
+        },
+    };
+}
+
+/**
+ * Place a layer already in the library into this map.
+ *
+ * The inverse of `layer.removeFromMap`, and also what the library modal sends.
+ * It has no local `apply` worth the name: the placement it creates has a
+ * server-assigned id, so the tree is re-read rather than guessed at.
+ */
+export function layerShare({ layerId, parentId = null, sortKey, access = 'read' }) {
+    return {
+        op: 'layer.share',
+        topics: ['layers', 'tree'],
+
+        apply() {
+            return layerShare({ layerId, parentId, sortKey, access });
+        },
+
+        serialize() {
+            return { op: 'layer.share', layerId, mapId: null, parentId, sortKey, access };
+        },
+    };
+}
+
+/**
+ * Wrap nodes in a new group, and its inverse.
+ *
+ * Both sides re-read the tree rather than applying locally: the group's
+ * placement id is the server's to assign, and every child's `parentId` now
+ * points at it. Guessing either would put the client's tree and the server's
+ * out of step in a way only a reload would fix.
+ */
+export function layerGroup({ tempId, name, placementIds, parentId = null, sortKey }) {
+    return {
+        op: 'layer.group',
+        topics: ['layers', 'tree'],
+
+        apply() {
+            return layerUngroup({ id: tempId, version: 1 });
+        },
+
+        serialize() {
+            return { op: 'layer.group', tempId, name, placementIds, parentId, sortKey };
+        },
+    };
+}
+
+/** Dissolve a group, lifting its children to the group's own parent. */
+export function layerUngroup({ id, version }) {
+    return {
+        op: 'layer.ungroup',
+        topics: ['layers', 'tree'],
+
+        apply() {
+            return layerUngroup({ id, version: version + 1 });
+        },
+
+        serialize() {
+            return { op: 'layer.ungroup', id, version };
+        },
+    };
+}

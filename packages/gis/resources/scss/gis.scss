@@ -27,9 +27,12 @@
     position: relative;
 }
 
+// The sidebar is laid out from the left edge and the map fills what is left,
+// so opening or closing it resizes the map rather than covering it. A panel
+// that overlaps the canvas hides the thing the user is working on.
 .gis-map {
     position: absolute;
-    inset: 0;
+    inset: 0 0 0 var(--gis-sidebar-width, 280px);
     background: #e9edf0;
 }
 
@@ -135,5 +138,322 @@
         width: 14px;
         height: 14px;
         border-width: 2px;
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Layer tree (specification section 8)
+// ---------------------------------------------------------------------------
+
+.gis-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    width: var(--gis-sidebar-width, 280px);
+    background: #fff;
+    border-right: 1px solid #c8ced3;
+    transition: transform 0.15s ease-out;
+
+    &.is-closed {
+        transform: translateX(-100%);
+    }
+}
+
+// Closing the sidebar gives its width back to the map.
+.gis-app:has(.gis-sidebar.is-closed) .gis-map {
+    inset: 0;
+}
+
+.gis-tree {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gis-tree-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 6px;
+}
+
+.gis-tree-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #73818f;
+}
+
+.gis-tree-filter {
+    margin: 0 12px 8px;
+    width: calc(100% - 24px);
+}
+
+.gis-tree-scroller {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+// ---- the recycler ---------------------------------------------------------
+//
+// The spacer gives the scrollbar the full list's length; the viewport holds
+// only the pooled rows and is translated into place. One transform per scroll
+// rather than one layout per row.
+
+.gis-vlist {
+    position: relative;
+}
+
+.gis-vlist-spacer {
+    width: 1px;
+}
+
+.gis-vlist-viewport {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    will-change: transform;
+}
+
+// ---- rows -----------------------------------------------------------------
+
+.gis-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 6px;
+    padding-left: calc(6px + var(--gis-depth, 0) * 16px);
+    font-size: 13px;
+    line-height: 1;
+    cursor: default;
+    user-select: none;
+    touch-action: none;  // the row is a drag handle; the scroller still scrolls
+
+    &:hover {
+        background: #f0f3f5;
+    }
+
+    &.is-selected {
+        background: #e4eef7;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #20a8d8;
+        outline-offset: -2px;
+    }
+
+    // Hidden by an ancestor, or outside its zoom band. Its own checkbox may
+    // still read as ticked, which is the point: the flag is untouched.
+    &.is-dimmed .gis-tree-name {
+        opacity: 0.45;
+    }
+
+    &.is-matched .gis-tree-name {
+        font-weight: 600;
+    }
+
+    &.is-drop-into {
+        box-shadow: inset 0 0 0 2px #20a8d8;
+    }
+
+    &.is-drop-invalid {
+        box-shadow: inset 0 0 0 2px #f86c6b;
+        cursor: no-drop;
+    }
+}
+
+.gis-tree-twisty {
+    width: 16px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #73818f;
+    font-size: 12px;
+
+    &[hidden] {
+        display: inline-block;
+        visibility: hidden;
+    }
+}
+
+.gis-tree-name {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.gis-tree-badges {
+    display: inline-flex;
+    gap: 4px;
+    color: #73818f;
+    font-size: 11px;
+}
+
+.gis-tree-menu-btn {
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: #73818f;
+}
+
+.gis-tree-rename {
+    flex: 1;
+    height: 24px;
+    padding: 0 4px;
+    font-size: 13px;
+}
+
+// The insertion line for a drop above or below a row. Positioned in list
+// coordinates, never against a pooled node — that node may be showing a
+// different row by the next frame.
+.gis-tree-drop {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: #20a8d8;
+    pointer-events: none;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.gis-tree-scroller.is-dragging {
+    cursor: grabbing;
+}
+
+.gis-tree-menu {
+    position: fixed;
+    z-index: 1080;
+    min-width: 220px;
+}
+
+.gis-tree-slider,
+.gis-tree-zoom-range {
+    label {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 11px;
+        color: #73818f;
+    }
+}
+
+.gis-tree-zoom-inputs {
+    display: flex;
+    gap: 6px;
+}
+
+// ---------------------------------------------------------------------------
+// Map control panel (specification section 8)
+// ---------------------------------------------------------------------------
+
+// Below the toolbar, which owns the top-right corner. Both are chrome, and
+// two overlays stacked on the same corner hide each other.
+.gis-panel {
+    position: absolute;
+    top: calc(55px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    z-index: 1002;
+    width: 240px;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+
+.gis-panel-toggle {
+    width: 100%;
+    border: 0;
+    border-radius: 4px 4px 0 0;
+    text-align: left;
+}
+
+.gis-panel.is-collapsed .gis-panel-toggle {
+    border-radius: 4px;
+}
+
+.gis-panel-body {
+    max-height: min(60vh, 520px);
+    padding: 8px 12px 12px;
+    overflow-y: auto;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.gis-panel-section + .gis-panel-section {
+    margin-top: 12px;
+}
+
+.gis-panel-heading {
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #73818f;
+}
+
+.gis-panel-basemaps,
+.gis-panel-overlays {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.gis-panel-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 3px 0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.gis-panel-error {
+    margin-top: 4px;
+    color: #f86c6b;
+    font-size: 12px;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Phone widths (specification section 17)
+// ---------------------------------------------------------------------------
+
+@media (max-width: 767.98px) {
+    .gis-sidebar {
+        width: min(86vw, 320px);
+        box-shadow: 0 0 24px rgba(0, 0, 0, 0.25);
+    }
+
+    // The map keeps the full width and the tree slides over it: at this size
+    // there is not enough room to give a fixed column away permanently.
+    .gis-map {
+        inset: 0;
+    }
+
+    .gis-panel {
+        width: auto;
+        left: calc(12px + env(safe-area-inset-left));
+        max-height: calc(100% - 80px);
+    }
+
+    .gis-panel-body {
+        max-height: 50vh;
     }
 }

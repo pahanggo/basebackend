@@ -19,6 +19,10 @@
 
 @section('content')
     <div id="gis-app" class="gis-app">
+        {{-- The layer tree. Its rows are built and recycled in JavaScript;
+             this is only the box they live in (specification section 8). --}}
+        <aside id="gis-sidebar" class="gis-sidebar" aria-label="{{ __('Layers') }}"></aside>
+
         <div id="gis-map" class="gis-map"></div>
 
         <a href="{{ backpack_url('dashboard') }}" class="gis-back" title="{{ __('Back to dashboard') }}">
@@ -26,9 +30,13 @@
             <span>{{ __('Back to dashboard') }}</span>
         </a>
 
-        {{-- The toolbar the layer tree and the drawing tools mount into (S5b, S6).
-             For now it carries the two entry points S5 builds. --}}
+        {{-- The toolbar the drawing tools mount into (S6). --}}
         <div class="gis-toolbar btn-group btn-group-sm" role="toolbar">
+            <button type="button" id="gis-toggle-sidebar" class="btn btn-light"
+                    aria-expanded="true" aria-controls="gis-sidebar">
+                <i class="la la-bars"></i>
+                <span class="sr-only">{{ __('Layers') }}</span>
+            </button>
             <button type="button" id="gis-open-maps" class="btn btn-light">
                 <i class="la la-map"></i> {{ __('Maps') }}
             </button>

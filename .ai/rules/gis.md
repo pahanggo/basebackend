@@ -238,3 +238,13 @@ Supersedes the note recorded just before this one, which had the reason wrong.
 Per-session budgets are measured on the development machine, unthrottled, and compared against the previous session's numbers on the same machine. Treat them as a **regression check** — "did this change make something slower" — never as a claim about device performance. Device performance is established on devices.
 
 Do not re-open this at the start of a session, do not add a throttle row back to a gate table, and do not describe the missing throttled measurement as outstanding. It was replaced, not skipped.
+
+## GIS layer tree: index the tree, and what "absent" means on the view write
+Settled in S5b.
+
+- **Never traverse the tree by scanning `state.tree` per node.** `childrenOf` without an index is a full scan plus a sort; calling it once per node is quadratic. Measured at 2,000 nodes: flatten 98 ms, expand a group 67 ms against a 50 ms gate, visibility toggle 149 ms. With one `buildIndex(state)` per render pass: 6 ms, 1.6 ms, 3 ms. The same scan existed twice — `tree-model.flatten` and `main.js`'s `childrenInTreeOrder` — so fixing one is not fixing it. The index is a snapshot: build it per pass, never hold it across a mutation.
+- **All tree arithmetic lives in `ui/tree-model.js`** — inheritance, tri-state, the cycle rule, where a drop lands. `layer-tree.js` is the view and holds none of it. Those are the parts that fail silently, and they have Node tests.
+- **Rows are recycled**, so nothing may hold a row node across a render. A pooled node shows whichever row the list last gave it; the drop indicator is positioned in list coordinates for exactly this reason.
+- **The view write merges, so an absent key means "unchanged".** That is deliberate — a client that knows only where it is looking must not erase the basemap. The consequence is that a client must send a key it wants *emptied*: omitting `overlays` when the list went empty meant unticking the last weather overlay never saved and it returned on reload. An empty list is a state the user chose, not an absence of information.
+- **Opacity applies at the Leaflet pane**, one per top-level node. Groups, tile layers and image overlays fade; a single vector layer inside a group does not until per-layer styling lands (S8), because vector layers share one feature canvas.
+- **`createStore` must build the `Store` before the `SyncQueue`.** The queue's `onApplied` closes over it and runs after the function returns; a `const` declared below the closure threw `ReferenceError` on every confirmed batch from S4 until S5b, and no test caught it because none reached the network.

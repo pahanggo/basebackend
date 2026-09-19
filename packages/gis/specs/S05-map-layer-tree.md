@@ -139,6 +139,84 @@ Plus: zero accessibility violations, and full keyboard operation — arrows navi
 
 The map browser replaces what an earlier draft suggested as an optional Backpack CRUD screen for listing maps. It is in-app, it knows about unsynced state, and it can open a map — none of which a CRUD panel does. Do not build both.
 
+## Results — S5b (layer tree, control panel)
+
+Built and measured. **Every gate is met, with room.** The tree is virtualized
+through a shared row recycler, drag and drop is Pointer Events throughout, and
+the map control panel carries the basemap picker, weather overlays,
+go-to-coordinate and isolate.
+
+| Metric | Budget | Measured |
+| --- | --- | --- |
+| Tree scroll, 2,000 nodes | 60fps | **0.5 ms p95** per render, 1.1 ms worst |
+| Tree expand, 2,000 nodes | < 50 ms | **1.6 ms** |
+| Visibility toggle to painted | < 50 ms | **3.0 ms** on a real map, 3.2 ms at 2,000 nodes |
+| Flatten 2,000 nodes | — | 6.0 ms |
+| DOM rows held, 2,000 nodes | — | **41** |
+
+### The tree was quadratic, and the gate is what found it
+
+The first measurement missed: 98 ms to flatten 2,000 nodes and **67 ms to
+expand a group, against a 50 ms budget**. Nothing looked wrong — every function
+was a short, readable traversal. The cost was that `childrenOf` scanned the
+whole tree and sorted, and the traversal called it once per node. Two thousand
+nodes is four million operations to draw a list of forty rows.
+
+One parent-to-children index, built once per render pass, took flatten to 6 ms
+and expand to **1.6 ms**. The same scan was in `main.js` where the editor works
+out which layers to draw, so a visibility toggle paid it too: 149 ms before,
+3 ms after. It is a snapshot and is rebuilt every pass — an index that outlives
+a mutation is a tree that disagrees with the store.
+
+### A latent bug the first commit from the tree exposed
+
+`createStore` closed over a `store` binding it declared *below* the closure, so
+every confirmed batch threw `ReferenceError: store is not defined` inside
+`onApplied` and the client never reconciled server ids or versions. It had been
+there since S4 and had never fired, because nothing committed a store command
+through the queue until now — map creation and `layer.share` both go out
+through `sendCommands`, which bypasses the store. The tree's first reorder
+found it immediately.
+
+### Turning the last overlay off never saved
+
+Reported from use, and worth recording because the shape recurs. The view write
+merges what it is given, deliberately: a client that knows only where it is
+looking must not erase the basemap someone chose. So an absent key means
+*unchanged*. The client only sent `overlays` when the list was non-empty —
+which meant unticking the last one sent nothing at all, and the overlay came
+back on the next reload.
+
+**An empty list is a state the user chose, not an absence of information.** The
+client now always sends the key. A Pest test pins the contract from the server
+side, since that is where the merge lives.
+
+### Decisions that differ from the plan
+
+- **Opacity is applied at the pane, not per vector layer.** A group, a tile
+  layer and an image overlay all fade correctly, because each top-level node
+  owns a Leaflet pane and a pane has a CSS opacity. A single vector layer
+  inside a group does not yet, because vector layers share one feature canvas
+  until per-layer styling lands in S8. The command, the state and the slider
+  are all real now; what is missing is one multiply in the paint.
+- **The opacity slider and zoom range live in the row menu, not the row.**
+  Thirty-two pixels of row across two thousand rows is not where a slider
+  belongs, and putting one there would have cost a control per pooled node.
+- **Isolate solos the tree selection rather than one layer.** It composes with
+  multi-select for free, and the single-layer case is just a selection of one.
+- **Tree filter expands what it matches.** A hit inside a collapsed group is
+  shown rather than counted — a match the user cannot reach is not a match.
+- **The conflict panel is not here.** The queue still pauses and keeps the
+  commands on a 409, which is the safe half. Resolution belongs with S6, where
+  editing makes conflicts likely in the first place; the comment in `main.js`
+  that promised it for S5b has been corrected rather than left to mislead.
+
+### What is deferred from this session's scope
+
+Search in the control panel is the shell only — the panel section exists and
+the endpoint behind it is S9b's. That is the seam the specification already
+names: S5 builds the panel and Search, S9b mounts the query builder into it.
+
 ## Results — S5a (maps, sharing, library)
 
 Built and measured. **Everything server-side is done, along with the two modals

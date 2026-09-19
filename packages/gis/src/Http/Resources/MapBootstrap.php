@@ -89,10 +89,41 @@ class MapBootstrap
                 'attrSchema' => $layer->attr_schema,
                 'sourceConfig' => $layer->source_config,
                 'featureCount' => $layer->feature_count,
+                'extent' => self::extent($layer),
                 'placementVersion' => $placement->version,
                 'layerVersion' => $layer->version,
             ];
         })->filter()->values()->all();
+    }
+
+    /**
+     * The layer's bounding box, for "zoom to layer".
+     *
+     * A box rather than the geometry: the tree only ever needs to fit the map
+     * to it, and the column is nullable metadata with no spatial index, so
+     * there is nothing here worth shipping in full. Longitude first, as
+     * everything on this wire is.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}|null
+     */
+    protected static function extent(Layer $layer): ?array
+    {
+        $extent = $layer->extent;
+
+        if ($extent === null) {
+            return null;
+        }
+
+        $ring = $extent->exteriorRing();
+        $xs = [];
+        $ys = [];
+
+        foreach ($ring->points() as $point) {
+            $xs[] = $point->x();
+            $ys[] = $point->y();
+        }
+
+        return $xs === [] ? null : [min($xs), min($ys), max($xs), max($ys)];
     }
 
     /**
