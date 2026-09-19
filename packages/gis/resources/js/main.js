@@ -40,6 +40,7 @@ import { Toolbar } from './ui/toolbar.js';
 import { ConflictPanel } from './ui/conflict-panel.js';
 import { Legend } from './ui/legend.js';
 import { AttributeTable } from './ui/attribute-table.js';
+import { QueryPanel } from './ui/query-panel.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
 import { Snapper } from './map/snap.js';
@@ -1651,6 +1652,89 @@ class Editor {
         this.map.fitBounds([[south, west], [north, east]], { maxZoom: 19 });
     }
 
+    /**
+     * Run a spatial or attribute query and turn the answer into a selection.
+     *
+     * The shape, when one is asked for, is the current viewport — which is the
+     * only shape the user has already expressed without drawing one. Drawing a
+     * query shape is a drawing tool feeding this panel, and it belongs with the
+     * rest of the selection work.
+     */
+    async runQuery(layer, request) {
+        const body = {
+            return: 'ids',
+            where: request.where,
+        };
+
+        if (request.useViewport) {
+            const bounds = this.map.getBounds();
+
+            body.relation = request.relation;
+            body.geomEncoding = 'geojson';
+            body.geom = JSON.stringify({
+                type: 'Polygon',
+                coordinates: [[
+                    [bounds.getWest(), bounds.getSouth()],
+                    [bounds.getEast(), bounds.getSouth()],
+                    [bounds.getEast(), bounds.getNorth()],
+                    [bounds.getWest(), bounds.getNorth()],
+                    [bounds.getWest(), bounds.getSouth()],
+                ]],
+            });
+
+            if (request.bufferMetres) {
+                body.bufferMetres = request.bufferMetres;
+            }
+        }
+
+        this.activity.start();
+
+        try {
+            const response = await fetch(`${this.config.apiBase}/layers/${layer.id}/query`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken,
+                },
+                body: JSON.stringify(body),
+            });
+
+            const answer = await response.json();
+
+            if (!response.ok) {
+                // `query_too_broad` names the candidate count, which is what
+                // tells the user how much narrowing it needs.
+                this.query.report({ error: answer.detail ?? this.config.strings.queryFailed });
+
+                return;
+            }
+
+            this.query.report({ count: answer.ids.length, examined: answer.examined });
+            this.selectFeatures(layer.id, answer.ids);
+        } catch (error) {
+            console.error('gis: query failed', error);
+            this.query.report({ error: this.config.strings.queryFailed });
+        } finally {
+            this.activity.stop();
+        }
+    }
+
+    /**
+     * Hold a set of feature ids as the current selection.
+     *
+     * The selection is one set shared across the map, the table and the tree
+     * (specification §14). This is the half of it this session needs: the
+     * query's answer, remembered, so the table can be filtered to it and the
+     * map can draw it differently once S9's selection rendering lands.
+     */
+    selectFeatures(layerId, ids) {
+        this.store.state.selection = new Set(ids);
+        this.selectedLayerId = layerId;
+        this.store.emit(['features', 'selection']);
+    }
+
     /** Force one layer to read again, discarding what it holds. */
     refreshLayer(layerId) {
         for (const feed of this.feeds) {
@@ -1933,6 +2017,14 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.query = new QueryPanel({
+        container: document.getElementById('gis-sidebar'),
+        strings: config.strings,
+        layers: () => Object.values(editor.store?.state.layers ?? {})
+            .filter((layer) => layer.kind === 'vector'),
+        onRun: (layer, request) => editor.runQuery(layer, request),
+    });
+
     editor.table = new AttributeTable({
         container: document.getElementById('gis-map'),
         strings: config.strings,

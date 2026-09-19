@@ -33,7 +33,7 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S8b](S08-styling-labels-legend.md) | Labels, graduated and rule-based modes, markers | S8a |
 | [S9a](S09-attributes-selection-query.md) | Attribute table — **done** | S5, S8a |
 | [S9b](S09-attributes-selection-query.md) | Selection, schema editing, popups | S9a |
-| [S9b](S09b-query.md) | Spatial and attribute query | S9 |
+| [S9c](S09b-query.md) | Spatial and attribute query — **done** | S9a |
 | [S10](S10-measurement-units.md) | Measurement and units | S6 |
 | [S11](S11-responsive-a11y-performance.md) | Responsive, a11y, performance | all v1 |
 | — | **v1 ships** | |

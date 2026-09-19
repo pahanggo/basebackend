@@ -254,6 +254,26 @@ class EditorController extends Controller
             'tableLoading' => __('Loading…'),
             'tableCount' => __(':shown of :loaded features in view'),
             'tableNeedsVisible' => __('Make the layer visible before opening its attributes.'),
+
+            // The query panel.
+            'query' => __('Query'),
+            'queryLayer' => __('Layer'),
+            'queryWithinView' => __('Limit to the current view'),
+            'relation' => __('Relation'),
+            'relation_intersects' => __('intersects'),
+            'relation_within' => __('is within'),
+            'relation_contains' => __('contains'),
+            'relation_crosses' => __('crosses'),
+            'relation_touches' => __('touches'),
+            'relation_disjoint' => __('is away from'),
+            'bufferMetres' => __('Buffer (metres)'),
+            'addCondition' => __('Add a condition'),
+            'runQuery' => __('Run'),
+            'queryRunning' => __('Searching…'),
+            'queryFound' => __(':count found, from :examined in the area'),
+            'queryFailed' => __('The query could not be run.'),
+            'value' => __('Value'),
+            'remove' => __('Remove'),
         ];
     }
 }

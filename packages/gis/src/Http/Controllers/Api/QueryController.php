@@ -98,25 +98,46 @@ class QueryController extends Controller
             return $this->problem('query_invalid', $e->getMessage(), 422);
         }
 
-        $candidates = $this->candidates($layer, $shape, $relation, $conditions);
+        // **Counted over the INDEXED filters only.** The attribute predicates
+        // are deliberately not in this pass: they read inside a JSON document
+        // and ride no index, so counting with them included makes the number
+        // measure nothing — a filter that happens to match few rows produces a
+        // small count from a scan of the whole layer, and the ceiling then
+        // waves through exactly the query it exists to refuse. Measured: an
+        // attribute-only query over 2.2 million rows reported 72,000
+        // "candidates" and took 1.8 seconds to say so.
+        $candidates = $this->candidates($layer, $shape, $relation);
         $count = (clone $candidates)->count();
 
         if ($count > self::MAX_CANDIDATES) {
-            // Refused rather than run. The count is named so the user can see
-            // how much narrowing it needs rather than guessing.
+            // Refused rather than run, and refused in milliseconds because the
+            // count is an index-only read. Running the exact predicate over
+            // two million rows and then refusing would take minutes.
+            //
+            // The message says "area" rather than "filter" on purpose: an
+            // attribute predicate cannot narrow this count, because it is not
+            // indexed. Section 6 describes promoting a marked field to a
+            // generated column, which is what would change that; until then,
+            // saying a filter would help would be advice that does not work.
             return $this->problem('query_too_broad', sprintf(
-                'That query would examine %s features; the limit is %s. Narrow the area or the filter.',
+                'That area holds %s features; the limit is %s. Zoom in or draw a smaller area.',
                 number_format($count),
                 number_format(self::MAX_CANDIDATES),
             ), 422);
         }
 
         $matched = $this->exact($candidates, $shape, $relation);
+
+        // Attribute predicates run HERE, over what the index admitted, for the
+        // same reason the exact spatial test does: they are the expensive half.
+        foreach ($conditions as $condition) {
+            $matched->whereRaw($condition['sql'], $condition['bindings']);
+        }
         $return = $validated['return'] ?? 'ids';
         $limit = (int) ($validated['limit'] ?? 10_000);
 
         if ($return === 'count') {
-            return new JsonResponse(['count' => $matched->count(), 'candidates' => $count]);
+            return new JsonResponse(['count' => $matched->count(), 'examined' => $count]);
         }
 
         $rows = (clone $matched)->select('id')->limit($limit + 1)->pluck('id');
@@ -127,14 +148,14 @@ class QueryController extends Controller
             return new JsonResponse([
                 'ids' => $ids,
                 'count' => count($ids),
-                'candidates' => $count,
+                'examined' => $count,
                 'capped' => $capped,
             ]);
         }
 
         return new JsonResponse([
             'type' => 'FeatureCollection',
-            'candidates' => $count,
+            'examined' => $count,
             'capped' => $capped,
             'features' => $this->features($layer, $ids),
         ]);
@@ -149,9 +170,8 @@ class QueryController extends Controller
      * is what turns two million features into a few thousand before anything
      * expensive happens.
      *
-     * @param  array<int, array{sql: string, bindings: array<int, mixed>}>  $conditions
      */
-    protected function candidates(Layer $layer, ?Geometry $shape, ?string $relation, array $conditions): Builder
+    protected function candidates(Layer $layer, ?Geometry $shape, ?string $relation): Builder
     {
         $query = DB::connection(config('gis.connection'))
             ->table('gis_features')
@@ -171,10 +191,6 @@ class QueryController extends Controller
                 ->where('maxy', '>=', $box->getSouthWest()->y());
         }
 
-        foreach ($conditions as $condition) {
-            $query->whereRaw($condition['sql'], $condition['bindings']);
-        }
-
         return $query;
     }
 
@@ -189,6 +205,21 @@ class QueryController extends Controller
 
         if ($relation === 'disjoint') {
             return $candidates->whereRaw("NOT ST_Intersects(`geom`, {$literal})");
+        }
+
+        if ($relation === 'crosses') {
+            // **Asked in both directions, deliberately.** OGC's `Crosses` is
+            // asymmetric where the two shapes have different dimensions: a
+            // LINE crosses a POLYGON, and the polygon does not cross the line.
+            // Every other relation here reads with the feature as the subject
+            // — a feature within the shape, a feature containing it — and the
+            // same reading of `crosses` returns nothing at all when somebody
+            // draws a line across a cadastre and asks which lots it crosses.
+            // Crossing is a symmetric idea in everything except the argument
+            // order, so both orders are asked.
+            return $candidates->whereRaw(
+                "(ST_Crosses(`geom`, {$literal}) OR ST_Crosses({$literal}, `geom`))",
+            );
         }
 
         return $candidates->whereRaw(self::RELATIONS[$relation]."(`geom`, {$literal})");

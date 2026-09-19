@@ -1248,3 +1248,52 @@ hr {
 .gis-table-editor {
     line-height: 26px;
 }
+
+// ---- query ----------------------------------------------------------------
+//
+// A section at the foot of the sidebar, beside the layers it acts on and the
+// selection it produces — not a panel floating over the map.
+
+.gis-query-field,
+.gis-query-check {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 6px;
+    font-size: 11px;
+    color: #73818f;
+}
+
+.gis-query-field {
+    flex-direction: column;
+}
+
+.gis-query-check {
+    align-items: center;
+}
+
+.gis-query-clause {
+    display: grid;
+    grid-template-columns: 1fr 70px 1fr 20px;
+    gap: 4px;
+    margin-bottom: 4px;
+    align-items: center;
+}
+
+.gis-query-drop {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #73818f;
+    line-height: 1;
+}
+
+.gis-query-add,
+.gis-query-run {
+    margin: 4px 4px 0 0;
+}
+
+.gis-query-result {
+    margin: 8px 0 0;
+    color: #73818f;
+    font-size: 11px;
+}

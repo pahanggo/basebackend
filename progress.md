@@ -29,6 +29,34 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S9c — Spatial and attribute query
+
+`POST /layers/{layer}/query`: six relations, attribute conditions, an optional
+geodesic buffer, returning ids, a count or features. A panel at the foot of the
+sidebar, beside the layers it acts on.
+
+Measured against the real 2.5-million-feature land-use layer: a viewport query
+examines 8,002 and matches 7,986 in 557 ms; the same with a category filter
+matches 441. A box covering the state is **refused in 413 ms**, naming
+2,081,109 features.
+
+**The counting had to be fixed before the ceiling worked.** My first version
+put the attribute filter in the candidate pass, which made the count measure
+nothing — a filter matching few rows produced a small count from a scan of the
+whole layer, so the ceiling waved through exactly the query it exists to
+refuse. The count is now over the indexed filters alone, and the reported
+figure is `examined`: the same 8,002 with and without a filter, because the
+index admitted the same rows either way.
+
+**`ST_Crosses` is asymmetric.** By OGC a line crosses a polygon and the polygon
+does not cross the line — so "which lots does this line cross", read with the
+feature as the subject, returned nothing. It is asked both ways now.
+
+**Also fixed, from your report:** clicking during the re-read that an edit
+triggers threw on a null working set. The hit test walks the *renderer's*
+layers, so that is where the geometry type should have been read from — the
+feed's `entry` is a different object with a different lifetime.
+
 ### S9a — Attribute table
 
 A bottom dock over the map: every column from the layer's schema, per-column
