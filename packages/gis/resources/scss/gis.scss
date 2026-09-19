@@ -1046,3 +1046,90 @@ hr {
         }
     }
 }
+
+// ---- legend ---------------------------------------------------------------
+//
+// Pinned to a corner of the MAP, not the app shell, so it never lands under
+// the layers panel. Foldable, because on a phone a legend of fourteen land-use
+// categories is most of the screen.
+
+.gis-legend {
+    position: absolute;
+    z-index: 1000;
+    max-width: min(260px, calc(100% - 24px));
+    max-height: 45%;
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    font-size: 12px;
+
+    &.is-bottom-right { right: 12px; bottom: 32px; }
+    &.is-bottom-left  { left: 12px;  bottom: 32px; }
+    &.is-top-right    { right: 12px; top: 64px; }
+    &.is-top-left     { left: 12px;  top: 64px; }
+}
+
+.gis-legend-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 4px 4px 0 0;
+    background: none;
+    font-weight: 600;
+
+    .la {
+        transition: transform 0.15s ease;
+    }
+}
+
+.gis-legend.is-collapsed .gis-legend-toggle {
+    border-radius: 4px;
+
+    .la {
+        transform: rotate(-90deg);
+    }
+}
+
+.gis-legend-body {
+    overflow: auto;
+    padding: 2px 10px 8px;
+}
+
+.gis-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    padding-left: calc(var(--gis-depth, 0) * 10px);
+    line-height: 1.4;
+
+    &.is-group,
+    &.is-layer {
+        font-weight: 600;
+    }
+
+    // A classified layer's own row is a heading for the classes under it, so
+    // it reads as one rather than as an entry with a missing swatch.
+    &.is-layer:not(:has(.gis-legend-swatch)) {
+        margin-top: 4px;
+    }
+}
+
+.gis-legend-swatch {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+}
+
+.gis-legend-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

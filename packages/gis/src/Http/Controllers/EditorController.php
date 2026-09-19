@@ -246,6 +246,7 @@ class EditorController extends Controller
             'simplifyPrompt' => __('Simplify to what tolerance, in metres?'),
             'operationEmpty' => __('That left nothing behind.'),
             'operationFailed' => __('The operation could not be completed.'),
+            'legend' => __('Legend'),
         ];
     }
 }

@@ -88,6 +88,49 @@ Compare against the S2 baseline at each of the three pinned zooms — this sessi
 - Browser: label collision drops the lower-priority label and never overlaps.
 - Browser: the paint-state warning fires above 64.
 
-## Results
+## Results — the legend (S8a)
 
-_Fill in when complete._
+**Partly done.** The legend is built; labels and the remaining style modes are
+not. What is here is listed below, and what is not is listed after it.
+
+The legend is generated from the resolved style of every visible layer rather
+than maintained beside it, which is the only way it cannot drift — a legend a
+user edits eventually disagrees with the map, and the disagreement is invisible
+until somebody acts on it. It reads the same `classification` document the
+sublayer rows do, so a category recoloured in the tree is recoloured in the
+legend in the same frame without either side telling the other.
+
+| Behaviour | Result |
+| --- | --- |
+| Categories listed for a classified layer | 13 plus the leftovers bucket, under the layer as a heading |
+| Hiding a category in the tree | drops out of the legend in the same frame |
+| A group with nothing visible under it | no heading, rather than an empty one |
+| Tiles and image overlays | omitted — they have no symbology to explain |
+| Folded state and corner | remembered in `view_state.panels`, restored without writing back |
+
+**The selection was extracted into a pure `legendEntries(state, zoom)`**, for
+the same reason `tree-model.js` is separate from `layer-tree.js`: this is the
+part that fails silently. A legend listing a hidden category, or omitting a
+visible one, still looks like a legend. It has Node tests; the panel that
+renders it has none and needs none.
+
+### Still to build in S8
+
+- **Labels.** The largest remaining piece, and it needs a transport decision
+  first: a label is a per-feature string, and the read sends either nothing or
+  the whole attribute document. The `classify=` mechanism sends one property
+  per feature as a dictionary and an index, which is right for a low-cardinality
+  field and wrong for lot numbers. Raised rather than guessed at.
+- **Graduated, rule-based and heatmap modes.** Graduated needs the same
+  transport decision: bucketing by a numeric field means the client holding a
+  NUMBER per feature, where the class index is a byte into a dictionary. A
+  `float64` section on GIS1 would cost 8 bytes a feature.
+- **The classification methods** — equal interval, quantile, Jenks, standard
+  deviation — which are what graduated mode configures.
+- **ColorBrewer ramps beyond the qualitative one** S5d ships, and the
+  colour-blind-safe filter.
+- **The sprite sheet and custom SVG marker upload.** The upload endpoint from
+  S5c is the one that would carry it, with `purpose=marker`; the rasterisation
+  requirement is the security control and is not optional.
+- **The style panel.** Colour and opacity are reachable from the row menu and
+  the sublayer rows; a panel is what the remaining modes need.

@@ -29,7 +29,8 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S6a](S06-drawing-editing.md) | Drawing, readout, validation — **done** | S4, S2 |
 | [S6b](S06-drawing-editing.md) | Vertex editing, snapping, clipboard, conflicts | S6a |
 | [S7](S07-geometry-operations.md) | Geometry operations — **done** | S6 |
-| [S8](S08-styling-labels-legend.md) | Styling, labels, legend | S5d, S2 |
+| [S8a](S08-styling-labels-legend.md) | Legend — **done** | S5d, S2 |
+| [S8b](S08-styling-labels-legend.md) | Labels, graduated and rule-based modes, markers | S8a |
 | [S9](S09-attributes-selection-query.md) | Attribute table and selection | S5, S8 |
 | [S9b](S09b-query.md) | Spatial and attribute query | S9 |
 | [S10](S10-measurement-units.md) | Measurement and units | S6 |

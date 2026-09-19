@@ -17,6 +17,7 @@ and kept going. They are here because you may disagree.
 
 | # | Question | What I did | Where |
 | --- | --- | --- | --- |
+| 4 | **Labels and graduated styling both need a per-feature value on the wire**, and the read currently sends either nothing or the whole attribute document. The `classify=` channel sends one property as a dictionary + byte index, which is right for 14 land-use categories and wrong for lot numbers or a continuous area. Options: a `float64` section for numerics (+8 bytes/feature), a variable-length string section for labels, or requiring `fields=1` on a labelled layer and accepting the 2.7x payload at label zooms only. | Built neither. This is a format decision with a measurable cost and it is yours. | S8b |
 | 3 | **Split** is in S7's scope but `geosop` has no split operation. It can be built as a difference against a buffered cutting line, but the buffer width is arbitrary and affects the result. | Left unbuilt and raised here rather than guessing a width. | S7 |
 | 2 | A circle is stored as a **polygon** of 72 segments. MySQL has no circle type and `geom` is one column, so there is nowhere else for it to go — but the centre and radius are then not exactly recoverable. §7's GIS1 type 4 anticipates carrying them in the attribute tail; nothing writes that yet. | Stored as a polygon and raised it here. | S6a |
 | 1 | `gis.read.min_area_px` is 1 and `max_features_per_response` is 1,000,000. At those values a zoom-12 viewport returns ~25,000 features from `Lot` alone against a 10,000 design target. They look like S3 verification settings that were never restored. | Left them alone. Retuning moves the §19 budgets, which are a hard gate. | spec §23 |
@@ -27,6 +28,25 @@ testing — delete it whenever you like, or tell me to.
 ---
 
 ## Done
+
+### S8a — Legend
+
+A legend pinned to a corner of the map, generated from the resolved style of
+every visible layer rather than maintained beside it — which is the only way it
+cannot drift. It reads the same classification the sublayer rows do, so
+recolouring a category in the tree recolours the legend in the same frame.
+
+Hidden things are omitted rather than greyed: a legend is a key to what is *on*
+the map. A group with nothing visible under it gets no heading; tiles and image
+overlays get no entry, because they have no symbology to explain.
+
+The selection logic is a pure `legendEntries(state, zoom)` with its own tests,
+separate from the panel — the same split `tree-model.js` has from
+`layer-tree.js`, and for the same reason: a legend listing a hidden category
+still looks like a legend.
+
+**S8 split.** S8b has labels and the remaining style modes, and both are
+blocked on the same transport question — see open question 4.
 
 ### S7 — Geometry operations
 

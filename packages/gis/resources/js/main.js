@@ -38,6 +38,7 @@ import { CornerHandles } from './map/overlay/corner-handles.js';
 import { DrawSession } from './map/draw/draw-session.js';
 import { Toolbar } from './ui/toolbar.js';
 import { ConflictPanel } from './ui/conflict-panel.js';
+import { Legend } from './ui/legend.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
 import { run as runOperation } from './map/ops/index.js';
@@ -809,7 +810,11 @@ class Editor {
             await this.sync?.drain();
             this.bootstrap = await getJson(`${this.config.apiBase}/maps/${this.bootstrap.id}`);
             hydrate(this.store, this.bootstrap);
+        // `hydrate` writes into state directly rather than through `commit`,
+        // so nothing is emitted and anything listening has to be told.
+        this.legend?.render();
             this.tree.rebuild();
+            this.legend?.render();
         }
 
         syncPanes(this.map, this.store.state);
@@ -839,6 +844,14 @@ class Editor {
         this.setSidebarOpen(panels?.sidebar ?? true, { save: false });
         this.setPanelOpen(panels?.controls ?? true, { save: false });
         this.tree.setSectionCollapsed(!(panels?.layers ?? true));
+
+        // The legend remembers whether it was folded and which corner it was
+        // pinned to. `save: false` because restoring is not a choice the user
+        // just made — writing it back would be the view-state write that
+        // section 8 warns about, a resize deciding where the map opens
+        // tomorrow.
+        this.legend?.setCorner(panels?.legend?.corner ?? 'bottom-right', { save: false });
+        this.legend?.setCollapsed(panels?.legend?.collapsed ?? false, { save: false });
     }
 
     setSidebarOpen(open, { save = true } = {}) {
@@ -1029,6 +1042,7 @@ class Editor {
         );
 
         this.store = store;
+        this.legend?.attach(store);
         this.sync = sync;
 
         // A map switch is the one case where nothing carries over, so the
@@ -1041,6 +1055,9 @@ class Editor {
         this.renderer.clearGeometry();
 
         hydrate(this.store, this.bootstrap);
+        // `hydrate` writes into state directly rather than through `commit`,
+        // so nothing is emitted and anything listening has to be told.
+        this.legend?.render();
         this.rememberInUrl();
         this.tree.attach(this.store);
         this.panel.setProviders(
@@ -1811,6 +1828,17 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.legend = new Legend({
+        container: document.getElementById('gis-map'),
+        strings: config.strings,
+        zoom: () => map.getZoom(),
+        onChanged: (state) => editor.rememberPanels({ legend: state }, true),
+    });
+
+    // Re-rendered on zoom because a layer outside its zoom band is not drawn,
+    // and a key to something that is not on the map is a key to nothing.
+    map.on('zoomend', () => editor.legend.render());
+
     editor.toolbar = new Toolbar({
         container: document.querySelector('#gis-app .gis-toolbar'),
         strings: config.strings,
