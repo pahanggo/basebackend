@@ -6,6 +6,7 @@ use Brick\Geo\Exception\GeometryException;
 use Brick\Geo\Geometry;
 use Gis\Casts\GeometryCast;
 use Gis\Commands\CommandFailed;
+use Gis\Validation\GeometryValidator;
 use InvalidArgumentException;
 
 /**
@@ -13,7 +14,9 @@ use InvalidArgumentException;
  * write path has to enforce before anything reaches the database.
  *
  * Bounded first, parsed second: a malformed 40 MB WKB string should be refused
- * by its length, not by whatever the parser does with it.
+ * by its length, not by whatever the parser does with it. Validated last, by
+ * `GeometryValidator` — every write reaches the database through here, so
+ * putting the rules at this seam is what makes them impossible to skip.
  */
 class GeometryInput
 {
@@ -53,7 +56,11 @@ class GeometryInput
             throw CommandFailed::invalidGeometry('Geometry is empty.');
         }
 
-        return $geometry;
+        // Last, and here rather than in each handler, so no write path can be
+        // added that forgets it. The vertex cap above runs first because it is
+        // free and this is not: validation touches every coordinate and asks
+        // MySQL about the result.
+        return GeometryValidator::normalise($geometry);
     }
 
     /**
