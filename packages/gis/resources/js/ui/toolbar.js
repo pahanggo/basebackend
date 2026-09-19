@@ -84,6 +84,10 @@ export class Toolbar {
         container.hidden = false;
         clear(container);
 
+        // The drawing tools, in a group of their own so they can be hidden
+        // together when there is nothing to draw on.
+        this.drawGroup = el('div', { class: 'gis-draw-group', role: 'group' });
+
         for (const tool of TOOLS) {
             const button = el('button', {
                 type: 'button',
@@ -95,8 +99,10 @@ export class Toolbar {
             }, [el('i', { class: `la ${ICONS[tool]}`, 'aria-hidden': 'true' })]);
 
             this.buttons.set(tool, button);
-            container.append(button);
+            this.drawGroup.append(button);
         }
+
+        container.append(this.drawGroup);
 
         // The selection tools, in their own group after a separator. They do
         // not create anything, so they are not drawing tools — but they are
@@ -168,6 +174,27 @@ export class Toolbar {
         }, [el('i', { class: `la ${OP_ICONS[op]}`, 'aria-hidden': 'true' })])));
 
         this.container.after(this.opsGroup);
+    }
+
+    /**
+     * Show or hide the drawing tools.
+     *
+     * **Hidden, not disabled.** A disabled row of six buttons still says "you
+     * could draw here"; there is nothing to draw on, and a control that cannot
+     * do anything is worse than one that is not there. The SELECTION tools
+     * stay — selecting works on a locked layer, and on a read-only one, and is
+     * exactly what someone with no editable layer is there to do.
+     *
+     * Any tool still armed is put away with them, or the crosshair outlives
+     * the toolbar and the next click is a drawing gesture into nothing.
+     */
+    setDrawable(drawable) {
+        this.drawGroup.hidden = !drawable;
+
+        if (!drawable && this.tool !== null) {
+            this.setTool(null);
+            this.onTool?.(null);
+        }
     }
 
     /**

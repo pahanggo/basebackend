@@ -179,6 +179,10 @@ it('draws points and lines, which have no area to be culled by', function () {
             'geom' => json_encode(['type' => 'LineString', 'coordinates' => [[103.32, 3.80], [103.33, 3.81]]]),
             'geomEncoding' => 'geojson',
         ]),
+        // Explicit, because the factory's default bbox is random and does not
+        // follow an overridden geometry — the read filters on these columns,
+        // not on `geom`.
+        'minx' => 103.32, 'maxx' => 103.33, 'miny' => 3.80, 'maxy' => 3.81,
         'area_m2' => 0.0,
     ]);
 
@@ -188,6 +192,7 @@ it('draws points and lines, which have no area to be culled by', function () {
             'geom' => json_encode(['type' => 'Point', 'coordinates' => [103.325, 3.805]]),
             'geomEncoding' => 'geojson',
         ]),
+        'minx' => 103.325, 'maxx' => 103.325, 'miny' => 3.805, 'maxy' => 3.805,
         'area_m2' => 0.0,
     ]);
 

@@ -246,7 +246,14 @@ class LayerFeed {
 
     async refresh(map) {
         const bounds = map.getBounds();
-        const zoom = map.getZoom();
+
+        // **Rounded, because zoom is now fractional.** Smooth zoom means
+        // `getZoom()` returns 15.25 as readily as 15, and the server takes an
+        // integer — a plain cast truncates, which makes the area threshold
+        // larger than the view deserves and culls features that should be on
+        // screen. Rounding also means one read per zoom level rather than one
+        // per quarter step, which is what keeps the cache from thrashing.
+        const zoom = Math.round(map.getZoom());
 
         if (this.covers(bounds, zoom)) {
             return;
@@ -660,6 +667,7 @@ class Editor {
             onAddOverlay: (file) => this.addImageOverlay(file),
             onEditOverlay: (row) => this.editOverlay(row),
             onAttributes: (row) => this.openAttributes(row),
+            onSelectionChange: () => this.syncDrawable(),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -1114,8 +1122,17 @@ class Editor {
         this.selectMeasurement(null);
         this.measurePanel?.setReadOnly(!this.mayMeasure());
         this.syncMeasurements();
+
+
         this.rememberInUrl();
         this.tree.attach(this.store);
+
+        // Something to draw on, chosen for them — AFTER the tree has rows to
+        // choose from. Opening a map with one editable layer and nothing
+        // selected put an armed toolbar in front of the user that refused
+        // every click with "select a layer first".
+        this.tree.selectFirstEditable();
+        this.syncDrawable();
         this.panel.setProviders(
             this.bootstrap.basemaps,
             this.bootstrap.viewState?.basemap || this.bootstrap.basemaps.default,
@@ -1406,6 +1423,17 @@ class Editor {
         return null;
     }
 
+    /**
+     * Show the drawing tools only where there is somewhere to draw.
+     *
+     * `drawTarget()` is the same function `commitDrawn` uses to decide whether
+     * a finished shape has a home, so the toolbar can never offer a tool that
+     * the commit would then refuse.
+     */
+    syncDrawable() {
+        this.toolbar?.setDrawable(this.drawTarget() !== null);
+    }
+
     /** Commit a finished geometry, or explain why it cannot be committed. */
     commitDrawn(geometry) {
         const layer = this.drawTarget();
@@ -1467,7 +1495,6 @@ class Editor {
             // which is a miss during an additive pick, not a change of mind.
             if (!event.shiftKey) {
                 this.clearSelection();
-                this.toolbar?.showSelection(null);
             }
 
             return;
@@ -1478,7 +1505,6 @@ class Editor {
         // dragged and can perfectly well be selected, measured and read —
         // refusing to select it was refusing to look at it.
         this.selectFeatures(null, [hit.id], { additive: event.shiftKey });
-        this.toolbar?.showSelection(this.store.state.selection.size);
 
         const feed = this.feeds.find((candidate) => candidate.slot === hit.slot);
         const placement = Object.values(this.store.state.placements)
@@ -1912,6 +1938,11 @@ class Editor {
         this.store.state.selection = selection;
         this.selectedLayerId = layerId ?? this.selectedLayerId;
         this.selectionLayer?.invalidate();
+
+        // Here, not at each call site. A selection made by query showed no
+        // count while the same selection made by marquee did, because only one
+        // of the four callers remembered to update the chip.
+        this.toolbar?.showSelection(selection.size === 0 ? null : selection.size);
         this.store.emit(['features', 'selection']);
     }
 
@@ -1926,7 +1957,6 @@ class Editor {
     selectByShape(ids, { additive }) {
         this.selectFeatures(null, ids, { additive });
 
-        this.toolbar?.showSelection(this.store.state.selection.size);
     }
 
     /** Nothing selected, from anywhere. */
@@ -2260,6 +2290,17 @@ async function boot() {
         zoom: view.zoom,
         zoomControl: true,
         preferCanvas: true,
+
+        // Smooth zoom. `zoomSnap: 0` would be fully continuous and is the
+        // wrong trade here: the renderer caches one set of built paths per
+        // zoom level and the read asks the server for a threshold computed
+        // from one, so a continuously varying zoom rebuilds every path and
+        // re-reads on every wheel tick. A quarter step feels continuous under
+        // the hand and gives four cache states per level instead of hundreds.
+        zoomSnap: 0.25,
+        zoomDelta: 0.5,
+        wheelPxPerZoomLevel: 120,
+        wheelDebounceTime: 20,
     });
 
     const renderer = createRenderer({
@@ -2304,7 +2345,6 @@ async function boot() {
         onZoomTo: (row) => editor.zoomToFeature(row),
         onSelect: (row, options) => {
             editor.selectFeatures(null, [row.id], options);
-            editor.toolbar?.showSelection(editor.store.state.selection.size);
         },
     });
 
@@ -2343,7 +2383,6 @@ async function boot() {
         },
         onClearSelection: () => {
             editor.clearSelection();
-            editor.toolbar.showSelection(null);
         },
     });
 

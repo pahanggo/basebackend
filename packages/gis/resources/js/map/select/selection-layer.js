@@ -16,9 +16,25 @@
  * already been projected once this frame.
  */
 
-const FILL = 'rgba(43, 108, 176, 0.22)';
-const STROKE = '#2b6cb0';
-const HALO = 'rgba(255, 255, 255, 0.9)';
+/**
+ * **Not the layer's colour, and not a colour any layer is likely to be.**
+ *
+ * The first version highlighted in the same blue as the default vector style,
+ * which meant a selected parcel on a default layer was a blue outline on a
+ * blue outline — the highlight was drawn, measurably, and could not be seen. A
+ * selection has to read as selected whatever the layer underneath is painted,
+ * so it gets a colour of its own: magenta, which is neither the blue of a
+ * default layer nor the amber the measurements use.
+ *
+ * The white halo does the rest of the work. Over a dark satellite tile or a
+ * saturated land-use fill, a single-colour outline of any hue can vanish; two
+ * strokes, light under dark, cannot.
+ */
+import { POLYGON } from '../geometry.js';
+
+const FILL = 'rgba(213, 63, 140, 0.18)';
+const STROKE = '#d53f8c';
+const HALO = 'rgba(255, 255, 255, 0.95)';
 
 export class SelectionLayer {
     /**
@@ -75,14 +91,30 @@ export class SelectionLayer {
             return 0;
         }
 
-        const { coords, ringStarts, featStarts, ids } = geometry;
-        const path = new Path2D();
+        const { coords, ringStarts, featStarts, ids, types } = geometry;
+
+        // **Two paths, for two different reasons.** The outline accumulates
+        // across the whole layer, because a stroke of many subpaths is one
+        // canvas call and looks the same either way.
+        //
+        // The FILL cannot. `evenodd` is what makes a parcel with a hole
+        // highlight as the shape it is, and on one shared path that same rule
+        // makes two overlapping features cancel each other out — a circle
+        // behind a rectangle came out with a white bite taken out of it. So
+        // each feature is filled on its own, and only polygons are filled at
+        // all: canvas closes an open path before filling it, so a filled line
+        // is a filled triangle.
+        const outline = new Path2D();
         let drawn = 0;
+
+        context.fillStyle = FILL;
 
         for (let f = 0; f < ids.length; f++) {
             if (!selected.has(ids[f])) {
                 continue;
             }
+
+            const shape = new Path2D();
 
             // `featStarts` indexes RINGS; `ringStarts` indexes VERTICES.
             for (let r = featStarts[f]; r < featStarts[f + 1]; r++) {
@@ -94,13 +126,18 @@ export class SelectionLayer {
                     const y = coords[v * 2 + 1] * scale - originY;
 
                     if (v === start) {
-                        path.moveTo(x, y);
+                        shape.moveTo(x, y);
                     } else {
-                        path.lineTo(x, y);
+                        shape.lineTo(x, y);
                     }
                 }
             }
 
+            if (types[f] === POLYGON) {
+                context.fill(shape, 'evenodd');
+            }
+
+            outline.addPath(shape);
             drawn += 1;
         }
 
@@ -108,17 +145,26 @@ export class SelectionLayer {
             return 0;
         }
 
-        // One accumulated path per layer, so a selection of four hundred is
-        // four canvas calls rather than twelve hundred. `evenodd` so a parcel
-        // with a hole highlights as the shape it is.
-        context.fillStyle = FILL;
-        context.fill(path, 'evenodd');
+        const path = outline;
+
+        context.setLineDash([]);
         context.strokeStyle = HALO;
-        context.lineWidth = 4;
+        context.lineWidth = 5;
         context.stroke(path);
+
         context.strokeStyle = STROKE;
-        context.lineWidth = 2;
+        context.lineWidth = 2.5;
         context.stroke(path);
+
+        // A dashed white overlay on top of the magenta. It costs one more
+        // stroke and makes the selection legible without relying on colour at
+        // all, which is what a reader who cannot separate magenta from the
+        // layer's own hue needs (specification §18).
+        context.setLineDash([6, 5]);
+        context.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        context.lineWidth = 2.5;
+        context.stroke(path);
+        context.setLineDash([]);
 
         return drawn;
     }

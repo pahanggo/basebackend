@@ -56,7 +56,7 @@ export class LayerTree {
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
         onIsolate = null, onOpenMaps = null, onCollapse = null, onRenameMap = null,
         onClassify = null, onClassPreview = null, onAddOverlay = null, onEditOverlay = null,
-        onAttributes = null,
+        onAttributes = null, onSelectionChange = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -73,6 +73,10 @@ export class LayerTree {
         this.onAddOverlay = onAddOverlay;
         this.onEditOverlay = onEditOverlay;
         this.onAttributes = onAttributes;
+        // Which rows are selected decides whether there is anywhere to draw,
+        // so the toolbar has to hear about it. The tree knows the selection;
+        // what that means for the toolbar is the editor's business.
+        this.onSelectionChange = onSelectionChange;
         this.onIsolate = onIsolate;
         this.onCollapse = onCollapse;
         this.onRenameMap = onRenameMap;
@@ -1100,6 +1104,42 @@ export class LayerTree {
         }
 
         this.focus(this.rows.indexOf(row));
+        this.onSelectionChange?.();
+    }
+
+    /**
+     * Select the first row that can actually be drawn on.
+     *
+     * Called on load. Opening a map with one editable layer and no selection
+     * meant the drawing tools were there, armed, and refused every click with
+     * "select a layer first" — the commonest thing anyone does with a map they
+     * just made. Nothing is selected when there is nothing to select, and the
+     * toolbar is hidden in that case rather than lying about what it can do.
+     */
+    selectFirstEditable() {
+        if (!this.store || this.selection.size > 0) {
+            return false;
+        }
+
+        for (let i = 0; i < this.rows.length; i++) {
+            const row = this.rows[i];
+
+            if (row.kind === 'class' || !row.placement || !row.layer) {
+                continue;
+            }
+
+            if (row.layer.kind === 'vector' && !row.layer.locked && row.placement.access !== 'read') {
+                this.selection.clear();
+                this.selection.add(row.placement.id);
+                this.focused = i;
+                this.list.render();
+                this.onSelectionChange?.();
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     focus(index) {

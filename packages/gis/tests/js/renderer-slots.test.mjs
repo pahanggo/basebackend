@@ -104,6 +104,28 @@ function paintedOrder(r, layer) {
     return seen;
 }
 
+/**
+ * The same, watching strokes rather than fills.
+ *
+ * A line is never filled — canvas closes an open path before filling it, so a
+ * filled line is a filled triangle — which means a fill-watching probe cannot
+ * see one at all. Ordering across the three geometry types has to be asserted
+ * through whichever property that type actually paints with.
+ */
+function paintedOrderByStroke(r, layer) {
+    const seen = [];
+    const ctx = {
+        set strokeStyle(v) { seen.push(v); },
+        set fillStyle(v) { seen.push(v); },
+        set lineWidth(v) {}, set globalAlpha(v) {},
+        fill() {}, stroke() {},
+    };
+
+    r._paintPaths(ctx, layer.paths, layer.style ?? null, 1, layer.paints ?? null);
+
+    return seen;
+}
+
 test('the first row in the tree paints on top', () => {
     // `order` is tree position, 0 being the first row, and the first row must
     // end up above the others. This sorted the other way until S5d, which put
@@ -154,9 +176,11 @@ test('within one class, polygons paint under lines under points', () => {
     const r = renderer();
     const paths = new Map([[(1 << 9) | 0, 'point'], [(3 << 9) | 0, 'polygon'], [(2 << 9) | 0, 'line']]);
 
-    r.options = { styles: { 1: { fill: 'point' }, 2: { fill: 'line' }, 3: { fill: 'polygon' } } };
+    // One property each, so every type registers exactly once: a line paints
+    // by stroke alone and the other two by fill.
+    r.options = { styles: { 1: { fill: 'point' }, 2: { stroke: 'line' }, 3: { fill: 'polygon' } } };
 
-    assert.deepEqual(paintedOrder(r, { paths }), ['polygon', 'line', 'point']);
+    assert.deepEqual(paintedOrderByStroke(r, { paths }), ['polygon', 'line', 'point']);
 });
 
 test('a hidden class is skipped rather than painted transparent', () => {

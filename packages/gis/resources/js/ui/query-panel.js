@@ -56,7 +56,7 @@ export class QueryPanel {
         this.clauseList = el('div', { class: 'gis-query-clauses' });
         this.result = el('p', { class: 'gis-query-result', 'aria-live': 'polite' });
 
-        this.body = el('div', { class: 'gis-panel-section' }, [
+        this.body = el('div', { class: 'gis-panel-body gis-panel-section', id: 'gis-query-body' }, [
             el('label', { class: 'gis-query-field' }, [
                 el('span', { text: strings.queryLayer }),
                 this.layerSelect,
@@ -89,11 +89,18 @@ export class QueryPanel {
             this.result,
         ]);
 
+        // `gis-section-toggle gis-panel-toggle`, the same pair the layer tree,
+        // the map controls and the measurement panel use. This carried a
+        // `gis-panel-header` of its own, which nothing else in the sidebar had
+        // and which nothing styled — so it rendered as a bordered browser
+        // button in a column of small-caps section headings.
         this.element = el('section', { class: 'gis-panel gis-query' }, [
             el('button', {
                 type: 'button',
-                class: 'gis-panel-header',
+                class: 'gis-section-toggle gis-panel-toggle',
                 'aria-expanded': 'false',
+                title: strings.query,
+                'aria-controls': 'gis-query-body',
                 onclick: () => this.setCollapsed(!this.collapsed),
             }, [
                 el('i', { class: 'la la-caret-right', 'aria-hidden': 'true' }),
@@ -109,8 +116,8 @@ export class QueryPanel {
     setCollapsed(collapsed) {
         this.collapsed = collapsed;
         this.body.hidden = collapsed;
-        this.element.querySelector('.gis-panel-header').setAttribute('aria-expanded', String(!collapsed));
-        this.element.querySelector('.gis-panel-header .la').className =
+        this.element.querySelector('.gis-panel-toggle').setAttribute('aria-expanded', String(!collapsed));
+        this.element.querySelector('.gis-panel-toggle .la').className =
             `la ${collapsed ? 'la-caret-right' : 'la-caret-down'}`;
 
         if (!collapsed) {

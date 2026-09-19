@@ -170,13 +170,14 @@ test('the cull drops everything below the threshold and nothing above it', () =>
     const kept = cullByArea(geometry.area, candidates, 5000);
 
     for (let k = 0; k < kept.length; k++) {
-        assert.ok(geometry.area[kept[k]] >= 5000);
+        // Zero is exempt: it means "has no area", not "is too small to see".
+        assert.ok(geometry.area[kept[k]] >= 5000 || geometry.area[kept[k]] === 0);
     }
 
     let expected = 0;
 
     for (let f = 0; f < geometry.count; f++) {
-        if (geometry.area[f] >= 5000) {
+        if (geometry.area[f] >= 5000 || geometry.area[f] === 0) {
             expected++;
         }
     }
@@ -191,3 +192,15 @@ test('a threshold of zero culls nothing', () => {
     assert.equal(cullByArea(geometry.area, index.search(0, 0, 1, 1), 0).length, 50);
 });
 
+test('a point and a line survive a cull they have no area to pass', () => {
+    // The bug this guards: `area_m2` is 0 for both, so a threshold above zero
+    // dropped every one of them at every zoom. They arrived from the server,
+    // sat in the typed arrays, and no path was ever built for them — you could
+    // draw a line, watch it save, and never see it again.
+    const area = new Float64Array([0, 12, 0, 9000]);
+    const candidates = new Uint32Array([0, 1, 2, 3]);
+
+    const kept = [...cullByArea(area, candidates, 5000)];
+
+    assert.deepEqual(kept, [0, 2, 3]);
+});

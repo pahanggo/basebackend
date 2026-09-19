@@ -1572,22 +1572,28 @@ hr {
     border-left: 1px solid rgba(0, 0, 0, 0.12);
 
     .btn.active {
-        background: #2b6cb0;
-        border-color: #2b6cb0;
+        background: #d53f8c;
+        border-color: #d53f8c;
         color: #fff;
     }
 }
 
-/* Beside the tools, over the map. It changes on every pointer move during a
-   marquee, so it must be something the eye can ignore. */
+/* Top centre, over the map. Every other corner is taken — the tools and the
+   ops group top right, the zoom control top left, the scale bar bottom left,
+   the legend bottom right — and at `left: 0.5rem` this sat exactly underneath
+   the zoom buttons and read as "nd in view".
+
+   It changes on every pointer move during a marquee, so it has to be something
+   the eye can ignore. */
 .gis-selection-count {
     position: absolute;
-    top: 3.25rem;
-    left: 0.5rem;
+    top: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 640;
     padding: 0.15rem 0.5rem;
     border-radius: 3px;
-    background: rgba(43, 108, 176, 0.92);
+    background: rgba(213, 63, 140, 0.92);
     color: #fff;
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
@@ -1595,7 +1601,7 @@ hr {
 }
 
 .gis-table-row.is-selected {
-    background: rgba(43, 108, 176, 0.14);
+    background: rgba(213, 63, 140, 0.14);
 }
 
 @media (pointer: coarse) {
@@ -1603,4 +1609,15 @@ hr {
         min-height: 44px;
         min-width: 44px;
     }
+}
+
+/* The drawing tools are hidden as a group when no editable layer is selected;
+   the selection tools beside them are not, because selecting works on a locked
+   layer and on a read-only one. */
+.gis-draw-group {
+    display: inline-flex;
+}
+
+.gis-draw-group[hidden] {
+    display: none;
 }
