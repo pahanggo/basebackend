@@ -1130,6 +1130,8 @@ It was an overlay anchored top-right, and it is not any more. Two floating panel
 | --- | --- |
 | Basemap | Four previewed tiles, one active. See *Which basemaps are offered* below |
 | Go to coordinate | Accepts any format in section 11 — decimal degrees, DMS, UTM, MGRS — with paste detection, and recentres the map |
+
+A small readout at the bottom right of the map reports where the pointer is, latitude first. That order is the opposite of the one used everywhere else in this package — on the wire and in the database a coordinate is longitude-latitude, because that is what GeoJSON and WKB define — so the element carries a label saying which is which. A reader who guesses wrong lands in the wrong hemisphere and nothing tells them. It is written on an animation frame rather than on every `mousemove`, since the browser fires those faster than it paints.
 | Search | Finds features by attribute value across the visible layers, and layers by name. Results list, click to zoom and select |
 | Query | The spatial and attribute query builder (section 14): region, predicate, buffer, `where` clauses |
 | Isolate | Solo the selected layer, hiding its siblings temporarily. Not persisted, and restoring brings back the previous per-layer visibility rather than turning everything on |

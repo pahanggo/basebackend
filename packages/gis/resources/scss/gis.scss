@@ -61,8 +61,12 @@
     }
 }
 
+// Icon only: the label lives in the tooltip and in the accessible name, and
+// the button beside it is the same size and shape.
 .gis-back {
     position: relative;
+    justify-content: center;
+    min-width: 34px;
     z-index: 1000;
     display: inline-flex;
     align-items: center;
@@ -664,4 +668,33 @@ hr {
     flex: none;
     padding: 2px 8px;
     line-height: 1.2;
+}
+
+// ---------------------------------------------------------------------------
+// Pointer coordinate readout
+// ---------------------------------------------------------------------------
+
+// Above Leaflet's attribution, which owns the bottom-right corner, and out of
+// the way of the pointer it is reporting on.
+.gis-coordinates {
+    position: absolute;
+    right: calc(8px + env(safe-area-inset-right));
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    z-index: 1000;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #23282c;
+    font-size: 11px;
+
+    // Tabular figures, so the numbers do not jitter sideways as the pointer
+    // moves and each digit changes width.
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+
+    &[hidden] {
+        display: none;
+    }
 }

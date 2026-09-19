@@ -25,7 +25,7 @@ import { SeqCounter } from './lib/seq.js';
 import { LayerTree } from './ui/layer-tree.js';
 import { ControlPanel } from './ui/control-panel.js';
 import { enableTooltips } from './ui/tooltips.js';
-import { notify } from './ui/confirm.js';
+import { notify, confirmAction } from './ui/confirm.js';
 import { effectiveVisible, effectiveOpacity, buildIndex, childrenOf } from './ui/tree-model.js';
 import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
@@ -1013,6 +1013,95 @@ class Editor {
     }
 }
 
+/**
+ * Ask before leaving the editor.
+ *
+ * The editor is a working surface, not a page: a stray click on the way out
+ * costs whatever is on screen, and the browser's own "leave site?" prompt only
+ * fires for a form, which this is not.
+ *
+ * **The question changes when there is work in flight.** A queue that has not
+ * drained means changes that exist on screen and nowhere else, and saying so
+ * is the difference between a confirmation worth reading and one everybody
+ * learns to click through.
+ */
+function confirmLeaving(link, config, editor) {
+    if (!link) {
+        return;
+    }
+
+    link.addEventListener('click', async (event) => {
+        // Captured now: `currentTarget` is null by the time the await resolves.
+        const { href } = event.currentTarget;
+        const queue = editor.sync?.describe();
+        const unsaved = (queue?.pending.length ?? 0) + (queue?.inFlight.length ?? 0) > 0;
+
+        event.preventDefault();
+
+        const confirmed = await confirmAction({
+            title: config.strings.backToDashboard,
+            text: unsaved ? config.strings.leaveUnsaved : config.strings.confirmLeave,
+            confirmLabel: config.strings.leave,
+            cancelLabel: config.strings.cancel,
+            dangerous: unsaved,
+        });
+
+        if (confirmed) {
+            window.location.href = href;
+        }
+    });
+}
+
+/** Decimal places kept in the readout: 1e-5 degrees is about a metre. */
+const READOUT_PLACES = 5;
+
+/**
+ * Show where the pointer is, at the bottom right of the map.
+ *
+ * **Latitude first**, which is the opposite of the order everything else in
+ * this package uses. On the wire and in the database a coordinate is
+ * longitude-latitude, because that is what GeoJSON and WKB define; but a
+ * person reading a pair off a screen, or pasting one into a search box, writes
+ * latitude first. The element carries a translated `title` saying which is
+ * which, because a reader who guesses wrong lands in the wrong hemisphere and
+ * nothing tells them.
+ *
+ * Updated on a frame rather than on every `mousemove`: the browser fires those
+ * faster than it paints, and each one is a text write that invalidates layout.
+ */
+function trackPointer(map, readout) {
+    if (!readout) {
+        return;
+    }
+
+    let pending = null;
+    let frame = null;
+
+    map.on('mousemove', (event) => {
+        pending = event.latlng;
+
+        if (frame !== null) {
+            return;
+        }
+
+        frame = window.requestAnimationFrame(() => {
+            frame = null;
+            readout.textContent = `${pending.lat.toFixed(READOUT_PLACES)}, ${pending.lng.toFixed(READOUT_PLACES)}`;
+            readout.hidden = false;
+        });
+    });
+
+    // Leaving the map leaves the last position on screen, which reads as the
+    // pointer still being there. On a touch screen there is no hover at all,
+    // so the readout simply never appears — which is right: there is nothing
+    // to report.
+    map.on('mouseout', () => {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+        readout.hidden = true;
+    });
+}
+
 async function boot() {
     const config = readBootstrap();
     const container = document.getElementById('gis-map');
@@ -1043,6 +1132,8 @@ async function boot() {
 
     editor.renderer = renderer;
 
+    trackPointer(map, document.getElementById('gis-coordinates'));
+
     map.on('moveend zoomend', () => {
         editor.refresh();
         editor.rememberView();
@@ -1058,6 +1149,8 @@ async function boot() {
             map.invalidateSize();
         }, 100);
     }).observe(container);
+
+    confirmLeaving(document.querySelector('.gis-back'), config, editor);
 
     // Through the editor, which owns the state and remembers it with the map.
     document.getElementById('gis-toggle-sidebar')?.addEventListener('click', () => {

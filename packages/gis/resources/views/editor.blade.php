@@ -31,13 +31,13 @@
             <button type="button" id="gis-toggle-sidebar" class="btn btn-light gis-panel-btn"
                     aria-expanded="true" aria-controls="gis-sidebar"
                     title="{{ __('Show or hide the layers panel') }}">
-                <i class="la la-layer-group" aria-hidden="true"></i>
+                <i class="la la-bars" aria-hidden="true"></i>
                 <span class="sr-only">{{ __('Show or hide the layers panel') }}</span>
             </button>
 
             <a href="{{ backpack_url('dashboard') }}" class="gis-back" title="{{ __('Back to dashboard') }}">
-                <i class="la la-arrow-left" aria-hidden="true"></i>
-                <span>{{ __('Back to dashboard') }}</span>
+                <i class="la la-tachometer-alt" aria-hidden="true"></i>
+                <span class="sr-only">{{ __('Back to dashboard') }}</span>
             </a>
         </div>
 
@@ -45,6 +45,12 @@
              choosing a map moved next to the map's name, and the panel toggle
              next to the way out. --}}
         <div class="gis-toolbar btn-group btn-group-sm" role="toolbar" hidden></div>
+
+        {{-- Where the pointer is. Rendered here rather than built in
+             JavaScript so its label is translated server-side and the client
+             holds no English literal of its own. --}}
+        <output id="gis-coordinates" class="gis-coordinates"
+                aria-live="off" title="{{ __('Latitude, longitude') }}" hidden></output>
 
         {{-- Shown while a feature read is in flight. Rendered here rather than
              built in JavaScript so the label is translated server-side and the
