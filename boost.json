@@ -1,6 +1,7 @@
 {
     "agents": [
-        "claude_code"
+        "claude_code",
+        "opencode"
     ],
     "cloud": false,
     "guidelines": true,
@@ -13,9 +14,10 @@
     "skills": [
         "infer-conventions",
         "laravel-best-practices",
+        "testing-best-practices",
+        "octane-development",
         "socialite-development",
         "livewire-development",
-        "pest-testing",
         "debug-using-debugbar"
     ]
 }
