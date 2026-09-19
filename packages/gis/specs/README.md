@@ -32,7 +32,8 @@ v1 ships after S11b. Sessions are sequential unless the file says otherwise.
 | [S8a](S08-styling-labels-legend.md) | Legend — **done** | S5d, S2 |
 | [S8b](S08-styling-labels-legend.md) | Labels, graduated and rule-based modes, markers | S8a |
 | [S9a](S09-attributes-selection-query.md) | Attribute table — **done** | S5, S8a |
-| [S9b](S09-attributes-selection-query.md) | Selection, schema editing, popups | S9a |
+| [S9b-i](S09-attributes-selection-query.md) | Selection: marquee, lasso, shared set, highlight — **done** | S9a |
+| [S9b-ii](S09-attributes-selection-query.md) | Schema commands, popups, bulk edit | S9b-i |
 | [S9c](S09b-query.md) | Spatial and attribute query — **done** | S9a |
 | [S10a](S10-measurement-units.md) | Units, coordinate formats, scale bar — **done** | S6a |
 | [S10b](S10-measurement-units.md) | Measurement tools as saved annotations — **done** | S10a |

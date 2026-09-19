@@ -29,6 +29,67 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S9b (first half) — Selection, and a browser sweep that found six real bugs
+
+Marquee, lasso and click-to-select, one selection set shared by the map, the
+table and the tree, and a highlight that repaints in **0.1 ms** against §14's
+8 ms budget — because it goes on the overlay canvas and walks only the selected
+features, which is what S2 separated the canvases for.
+
+**You asked me to test drawing, query and measure in the browser on a new map
+and layer. I did, and it was the right instinct** — I made a scratch map, a
+fresh layer, and drew one of each of the six shapes. Six bugs, none of which
+threw an error:
+
+1. **A point or a line was never drawn, at any zoom.** `area_m2` is 0 for both,
+   and both the server's read and the client's cull dropped anything below the
+   threshold. You could draw a line, watch it save, and never see it again.
+   This is almost certainly the biggest thing you were hitting. Zero now means
+   "has no area", not "is too small to see" — and the server's version is still
+   one index range scan, which I checked with EXPLAIN.
+2. **A line was filled.** One style object serves all three geometry types, so
+   every vector layer's fill was handed to its LineStrings, and canvas closes an
+   open path before filling it. A three-point line came out as a filled
+   triangle.
+3. **A freshly drawn shape did not appear until the next pan.** The write is
+   queued behind a debounce and the re-read fired immediately, so the server was
+   asked for a feature it had not been told about. A drawing bug that was a
+   sequencing bug.
+4. **`notify()` showed an empty dialog at eight call sites** (found during
+   S10b, same sweep). It took an options object; eight callers passed a bare
+   string; destructuring a string gives an undefined title.
+5. **The selection highlight was the same blue as the default layer style**, so
+   it was drawn, measurably, and invisible. Magenta now, with a white halo and a
+   dashed overlay so it does not depend on hue.
+6. **Two overlapping selected polygons cancelled each other out**, and the
+   count chip sat exactly under the zoom control reading "nd in view".
+
+**Also, the three things you asked for mid-way:**
+
+- The drawing tools are **hidden when no editable layer is selected** — hidden
+  rather than greyed out, because a disabled row of six buttons still says "you
+  could draw here". The selection tools stay: selecting works fine on a locked
+  or read-only layer, and is exactly what someone with no editable layer is
+  there to do.
+- **The first editable layer is selected on load.** Opening a map with one
+  editable layer and nothing selected put an armed toolbar in front of you that
+  refused every click with "select a layer first".
+- **The Query heading matches the others.** It carried a `gis-panel-header`
+  class that nothing else used and nothing styled, so it rendered as a bordered
+  browser button in a column of small-caps section headings.
+- **Smooth zoom**, at a quarter step rather than fully continuous: the renderer
+  caches one set of paths per zoom level and the read asks the server for a
+  threshold computed from one, so continuous zoom would rebuild every path and
+  re-read on every wheel tick. The read rounds instead of truncating.
+
+**Still to build in S9b:** schema commands (add, rename, retype, delete a field,
+and the generated-column migration), feature popups, and bulk edit across a
+selection.
+
+I made a scratch map called **S9b browser test** for this and deleted it, its
+layer and its six features when I was done, by exact id. Your five maps are
+untouched.
+
 ### S10b — The measurement tools
 
 Six tools — distance, area, radius, diameter, bearing and feature info — in

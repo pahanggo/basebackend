@@ -106,3 +106,50 @@ than the one it was shown against. Silent, and wrong in a way that looks right.
 - **Feature popups** from a per-layer template. The attributes are already
   fetched on selection (S7's `ids` read), so this is presentation.
 - **Column show/hide, reorder, freeze.**
+
+## Results — selection (S9b, first half)
+
+**Done: selection.** Marquee, lasso, click-to-select, one shared set, and the
+highlight. Schema commands and popups are still S9b's other half.
+
+| Metric | Budget | Measured |
+| --- | --- | --- |
+| Selection change repaint | < 8 ms | **0.1 ms** |
+
+The budget is met by construction rather than by tuning. The highlight goes on
+the overlay canvas and walks only the selected features, so it costs what the
+selection costs and not what the viewport costs — which is what S2 separated
+the canvases for.
+
+**The overlay canvas now takes several painters, by name.** Measurements and
+the selection both belong there and neither owns it; one slot meant the second
+thing to want it silently replaced the first, with nothing to show for it.
+
+**Selection answers from the loaded set**, which is the viewport, and the count
+says "found in view" rather than "matching". §14 is explicit that a
+client-side shape cannot answer for a layer of 1.4 million features, and a bare
+count would be the lie.
+
+### Four things the first version got wrong
+
+Each was drawn, measurably, and could not be seen or was seen wrong. None threw.
+
+- **The highlight was the same blue as the default vector style.** A selected
+  parcel was a blue outline on a blue outline. It has its own colour now —
+  magenta, which is neither the blue of a default layer nor the amber of the
+  measurements — plus a white halo and a dashed overlay, so it reads as
+  selected without relying on hue at all (§18).
+- **Two overlapping selected polygons cancelled each other out.** `evenodd` is
+  what makes a parcel with a hole highlight as the shape it is; on one path
+  accumulated across a layer it takes a bite out of whatever is underneath.
+  Fills are per feature now, the outline still accumulates.
+- **Selected lines were filled**, for the same reason lines were filled
+  everywhere else: canvas closes an open path before filling it.
+- **The count chip sat exactly under the zoom control** and read "nd in view".
+
+### Still to build in S9b
+
+- Schema commands: add, rename, retype, delete a field, and the generated-column
+  migration when a field is marked `indexed`.
+- Feature popups from a per-layer template.
+- Bulk edit across a selection as one command.
