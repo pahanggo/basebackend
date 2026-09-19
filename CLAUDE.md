@@ -198,13 +198,3 @@ When creating a new CRUD, first run `php artisan make:migration` to create the m
 Sidebar links, permissions, routes are also generated when calling `backpack:crud`.
 
 Add the translations into the `lang/ms_MY.json` file in Bahasa Melayu.
-
-## Laravel Backpack
-
-backpack/crud and backpack/generators has been modified and placed into the `packages` directory. Make sure you use the Backpack way when creating CRUD controllers (index / show / update / delete). CRUD controllers should be namespaced `App\Http\Controllers\Admin` and be placed inside the corresponding folder.
-
-When creating a new CRUD, first run `php artisan make:migration` to create the migration file, then run `php artisan migrate` first before running `php artisan backpack:crud` as the generator will generate the CRUD controller, model and requests according to the table inside the database. Call `backpack:crud` with the table name with singular and using pascal casing. For instance if the table name is `user_hobbies`, then call as such: `php artisan backpack:crud UserHobby`.
-
-Sidebar links, permissions, routes are also generated when calling `backpack:crud`.
-
-Add the translations into the `lang/ms_MY.json` file in Bahasa Melayu.
