@@ -96,6 +96,7 @@ class MapController extends Controller
             'data' => collect($maps->items())->map(fn (Map $map) => [
                 'id' => $map->id,
                 'name' => $map->name,
+                'slug' => $map->slug,
                 'layerCount' => (int) $layerCounts->get($map->id, 0),
                 'featureCount' => (int) $featureCounts->get($map->id, 0),
                 'updatedAt' => $map->updated_at?->toIso8601String(),

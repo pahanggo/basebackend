@@ -31,6 +31,7 @@ class MapBootstrap
         return [
             'id' => $map->id,
             'name' => $map->name,
+            'slug' => $map->slug,
             'version' => $map->version,
             'role' => $access->role->value,
             'viewState' => $map->view_state,

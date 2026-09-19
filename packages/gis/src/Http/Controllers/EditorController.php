@@ -15,10 +15,10 @@ class EditorController extends Controller
     /**
      * Render the full-viewport editor page.
      */
-    public function index(Request $request): View
+    public function index(Request $request, ?string $slug = null): View
     {
         return view('gis::editor', [
-            'bootstrap' => $this->bootstrap($request),
+            'bootstrap' => $this->bootstrap($request, $slug),
         ]);
     }
 
@@ -31,9 +31,9 @@ class EditorController extends Controller
      *
      * @return array<string, mixed>
      */
-    protected function bootstrap(Request $request): array
+    protected function bootstrap(Request $request, ?string $slug = null): array
     {
-        $map = $this->openMap($request);
+        $map = $this->openMap($request, $slug);
 
         return [
             'csrfToken' => csrf_token(),
@@ -73,9 +73,22 @@ class EditorController extends Controller
      * the user back where they were, which is what they expect and what a
      * browser modal on every visit would undo.
      */
-    protected function openMap(Request $request): ?Map
+    protected function openMap(Request $request, ?string $slug = null): ?Map
     {
         $userId = (int) $request->user()->getKey();
+
+        if ($slug !== null) {
+            $map = Map::query()->visibleTo($userId)->where('slug', $slug)->first();
+
+            if ($map !== null) {
+                return $map;
+            }
+
+            // A slug that names nothing this user may open falls through to
+            // their own most recent map rather than 404ing. The alternative is
+            // a dead end for a link shared by someone with wider access, and
+            // the map browser is one click away either way.
+        }
 
         if ($requested = $request->integer('map')) {
             $map = Map::query()->visibleTo($userId)->find($requested);

@@ -631,6 +631,36 @@ class Editor {
     }
 
     /**
+     * Put the open map's slug in the address bar.
+     *
+     * `replaceState`, not `pushState`: switching maps inside the editor is not
+     * a navigation the browser's Back button should step through one map at a
+     * time — Back belongs to whatever brought the user here. What this buys is
+     * that the URL always names what is on screen, so it can be copied, pasted
+     * and bookmarked.
+     */
+    rememberInUrl() {
+        const slug = this.bootstrap?.slug;
+
+        if (!slug || !window.history?.replaceState) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+
+        // The editor lives at `.../gis` and `.../gis/{slug}`, so the last
+        // segment is either the slug or the mount point itself.
+        url.pathname = url.pathname.replace(/\/[a-z0-9-]*$/i, (last) => (
+            /\/gis$/i.test(url.pathname) ? `${last}/${slug}` : `/${slug}`
+        ));
+
+        // The `?map=` form predates the slug and would now disagree with it.
+        url.searchParams.delete('map');
+
+        window.history.replaceState({}, '', url);
+    }
+
+    /**
      * The tile the basemap previews show: where the map is actually looking.
      *
      * A preview of somewhere else is a picture of a basemap rather than a
@@ -730,6 +760,7 @@ class Editor {
         this.renderer.clearGeometry();
 
         hydrate(this.store, this.bootstrap);
+        this.rememberInUrl();
         this.tree.attach(this.store);
         this.panel.setProviders(
             this.bootstrap.basemaps,

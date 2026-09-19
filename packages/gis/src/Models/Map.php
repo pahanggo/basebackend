@@ -2,6 +2,7 @@
 
 namespace Gis\Models;
 
+use Gis\Support\MapSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -20,13 +21,38 @@ class Map extends GisModel
 
     protected $table = 'gis_maps';
 
-    protected $fillable = ['owner_id', 'name', 'view_state', 'version'];
+    protected $fillable = ['owner_id', 'name', 'slug', 'view_state', 'version'];
 
     protected $casts = [
         'owner_id' => 'integer',
         'view_state' => 'array',
         'version' => 'integer',
     ];
+
+    /**
+     * Keep the slug in step with the name.
+     *
+     * Derived rather than stored independently, so a map cannot end up with a
+     * URL that says one thing and a title that says another. A rename changes
+     * the URL, which is the honest behaviour for a slug derived from a name —
+     * the alternative is a slug that slowly stops describing its map.
+     *
+     * An explicitly supplied slug is left alone: the map copy sets one itself.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $map): void {
+            if ($map->isDirty('slug') && $map->slug !== null) {
+                return;
+            }
+
+            if ($map->exists && ! $map->isDirty('name')) {
+                return;
+            }
+
+            $map->slug = MapSlug::forName((string) $map->name, $map->exists ? $map->getKey() : null);
+        });
+    }
 
     /**
      * Maps this user may open: the ones they own, plus the ones they are a
