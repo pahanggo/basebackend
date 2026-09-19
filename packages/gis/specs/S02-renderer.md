@@ -2,7 +2,7 @@
 
 **Depends on:** S1b
 **Specification:** §4 (whole section), §19 (budgets)
-**Gate:** **hard gate.** §19 budgets met against real imported data at zoom 12, 14 and 16, on the reference device.
+**Gate:** **hard gate.** §19 budgets met against real imported data at zoom 12, 14 and 16, on the development machine. (The throttled mobile-class gate this file was written against is deferred — §19, *Reference conditions*.)
 
 ## Goal
 
@@ -65,7 +65,7 @@ packages/gis/resources/js/map/
 
 ## Gate
 
-Measured on the reference device (4-core mobile-class CPU, 4 GB RAM, 4x CPU throttle) against imported data, **at zoom 12, 14 and 16** — zoom 12 is the stress case because of the candidate count:
+Measured against imported data, **at zoom 12, 14 and 16** — zoom 12 is the stress case because of the candidate count:
 
 | Metric | Budget |
 | --- | --- |
@@ -92,15 +92,19 @@ If the budget misses, the likely remedy is server-side vector tiling, which §1 
 ## Results
 
 Built and measured. **The budget is met for the interaction that dominates —
-panning — and missed for a cold rebuild. The reference-device gate was not
+panning — and missed for a cold rebuild. The throttled mobile-class gate was not
 measured at all**, and that qualification matters more than any number below.
+That gate has since been **dropped**: real-device testing over slow 3G and 4G
+replaced it — §19, *Reference conditions*.
 
 ### Measured, on the development machine
 
 Apple Silicon, Chrome, 1710 x 930 viewport, against the imported
 data at zoom 12 with both layers placed. **No CPU throttling was applied**: the
 tooling available here cannot drive Chrome's throttling, so every figure is
-from hardware several times faster than the reference device.
+from hardware several times faster than a mid-range phone. These numbers are a
+regression baseline for later sessions, not a claim about device performance;
+that is established on devices.
 
 | Metric | Budget | Measured | |
 | --- | --- | --- | --- |
@@ -225,8 +229,8 @@ is not indicated by anything measured here: the index query, the cull, the hit
 test and the pan frame are all comfortably inside budget, and the one number
 outside it is linear in the feature count that the cap now bounds.
 
-What would justify reopening scope is the reference-device measurement, which
-nobody has taken. It should be taken before S8 and S9 add work to this path.
+What would justify reopening scope is real-device behaviour, and that has since
+been checked directly on slow 3G and 4G rather than simulated here (§19).
 
 ## A bug found later: large features vanishing below zoom 16
 

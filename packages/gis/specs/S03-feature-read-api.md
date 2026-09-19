@@ -33,7 +33,7 @@ packages/gis/resources/js/data/features.js
 
 ## Constraints that apply here
 
-- **The binary format exists for one reason: no parse step.** A 10,000-feature GeoJSON response is roughly 14 MB and ~400 ms to parse on the reference device; the same data in `GIS1` is roughly 4 MB and under 5 ms to view. If the client ends up copying or re-packing buffers, the format has failed its purpose.
+- **The binary format exists for one reason: no parse step.** A 10,000-feature GeoJSON response is roughly 14 MB and ~400 ms to parse on a mid-range device; the same data in `GIS1` is roughly 4 MB and under 5 ms to view. If the client ends up copying or re-packing buffers, the format has failed its purpose.
 - All arrays 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds without copying.
 - Encoding is content negotiation, never a separate endpoint or a `?format=` parameter.
 - Binary is the default above 2,000 features; GeoJSON below, and for debugging.

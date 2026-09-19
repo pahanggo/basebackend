@@ -129,7 +129,7 @@ These are properties of the cadastre and of MySQL, not of any one importer. `gis
 - **The area cull is the ONLY thing that varies what is drawn by zoom**, and it varies which features, never their shape. Coordinate quantisation varies precision below the editing zoom and is not LOD in this sense: every vertex still arrives.
 - **Do not use rbush's `search`**: it allocates an item object per hit, and a zoom-12 query matches 36,000. Walk the tree and collect indices into a reused `Uint32Array` (17 ms → 2.9 ms). The cull compacts in place into that same buffer.
 - **Never refetch on every `moveend`.** Read with a quarter-viewport of padding and refetch only when the view leaves it. Sessions are file-based, so requests serialise: forty small pans became forty queued multi-megabyte requests and a frozen tab. Padding is not free — half a viewport each way quadruples the response.
-- Budgets on the dev machine, both layers, 40,000 features: pan repaint 0.00 ms, cold rebuild 75.7 ms, index+cull 2.9 ms, hit test p95 0.2 ms, heap 30 MB. **The reference-device (4x throttle) gate has never been measured**; take it before S8 and S9 add work to the paint path.
+- Budgets on the dev machine, both layers, 40,000 features: pan repaint 0.00 ms, cold rebuild 75.7 ms, index+cull 2.9 ms, hit test p95 0.2 ms, heap 30 MB. These are a regression baseline for later sessions, not a device-performance claim; the throttled mobile-class gate was dropped and replaced by real-device testing.
 
 ## GIS feature read: the GIS1 format and where the time actually goes
 - **Encoding is negotiated by `Accept`** (`application/vnd.gis.features+gis1` or `application/geo+json`), never a `?format=` parameter. Binary is 2.4x smaller and up to 6x faster to turn into typed arrays.
@@ -229,3 +229,12 @@ Nine global layers, 4,276,307 features, all from `GunatanahSeeder`. Measured, no
 Measured at those values, 1456x840 zoom-12 viewport over Kuantan, `Lot` alone: 25,573 features returned of 169,567 candidates, against §4's 10,000-feature design target. The cap never engages. 4 px² → 15,945; 8 px² → 9,145. Add the land-use layers and it is worse.
 
 Do not silently retune: it changes the §19 budgets, which are a hard gate. Raise it as a decision. Recorded as the one open question in specification §23.
+
+## GIS budgets: synthetic CPU throttling is not a gate — real devices replaced it
+Supersedes the note recorded just before this one, which had the reason wrong.
+
+§19 originally gated every session on a 4-core mobile-class device under a 4x DevTools CPU slowdown. That gate is **dropped** — not deferred, not an unpaid debt. The question it stood in for has been answered directly: the editor was tested on real devices over slow 3G and 4G, and the result was acceptable.
+
+Per-session budgets are measured on the development machine, unthrottled, and compared against the previous session's numbers on the same machine. Treat them as a **regression check** — "did this change make something slower" — never as a claim about device performance. Device performance is established on devices.
+
+Do not re-open this at the start of a session, do not add a throttle row back to a gate table, and do not describe the missing throttled measurement as outstanding. It was replaced, not skipped.

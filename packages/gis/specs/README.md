@@ -50,6 +50,6 @@ Two things to know before measuring anything:
 
 ## Definition of done
 
-A session is complete when its functionality works, its budgets are met on the reference device and recorded against the previous baseline, its tests pass under `php artisan test`, its failure modes from specification section 21 behave as specified, and its UI passes an accessibility check.
+A session is complete when its functionality works, its budgets are met on the development machine and recorded against the previous baseline, its tests pass under `php artisan test`, its failure modes from specification section 21 behave as specified, and its UI passes an accessibility check.
 
 Record the measured budget numbers in the session file under **Results** when you finish. That is what makes the next session's comparison meaningful.

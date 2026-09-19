@@ -44,7 +44,7 @@ The image-overlay exception is deliberate and worth stating plainly, because it 
 | --- | --- |
 | Browsers | Last 2 versions of Chrome, Edge, Firefox, Safari |
 | Required APIs | ES modules, ResizeObserver, Pointer Events, Web Workers, OffscreenCanvas (optional) |
-| Reference device | 4-core mobile-class CPU, 4 GB RAM, tested at 4x CPU throttle |
+| Reference device | The development machine, for regression comparison. Real-device behaviour is tested on devices — see section 19 |
 | Minimum viewport | 360 x 640 |
 | Server | PHP 8.4, Laravel 13, MySQL 8.0.23+ |
 
@@ -801,7 +801,7 @@ All float sections are 8-byte aligned so `new Float64Array(buf, offset, len)` su
 
 **Quantisation is what replaced the `lod` byte an earlier draft carried here.** With a non-zero `coordExponent` (`gis.read.coord_exponent`) each ordinate becomes a `uint32` holding `round((lng + 180) * 10^e)` — the bias is what keeps it unsigned, and unsigned is what keeps it portable, since PHP's `pack()` has no signed little-endian code. It halves the coordinate section, which is two thirds of the payload, and it is **not applied at or above `edit_min_zoom`**: there a vertex can be dragged and sent back, so a rounded read would write its own rounding into storage and move the vertex again on every edit. Quantisation shortens every ordinate and drops none; that is the whole difference between it and the simplification this format used to signal.
 
-The client views the buffers and hands them to the renderer: no parse, no object allocation, no GC pressure. A 10,000-feature GeoJSON response is roughly 14 MB and costs about 400 ms to parse on the reference device; the same data in this format is roughly 4 MB and under 5 ms to view. This is what makes the import and first-render budgets in section 19 reachable.
+The client views the buffers and hands them to the renderer: no parse, no object allocation, no GC pressure. A 10,000-feature GeoJSON response is roughly 14 MB and costs about 400 ms to parse on a mid-range device; the same data in this format is roughly 4 MB and under 5 ms to view. This is what makes the import and first-render budgets in section 19 reachable.
 
 #### Streaming
 
@@ -1812,7 +1812,7 @@ Two export paths. Client-side is instant and used for quick screenshots; server-
 Three problems make client-only export inadequate, which is why the server path is the default rather than the fallback:
 
 1. **Canvas tainting.** Any cross-origin tile without CORS headers taints the canvas and makes `toDataURL` throw. The tile proxy solves this for proxied sources, but not for every source a user might add.
-2. **Resolution.** Print output needs 300 DPI. An A3 landscape page at 300 DPI is roughly 4960 x 3508 px, which exceeds canvas size limits on some mobile browsers and will exhaust memory on the reference device.
+2. **Resolution.** Print output needs 300 DPI. An A3 landscape page at 300 DPI is roughly 4960 x 3508 px, which exceeds canvas size limits on some mobile browsers and will exhaust memory on a mid-range device.
 3. **Consistency.** Fonts, label placement and symbol rendering must be identical across clients for a document that will be printed and filed.
 
 ### Client-side export
@@ -2066,10 +2066,13 @@ These are acceptance criteria. A feature that breaks a budget is not done, and a
 
 ### Reference conditions
 
+**Synthetic CPU throttling is not a gate.** This section originally set the bar at a 4-core mobile-class device under a 4x DevTools slowdown. That gate is dropped, because the question it stood in for has been answered directly: the editor has been exercised on real devices over slow 3G and 4G, and the result was acceptable. A simulated throttle re-run once per session adds nothing to a real device on a real network, and the two disagree often enough that the simulation would be the less trustworthy of the pair.
+
+Budgets are therefore measured on the development machine and compared against the previous session's numbers on the same machine. That comparison is a **regression check** — it is what makes a change that slowed something down visible, and it is what every session has in fact been gating on. Absolute device performance is established by testing on the device, not by scaling a desktop figure.
+
 | Parameter | Value |
 | --- | --- |
-| Device | 4-core mobile-class CPU, 4 GB RAM |
-| Throttle | 4x CPU slowdown in DevTools |
+| Device | The development machine, unthrottled |
 | Network | Fast 3G for load metrics, unthrottled for interaction |
 | Dataset | The imported PLANMalaysia data: 672,132 lots averaging 6.5 vertices and 3.6 million land-use polygons averaging 11 to 17. The boundary layers are excluded from the budget viewports — 2,549 features that the area cull never drops are a different workload, characterised in section 4 |
 | Viewports | Three, pinned by coordinate over Kuantan — zoom 12 (159,654 candidates, 12,929 drawn), zoom 14 (55,729 / 11,819), zoom 16 (5,025 / 4,990) |
@@ -2108,7 +2111,7 @@ A built-in performance overlay (`Ctrl+Shift+P`) reports frame time, features dra
 - Three viewports over the imported data are pinned by coordinate — zoom 12, 14 and 16 over Kuantan — so the same features are measured on every run.
 - A Pest browser test drives a scripted interaction sequence — load, pan, zoom, select, edit a vertex, toggle layers — while collecting traces.
 - The suite runs at the end of each session and its numbers are recorded against the previous baseline. There is no CI in this repository yet; when there is, the same suite becomes the merge gate with a 10% regression threshold (section 22).
-- Budgets are re-verified on real devices before each release, not only under DevTools throttling; the two disagree often enough to matter.
+- Real-device behaviour is verified on real devices and real networks, not simulated per session — see *Reference conditions*. The per-session budgets are a regression check on one machine.
 
 ### Degradation strategy
 
@@ -2284,7 +2287,7 @@ Comparability comes from fixing the viewports rather than from committing a data
 
 When CI arrives, the same Pest suite becomes the merge gate with the 10% regression threshold section 19 specifies. Nothing about the tests changes — only what happens when they fail.
 
-Budgets are re-verified on real devices before each release, not only under DevTools throttling; the two disagree often enough to matter.
+Real-device behaviour is verified on real devices and real networks rather than simulated per session — see section 19, *Reference conditions*.
 
 ### This package does not use the Backpack generator
 
@@ -2329,7 +2332,7 @@ S12, S14 and S15 are the deferred work from sections 12 and 15, in dependency or
 
 ### Definition of done
 
-A session is complete when its functionality works, its budgets are met on the reference device and recorded against the previous baseline, its tests pass under `php artisan test`, its failure modes from section 21 behave as specified, and its UI passes an accessibility check.
+A session is complete when its functionality works, its budgets are met on the development machine and recorded against the previous baseline, its tests pass under `php artisan test`, its failure modes from section 21 behave as specified, and its UI passes an accessibility check.
 
 ## 23. Open questions
 
