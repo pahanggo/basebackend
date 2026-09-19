@@ -160,7 +160,6 @@ class EditorController extends Controller
             // The map control panel.
             'mapControls' => __('Map controls'),
             'basemap' => __('Basemap'),
-            'view' => __('View'),
             'goTo' => __('Go to coordinate'),
             'goToPlaceholder' => __('Latitude, longitude'),
             'coordinateInvalid' => __('That is not a coordinate this can read.'),

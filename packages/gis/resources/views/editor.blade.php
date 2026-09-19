@@ -41,12 +41,10 @@
             </a>
         </div>
 
-        {{-- The toolbar the drawing tools mount into (S6). --}}
-        <div class="gis-toolbar btn-group btn-group-sm" role="toolbar">
-            <button type="button" id="gis-open-maps" class="btn btn-light">
-                <i class="la la-map"></i> {{ __('Maps') }}
-            </button>
-        </div>
+        {{-- The toolbar the drawing tools mount into (S6). Empty until then:
+             choosing a map moved next to the map's name, and the panel toggle
+             next to the way out. --}}
+        <div class="gis-toolbar btn-group btn-group-sm" role="toolbar" hidden></div>
 
         {{-- Shown while a feature read is in flight. Rendered here rather than
              built in JavaScript so the label is translated server-side and the

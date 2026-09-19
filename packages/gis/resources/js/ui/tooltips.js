@@ -19,6 +19,10 @@
  *   losing the window all hide every open tooltip explicitly, and any node
  *   orphaned in `body` anyway is swept.
  *
+ * **Every tooltip hides itself after a few seconds.** A hint that has been
+ * read is clutter, and on a touch screen a tap leaves one open with no hover
+ * to end it — the pointer never leaves, because there is no pointer.
+ *
  * `container: 'body'` because the sidebar and the panel both scroll: a tooltip
  * rendered inside them is clipped by their own overflow.
  *
@@ -39,6 +43,9 @@
  * whole of "the tooltip does not go away".
  */
 const SELECTOR = '[title]:not([title=""]), [data-original-title]:not([data-original-title=""])';
+
+/** How long a tooltip stays up once shown. */
+const LIFETIME_MS = 5000;
 
 export function enableTooltips(root, placement = 'bottom') {
     const $ = window.$;
@@ -69,6 +76,25 @@ export function enableTooltips(root, placement = 'bottom') {
             orphan.remove();
         }
     };
+
+    // Bootstrap fires these on the trigger, and with delegation they bubble to
+    // the root — so one pair of handlers covers every tooltip, including the
+    // ones on rows that did not exist when this ran.
+    $(root).on('shown.bs.tooltip', SELECTOR, function () {
+        const trigger = this;
+
+        window.clearTimeout($(trigger).data('gis.tooltip.timer'));
+
+        $(trigger).data('gis.tooltip.timer', window.setTimeout(() => {
+            if ($(trigger).data('bs.tooltip')) {
+                $(trigger).tooltip('hide');
+            }
+        }, LIFETIME_MS));
+    });
+
+    $(root).on('hidden.bs.tooltip', SELECTOR, function () {
+        window.clearTimeout($(this).data('gis.tooltip.timer'));
+    });
 
     $(root).on('pointerdown', SELECTOR, hideAll);
 

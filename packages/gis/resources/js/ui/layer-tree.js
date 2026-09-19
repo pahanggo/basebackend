@@ -49,6 +49,7 @@ export class LayerTree {
     constructor({
         container, strings, onChanged,
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
+        onIsolate = null, onOpenMaps = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -57,8 +58,10 @@ export class LayerTree {
         this.onZoomTo = onZoomTo;
         this.onRestyle = onRestyle;
         this.onOpacityPreview = onOpacityPreview;
+        this.onIsolate = onIsolate;
         this.zoom = zoom;
         this.zoomLimits = zoomLimits;
+        this.isolating = false;
 
         this.store = null;
         this.rows = [];
@@ -91,8 +94,23 @@ export class LayerTree {
 
         this.mapName = el('h2', { class: 'gis-tree-mapname' });
 
-        this.root = el('div', { class: 'gis-tree' }, [
+        // The map you are in, and the way to a different one. Choosing a map
+        // is not an action on the map's chrome, so it belongs next to the
+        // map's name rather than in the toolbar over the canvas.
+        const mapRow = el('div', { class: 'gis-tree-maprow' }, [
             this.mapName,
+            el('button', {
+                type: 'button',
+                class: 'btn btn-sm btn-light gis-tree-maps-btn',
+                title: strings.maps,
+                'aria-label': strings.maps,
+                onclick: () => onOpenMaps?.(),
+            }, [el('i', { class: 'la la-map', 'aria-hidden': 'true' })]),
+        ]);
+
+        this.root = el('div', { class: 'gis-tree' }, [
+            mapRow,
+            el('hr'),
             el('div', { class: 'gis-tree-head' }, [
                 el('span', { class: 'gis-tree-title', text: strings.layers }),
 
@@ -107,6 +125,17 @@ export class LayerTree {
                         'aria-haspopup': 'true',
                         onclick: (event) => this.openAddMenu(event.currentTarget, onAddLayer),
                     }, [el('i', { class: 'la la-plus', 'aria-hidden': 'true' })]),
+                    // Isolate acts on the tree's selection, so it belongs
+                    // beside the tree's other actions rather than in the map
+                    // control panel, where it had nothing to select from.
+                    this.isolateButton = el('button', {
+                        type: 'button',
+                        class: 'btn btn-light gis-tree-isolate',
+                        title: strings.isolateHint,
+                        'aria-label': strings.isolate,
+                        'aria-pressed': 'false',
+                        onclick: () => this.toggleIsolate(),
+                    }, [el('i', { class: 'la la-eye', 'aria-hidden': 'true' })]),
                     el('button', {
                         type: 'button',
                         class: 'btn btn-light gis-tree-group-btn',
@@ -673,6 +702,22 @@ export class LayerTree {
         if (node) {
             this.startRename(this.rows[index], node);
         }
+    }
+
+    /**
+     * Solo the selection, and let go of it again.
+     *
+     * Client-only and never a command: the stored `visible` flags are left
+     * exactly as they are, so turning it off restores what the user had rather
+     * than turning everything on.
+     */
+    toggleIsolate() {
+        this.isolating = !this.isolating && this.selection.size > 0;
+
+        this.isolateButton.setAttribute('aria-pressed', String(this.isolating));
+        this.isolateButton.classList.toggle('active', this.isolating);
+
+        this.onIsolate?.(this.isolating ? true : null);
     }
 
     groupSelection() {

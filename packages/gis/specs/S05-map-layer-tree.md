@@ -211,6 +211,13 @@ side, since that is where the merge lives.
   layers import solid, one slider dials them back per map, and what it says is
   what you see.
 - **The panel offers four basemaps and no weather overlays.** See §8.
+- **Isolate, Maps and the panel toggle left the map toolbar.** Isolate acts on
+  the tree's selection and now sits with the tree's other actions; choosing a
+  map sits beside the map's name; the panel toggle sits beside the way out. A
+  toolbar floating over the canvas is for things that act on the canvas, and
+  none of those three did. It is left in place, empty, for the drawing tools.
+- **Tooltips hide themselves after five seconds.** A hint that has been read is
+  clutter, and on a touch screen a tap leaves one open with no hover to end it.
 - **A group's checkbox cascades to its descendants**, which is the opposite of
   what §8 originally specified. Setting only the group's flag and relying on
   inheritance left the children ticked while the map showed nothing, and the

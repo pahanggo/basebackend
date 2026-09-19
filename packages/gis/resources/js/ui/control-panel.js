@@ -2,9 +2,10 @@
  * The map control panel: where you are looking, and what you are looking for.
  *
  * The split from the layer tree is deliberate and worth keeping. The tree owns
- * *what exists and in what order*; this panel owns *the view*. Basemap,
- * go-to-coordinate and isolate all change what is on screen without changing
- * what the map contains (specification section 8).
+ * *what exists and in what order*; this panel owns *where you are looking*.
+ * Isolate started here and moved to the tree — it acts on the tree's
+ * selection, and a control that solos "the selection" belongs where the
+ * selection is made (specification section 8).
  *
  * It is chrome, so it sits above the map canvas — and an active draw or edit
  * tool collapses it, so it can never intercept a drawing gesture.
@@ -33,18 +34,15 @@ export class ControlPanel {
      * @param {Object} options.strings
      * @param {Function} options.onBasemap  (id) => void
      * @param {Function} options.onGoTo     ({lng, lat}) => void
-     * @param {Function} options.onIsolate  (placementId|null) => void
      */
-    constructor({ container, strings, onBasemap, onGoTo, onIsolate, onCollapse = null, previewTile = null }) {
+    constructor({ container, strings, onBasemap, onGoTo, onCollapse = null, previewTile = null }) {
         this.strings = strings;
         this.previewTile = previewTile;
         this.onCollapse = onCollapse;
         this.onBasemap = onBasemap;
         this.onGoTo = onGoTo;
-        this.onIsolate = onIsolate;
 
         this.basemap = null;
-        this.isolated = null;
 
         // The basemaps on offer, as previewed tiles. The set is
         // `gis.basemaps.featured` — see `setProviders`.
@@ -59,18 +57,9 @@ export class ControlPanel {
 
         this.coordinateError = el('div', { class: 'gis-panel-error', role: 'alert', hidden: true });
 
-        this.isolateButton = el('button', {
-            type: 'button',
-            class: 'btn btn-sm btn-light btn-block gis-panel-isolate',
-            'aria-pressed': 'false',
-            title: strings.isolateHint,
-            onclick: () => this.toggleIsolate(),
-        }, [el('i', { class: 'la la-eye', 'aria-hidden': 'true' }), ` ${strings.isolate}`]);
-
         this.bodyNode = el('div', { class: 'gis-panel-body' }, [
             this.section(strings.basemap, this.basemapGrid),
             this.section(strings.goTo, el('div', {}, [this.coordinate, this.coordinateError])),
-            this.section(strings.view, this.isolateButton),
         ]);
 
         this.toggle = el('button', {
@@ -213,20 +202,6 @@ export class ControlPanel {
         }
 
         this.onGoTo(point);
-    }
-
-    /**
-     * Solo the selected layer.
-     *
-     * Client-only and not persisted, and restoring brings back the previous
-     * per-layer visibility rather than turning everything on — which is why the
-     * editor, not this panel, owns the remembered state.
-     */
-    toggleIsolate() {
-        this.isolated = this.isolated === null ? true : null;
-        this.isolateButton.setAttribute('aria-pressed', String(this.isolated !== null));
-        this.isolateButton.classList.toggle('active', this.isolated !== null);
-        this.onIsolate(this.isolated);
     }
 
     setCollapsed(collapsed) {

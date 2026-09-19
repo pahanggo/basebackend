@@ -456,6 +456,8 @@ class Editor {
             onZoomTo: (layer) => this.zoomToLayer(layer),
             onRestyle: (layerId, style) => this.restyleLayer(layerId, style),
             onAddLayer: () => this.library.open(),
+            onIsolate: (on) => this.setIsolate(on),
+            onOpenMaps: () => this.browser.open(),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -468,7 +470,6 @@ class Editor {
             strings: config.strings,
             onBasemap: (id) => this.setBasemap(id),
             onGoTo: (point) => this.goTo(point),
-            onIsolate: (on) => this.setIsolate(on),
             onCollapse: (collapsed) => this.setPanelOpen(!collapsed),
             previewTile: () => this.previewTile(),
         });
@@ -1025,8 +1026,6 @@ async function boot() {
     document.getElementById('gis-toggle-sidebar')?.addEventListener('click', () => {
         editor.setSidebarOpen(document.getElementById('gis-sidebar').classList.contains('is-closed'));
     });
-
-    document.getElementById('gis-open-maps')?.addEventListener('click', () => editor.browser.open());
 
     // Delegated, so the tree's recycled rows are covered without rebinding on
     // every render.
