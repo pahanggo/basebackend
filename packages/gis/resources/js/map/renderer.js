@@ -551,7 +551,7 @@ export const GisRenderer = L.Layer.extend({
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
 
-        this._drawOverlay();
+        this._drawOverlay({ scale, originX, originY });
         this._drawEdit();
 
         this._stats = {
@@ -575,20 +575,33 @@ export const GisRenderer = L.Layer.extend({
      * draws are anchored to.
      */
     /**
-     * Saved annotations, between the features and the work in progress.
+     * Saved annotations and the selection, between the features and the work
+     * in progress.
      *
-     * Its own canvas for the same reason the edit one has: a measurement list
-     * is a handful of lines and labels, and redrawing them must not cost a
-     * repaint of every parcel in view. The overlay canvas has existed since S2
-     * and nothing drew to it until measurements needed somewhere to live that
-     * survives a pan but is not a feature.
+     * Its own canvas for the same reason the edit one has: a selection change
+     * or a measurement is a handful of shapes, and redrawing them must not cost
+     * a repaint of every parcel in view. The overlay canvas has existed since
+     * S2 and nothing drew to it until S10b.
+     *
+     * **Several painters, by name, not one.** Measurements and the selection
+     * both belong here and neither owns the canvas; a single slot meant the
+     * second thing to want it silently replaced the first. Registration order
+     * is paint order — selection goes down first, so an annotation is never
+     * buried under a highlight.
      */
-    setOverlayPainter(painter) {
-        this._overlayPainter = painter;
+    setOverlayPainter(name, painter) {
+        this._overlayPainters ??= new Map();
+
+        if (painter === null) {
+            this._overlayPainters.delete(name);
+        } else {
+            this._overlayPainters.set(name, painter);
+        }
+
         this.schedule();
     },
 
-    _drawOverlay() {
+    _drawOverlay(view) {
         if (!this._overlay) {
             return;
         }
@@ -598,7 +611,110 @@ export const GisRenderer = L.Layer.extend({
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
         context.clearRect(0, 0, this._size.x, this._size.y);
 
-        this._overlayPainter?.(context, this._map);
+        // The projection the feature canvas just drew with, handed over rather
+        // than recomputed. A painter that projects each vertex through Leaflet
+        // instead pays a function call and a trig pair per point, which is the
+        // difference between a highlight and a stutter on a large selection.
+        for (const painter of this._overlayPainters?.values() ?? []) {
+            painter(context, this._map, view);
+        }
+    },
+
+    /** The layers currently drawn, in paint order. For an overlay painter. */
+    drawnLayers() {
+        return this._ordered();
+    },
+
+    /**
+     * Every loaded feature whose geometry meets a screen-space shape.
+     *
+     * The index narrows by bounding box first, exactly as `hitTest` does, and
+     * only the survivors are walked — a marquee over a Kuantan viewport is
+     * otherwise 13,000 polygons against a ring, per drag.
+     *
+     * A feature counts as caught when any of its vertices falls inside the
+     * shape, or when the shape's first point falls inside it. The second case
+     * is what makes a small marquee dropped in the middle of a large parcel
+     * select that parcel, which is what everyone expects and what a
+     * vertex-only test silently fails to do.
+     *
+     * @param {Array<{x: number, y: number}>} ring container-pixel points
+     * @param {number|null} slot limit to one layer, or null for all visible
+     * @returns {Array<{slot: number, feature: number, id: number}>}
+     */
+    searchShape(ring, slot = null) {
+        if (!this._map || ring.length < 3) {
+            return [];
+        }
+
+        const map = this._map;
+        const scale = worldSize(map.getZoom());
+        const threshold = this.areaThreshold();
+
+        // Into projected units once, rather than projecting every candidate
+        // vertex back into container pixels.
+        const shape = ring.map((point) => {
+            const latLng = map.containerPointToLatLng([point.x, point.y]);
+
+            return [projectLng(latLng.lng), projectLat(latLng.lat)];
+        });
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const [x, y] of shape) {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+
+        const hits = [];
+
+        for (const layer of this._ordered()) {
+            const index = this._layers.indexOf(layer);
+
+            if (!layer.visible || (slot !== null && index !== slot)) {
+                continue;
+            }
+
+            for (const f of layer.index.search(minX, minY, maxX, maxY)) {
+                if (layer.geometry.area[f] < threshold && layer.geometry.area[f] !== 0) {
+                    continue;
+                }
+
+                if (this._meets(layer.geometry, f, shape, scale)) {
+                    hits.push({ slot: index, feature: f, id: layer.geometry.ids[f] });
+                }
+            }
+        }
+
+        return hits;
+    },
+
+    /**
+     * Does feature `f` meet the projected ring?
+     *
+     * `featStarts` indexes RINGS and `ringStarts` indexes VERTICES — the two
+     * are easy to transpose, and transposing them reads a coordinate as a ring
+     * boundary and quietly selects the wrong features rather than erroring.
+     */
+    _meets(geometry, f, shape, scale) {
+        const { coords, ringStarts, featStarts } = geometry;
+
+        for (let r = featStarts[f]; r < featStarts[f + 1]; r++) {
+            for (let v = ringStarts[r]; v < ringStarts[r + 1]; v++) {
+                if (pointInRing(shape, coords[v * 2], coords[v * 2 + 1])) {
+                    return true;
+                }
+            }
+        }
+
+        // The other way round: a marquee dropped entirely inside one large
+        // parcel, which a vertex test alone would silently miss.
+        return this._contains(geometry, f, shape[0][0], shape[0][1], 1 / scale);
     },
 
     setEditPainter(painter) {
@@ -770,6 +886,17 @@ export const GisRenderer = L.Layer.extend({
                 ? { ...this.options.styles[type], ...own }
                 : this.options.styles[type];
 
+            // **A line is never filled**, whatever the layer's style says. One
+            // style object serves all three geometry types, so a layer drawn
+            // with a fill — which is every vector layer — handed that fill to
+            // its LineStrings too, and canvas fills an open path by closing it
+            // silently. A three-point line came out as a filled triangle.
+            // A point is a different case and keeps its fill: it is drawn as a
+            // disc, and a disc with no fill is a ring nobody asked for.
+            if (type === LINE) {
+                style.fill = null;
+            }
+
             // The class's own alpha times the layer's. Opacity has always
             // multiplied down the tree — a group through a layer — and a class
             // is one more level of that chain, not the second alpha over one
@@ -828,7 +955,9 @@ export const GisRenderer = L.Layer.extend({
             for (let h = found.length - 1; h >= 0; h--) {
                 const f = found[h];
 
-                if (layer.geometry.area[f] < threshold) {
+                // Zero-area geometry — a point, a line — is never culled; see
+                // `cullByArea`.
+                if (layer.geometry.area[f] < threshold && layer.geometry.area[f] !== 0) {
                     continue;
                 }
 
@@ -924,6 +1053,29 @@ export const GisRenderer = L.Layer.extend({
         return Math.sqrt(ox * ox + oy * oy) <= tolerance;
     },
 });
+
+/**
+ * Is a point inside a closed ring? Ray casting, in projected units.
+ *
+ * A free function rather than a method because it takes a ring of pairs and
+ * the method above takes the flat coordinate array a feature is stored in —
+ * two shapes, one rule, and folding them together would mean an argument that
+ * says which.
+ */
+function pointInRing(ring, px, py) {
+    let inside = false;
+
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+
+        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) {
+            inside = !inside;
+        }
+    }
+
+    return inside;
+}
 
 export function createRenderer(options) {
     return new GisRenderer(options);

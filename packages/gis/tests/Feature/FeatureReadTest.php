@@ -1,6 +1,9 @@
 <?php
 
+use Gis\Http\Controllers\Api\FeatureReadController;
+use Gis\Models\Feature;
 use Gis\Models\Layer;
+use Gis\Support\GeometryInput;
 use Gis\Testing\RefreshesGisDatabase;
 
 require_once __DIR__.'/../Helpers.php';
@@ -161,4 +164,46 @@ it('excludes on intersection, not containment, so a straddling feature is never 
 
 it('refuses a held box that is not four numbers', function () {
     readViewport(['held' => '103.0,3.7,103.5'])->assertStatus(422);
+});
+
+it('draws points and lines, which have no area to be culled by', function () {
+    // The area cull exists to drop parcels too small to make a mark, which is
+    // a statement about POLYGONS. `area_m2` is 0 for a point and for a line,
+    // so a threshold above zero silently removed every one of them at every
+    // zoom: you could draw a line, watch it save, and never see it again.
+    $layer = Layer::factory()->create();
+
+    Feature::factory()->create([
+        'layer_id' => $layer->id,
+        'geom' => GeometryInput::parse([
+            'geom' => json_encode(['type' => 'LineString', 'coordinates' => [[103.32, 3.80], [103.33, 3.81]]]),
+            'geomEncoding' => 'geojson',
+        ]),
+        'area_m2' => 0.0,
+    ]);
+
+    Feature::factory()->create([
+        'layer_id' => $layer->id,
+        'geom' => GeometryInput::parse([
+            'geom' => json_encode(['type' => 'Point', 'coordinates' => [103.325, 3.805]]),
+            'geomEncoding' => 'geojson',
+        ]),
+        'area_m2' => 0.0,
+    ]);
+
+    $response = test()->actingAs(reader())
+        ->withHeaders(['Accept' => FeatureReadController::GEOJSON_TYPE])
+        ->get(route('gis.api.layers.features', [
+            'layer' => $layer->id,
+            // Zoom 18, where the threshold is well above zero — the case that
+            // made the two disappear.
+            'bbox' => '103.30,3.79,103.35,3.82',
+            'zoom' => 18,
+        ]));
+
+    $body = decodeStream($response);
+    $types = array_map(fn ($f) => $f['geometry']['type'], $body['features']);
+
+    expect($types)->toContain('LineString');
+    expect($types)->toContain('Point');
 });

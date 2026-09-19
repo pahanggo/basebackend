@@ -1560,3 +1560,47 @@ hr {
         min-width: 44px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Selection (S9b)
+   --------------------------------------------------------------------------- */
+
+.gis-select-group {
+    display: inline-flex;
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid rgba(0, 0, 0, 0.12);
+
+    .btn.active {
+        background: #2b6cb0;
+        border-color: #2b6cb0;
+        color: #fff;
+    }
+}
+
+/* Beside the tools, over the map. It changes on every pointer move during a
+   marquee, so it must be something the eye can ignore. */
+.gis-selection-count {
+    position: absolute;
+    top: 3.25rem;
+    left: 0.5rem;
+    z-index: 640;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: rgba(43, 108, 176, 0.92);
+    color: #fff;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+
+.gis-table-row.is-selected {
+    background: rgba(43, 108, 176, 0.14);
+}
+
+@media (pointer: coarse) {
+    .gis-select-group .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

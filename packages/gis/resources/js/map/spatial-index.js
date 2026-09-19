@@ -184,7 +184,12 @@ export function cullByArea(area, candidates, threshold) {
     for (let c = 0; c < candidates.length; c++) {
         const i = candidates[c];
 
-        if (area[i] >= threshold) {
+        // **Zero means "has no area", not "is too small to see".** A point
+        // and a line both store 0, so a threshold above zero dropped every one
+        // of them at every zoom — they arrived from the server, sat in the
+        // typed arrays, and no path was ever built for them. The cull is a
+        // statement about polygons and only polygons.
+        if (area[i] >= threshold || area[i] === 0) {
             candidates[n++] = i;
         }
     }

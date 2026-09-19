@@ -97,7 +97,20 @@ class FeatureReadController extends Controller
         $binary = $this->wantsBinary($request);
 
         $rows = $this->query($layer, $viewport)
-            ->where('area_m2', '>=', $threshold)
+            ->where(fn (Builder $query) => $query
+                ->where('area_m2', '>=', $threshold)
+                // **A point and a line have no area, and are not small
+                // polygons.** `area_m2` is 0 for both, so a threshold above
+                // zero culled every one of them at every zoom: you could draw
+                // a line, watch it save, and never see it again. The cull
+                // exists to drop parcels too small to make a mark, which is a
+                // statement about polygons.
+                //
+                // Still one index range scan, not a scan plus a filter:
+                // `area_m2` leads `ix_layer_read` after `layer_id`, and two
+                // intervals on one indexed column is what the range optimiser
+                // is for.
+                ->orWhere('area_m2', '=', 0.0))
             ->select($this->columns($viewport, $withProperties, $binary))
             ->orderByDesc('area_m2')
             ->limit($cap + 1);

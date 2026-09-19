@@ -35,7 +35,7 @@ export class AnnotationLayer {
         this.selectedId = null;
         this.preferences = {};
 
-        renderer.setOverlayPainter((context) => this.paint(context));
+        renderer.setOverlayPainter('measurements', (context) => this.paint(context));
     }
 
     /** @param {Array<Object>} items measurements, geometry and all */

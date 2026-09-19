@@ -223,5 +223,9 @@
     "Delete this measurement?": "Padam ukuran ini?",
     "It will be removed from the map for everyone who can see it.": "Ia akan dibuang daripada peta untuk semua orang yang dapat melihatnya.",
     "Save": "Simpan",
-    "Zoom to": "Zum ke"
+    "Zoom to": "Zum ke",
+    "Select by box": "Pilih dengan kotak",
+    "Select by lasso": "Pilih dengan laso",
+    "Clear selection": "Kosongkan pilihan",
+    ":count found in view": ":count dijumpai dalam paparan"
 }

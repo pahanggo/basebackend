@@ -45,6 +45,8 @@ import { QueryPanel } from './ui/query-panel.js';
 import { ScaleBar } from './ui/scale-bar.js';
 import { PerformanceOverlay } from './ui/performance-overlay.js';
 import { MeasurePanel } from './ui/measure-panel.js';
+import { SelectSession } from './map/select/select-session.js';
+import { SelectionLayer } from './map/select/selection-layer.js';
 import { MeasureSession } from './map/measure/measure-session.js';
 import { AnnotationLayer } from './map/measure/annotation-layer.js';
 import { outlineOf } from './map/measure/annotations.js';
@@ -1425,7 +1427,19 @@ class Editor {
         // The drawn feature is not in the renderer's arrays: those come from
         // the read, and the read is what will bring it back with its server id
         // and its computed area.
-        this.refreshLayer(layer.id);
+        //
+        // **Drained first, not merely flushed.** The command is queued behind
+        // a debounce, so refreshing straight away asked the server for a
+        // feature it had not been told about yet — and the shape simply did
+        // not appear until the next pan. It looked like a drawing bug and was
+        // a sequencing one.
+        this.awaitDrawn(layer.id);
+    }
+
+    /** Wait for the write to land, then re-read the layer that took it. */
+    async awaitDrawn(layerId) {
+        await this.sync?.drain();
+        this.refreshLayer(layerId);
     }
 
     /**
@@ -1449,8 +1463,22 @@ class Editor {
             this.vertices.setTarget(null);
             this.toolbar?.setOperationsFor(null, this.config.capabilities);
 
+            // A click on nothing clears the selection, unless it is shift —
+            // which is a miss during an additive pick, not a change of mind.
+            if (!event.shiftKey) {
+                this.clearSelection();
+                this.toolbar?.showSelection(null);
+            }
+
             return;
         }
+
+        // Selecting is not editing, so it happens before the editability
+        // check below. A locked cadastral parcel cannot have its vertices
+        // dragged and can perfectly well be selected, measured and read —
+        // refusing to select it was refusing to look at it.
+        this.selectFeatures(null, [hit.id], { additive: event.shiftKey });
+        this.toolbar?.showSelection(this.store.state.selection.size);
 
         const feed = this.feeds.find((candidate) => candidate.slot === hit.slot);
         const placement = Object.values(this.store.state.placements)
@@ -1869,15 +1897,41 @@ class Editor {
     /**
      * Hold a set of feature ids as the current selection.
      *
-     * The selection is one set shared across the map, the table and the tree
-     * (specification §14). This is the half of it this session needs: the
-     * query's answer, remembered, so the table can be filtered to it and the
-     * map can draw it differently once S9's selection rendering lands.
+     * One set shared across the map, the table and the tree (specification
+     * §14). Everything that shows a selection reads this, and everything that
+     * changes one comes through here — a second set kept anywhere else is how
+     * the three views come to disagree.
      */
-    selectFeatures(layerId, ids) {
-        this.store.state.selection = new Set(ids);
-        this.selectedLayerId = layerId;
+    selectFeatures(layerId, ids, { additive = false } = {}) {
+        const selection = additive ? this.store.state.selection : new Set();
+
+        for (const id of ids) {
+            selection.add(id);
+        }
+
+        this.store.state.selection = selection;
+        this.selectedLayerId = layerId ?? this.selectedLayerId;
+        this.selectionLayer?.invalidate();
         this.store.emit(['features', 'selection']);
+    }
+
+    /**
+     * A marquee or lasso finished.
+     *
+     * The ids come from the LOADED set, which is the viewport — so the message
+     * says how many were found rather than implying it found them all. §14 is
+     * explicit that a client-side shape cannot answer for a layer of millions,
+     * and a count presented without that qualification is the lie.
+     */
+    selectByShape(ids, { additive }) {
+        this.selectFeatures(null, ids, { additive });
+
+        this.toolbar?.showSelection(this.store.state.selection.size);
+    }
+
+    /** Nothing selected, from anywhere. */
+    clearSelection() {
+        this.selectFeatures(null, [], { additive: false });
     }
 
     /** Force one layer to read again, discarding what it holds. */
@@ -2248,6 +2302,10 @@ async function boot() {
         strings: config.strings,
         onClose: () => editor.closeAttributes(),
         onZoomTo: (row) => editor.zoomToFeature(row),
+        onSelect: (row, options) => {
+            editor.selectFeatures(null, [row.id], options);
+            editor.toolbar?.showSelection(editor.store.state.selection.size);
+        },
     });
 
     editor.legend = new Legend({
@@ -2275,6 +2333,30 @@ async function boot() {
         },
         onNumeric: (geometry) => editor.commitDrawn(geometry),
         onOperation: (op) => editor.runOperation(op),
+        onSelectMode: (mode) => {
+            if (mode) {
+                editor.measurePanel?.setTool(null);
+                editor.measure?.setTool(null);
+            }
+
+            editor.select.setMode(mode);
+        },
+        onClearSelection: () => {
+            editor.clearSelection();
+            editor.toolbar.showSelection(null);
+        },
+    });
+
+    editor.selectionLayer = new SelectionLayer({
+        renderer,
+        selection: () => editor.store?.state.selection,
+    });
+
+    editor.select = new SelectSession({
+        map,
+        renderer,
+        onSelect: (ids, options) => editor.selectByShape(ids, options),
+        onCount: (count) => editor.toolbar.showSelection(count),
     });
 
     editor.draw = new DrawSession({
@@ -2309,6 +2391,8 @@ async function boot() {
             if (tool) {
                 editor.toolbar.setTool(null);
                 editor.draw.setTool(null);
+                editor.toolbar.setSelectMode(null);
+                editor.select?.setMode(null);
             }
 
             editor.measure.setTool(tool);

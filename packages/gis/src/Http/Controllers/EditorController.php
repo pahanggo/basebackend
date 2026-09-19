@@ -291,6 +291,14 @@ class EditorController extends Controller
             'measure_delete_text' => __('It will be removed from the map for everyone who can see it.'),
             'save' => __('Save'),
             'zoomToFeature' => __('Zoom to'),
+
+            // Selection.
+            'select_marquee' => __('Select by box'),
+            'select_lasso' => __('Select by lasso'),
+            'select_clear' => __('Clear selection'),
+            // "found", never "matching": this counts what is loaded, which is
+            // the viewport, and a shape cannot answer for a whole layer.
+            'selectionCount' => __(':count found in view'),
         ];
     }
 }

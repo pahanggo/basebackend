@@ -15,6 +15,7 @@
 
 import { el, clear } from '../lib/dom.js';
 import { TOOLS } from '../map/draw/draw-session.js';
+import { SELECT_MODES } from '../map/select/select-session.js';
 import { destination } from '../lib/measure.js';
 import { rectangleRing, circleRing } from '../map/draw/shapes.js';
 import { available } from '../map/ops/routing.js';
@@ -38,6 +39,12 @@ const ICONS = {
     freehand: 'la-pencil-alt',
 };
 
+/** And one per selection mode. */
+const SELECT_ICONS = {
+    marquee: 'la-object-group',
+    lasso: 'la-hand-paper',
+};
+
 export class Toolbar {
     /**
      * @param {Object} options
@@ -47,10 +54,14 @@ export class Toolbar {
      * @param {Function} options.onNumeric called with a finished GeoJSON geometry
      * @param {Function} options.centre () => the map centre as [lng, lat]
      */
-    constructor({ container, strings, onTool, onNumeric, centre, onOperation = null }) {
+    constructor({ container, strings, onTool, onNumeric, centre, onOperation = null, onSelectMode = null, onClearSelection = null }) {
         this.container = container;
         this.strings = strings;
         this.onTool = onTool;
+        this.onSelectMode = onSelectMode;
+        this.onClearSelection = onClearSelection;
+        this.selectMode = null;
+        this.selectButtons = new Map();
         this.onNumeric = onNumeric;
         this.onOperation = onOperation;
         this.centre = centre;
@@ -58,6 +69,16 @@ export class Toolbar {
         this.buttons = new Map();
 
         this.readout = el('div', { class: 'gis-readout', hidden: true });
+
+        // The selection count, beside the tools rather than in a dialog. It
+        // changes on every pointer move during a marquee, so it has to be
+        // something the eye can ignore — and `aria-live="polite"` for the same
+        // reason the drawing readout is polite rather than assertive.
+        this.selectionCount = el('div', {
+            class: 'gis-selection-count',
+            hidden: true,
+            'aria-live': 'polite',
+        });
         this.numeric = el('div', { class: 'gis-numeric', hidden: true });
 
         container.hidden = false;
@@ -77,13 +98,42 @@ export class Toolbar {
             container.append(button);
         }
 
+        // The selection tools, in their own group after a separator. They do
+        // not create anything, so they are not drawing tools — but they are
+        // dragged over the canvas, so they are not panel controls either.
+        const group = el('div', { class: 'gis-select-group', role: 'group' });
+
+        for (const mode of SELECT_MODES) {
+            const button = el('button', {
+                type: 'button',
+                class: 'btn btn-light',
+                title: strings[`select_${mode}`] ?? mode,
+                'aria-label': strings[`select_${mode}`] ?? mode,
+                'aria-pressed': 'false',
+                onclick: () => this.selectWith(mode),
+            }, [el('i', { class: `la ${SELECT_ICONS[mode]}`, 'aria-hidden': 'true' })]);
+
+            this.selectButtons.set(mode, button);
+            group.append(button);
+        }
+
+        group.append(el('button', {
+            type: 'button',
+            class: 'btn btn-light',
+            title: strings.select_clear ?? 'Clear selection',
+            'aria-label': strings.select_clear ?? 'Clear selection',
+            onclick: () => this.onClearSelection?.(),
+        }, [el('i', { class: 'la la-times-circle', 'aria-hidden': 'true' })]));
+
+        container.append(group);
+
         // Into the MAP, not the toolbar's parent. `#gis-app` spans the
         // sidebar too, so a panel positioned against it starts underneath the
         // layer tree — which is exactly where the first three fields of the
         // numeric panel went.
         const shell = document.getElementById('gis-map') ?? container.parentElement;
 
-        shell?.append(this.readout, this.numeric);
+        shell?.append(this.readout, this.numeric, this.selectionCount);
     }
 
     /**
@@ -120,14 +170,51 @@ export class Toolbar {
         this.container.after(this.opsGroup);
     }
 
+    /**
+     * How many features are selected, or would be if the drag ended now.
+     *
+     * The wording says "found", never "matching": this counts what is LOADED,
+     * which is the viewport, and a shape over a layer of 1.4 million features
+     * cannot say more than that (specification §14).
+     */
+    showSelection(count) {
+        this.selectionCount.hidden = count === null || count === undefined;
+
+        if (!this.selectionCount.hidden) {
+            this.selectionCount.textContent = (this.strings.selectionCount ?? ':count found')
+                .replace(':count', String(count));
+        }
+    }
+
     /** Choosing the active tool again turns it off, which is how Escape feels. */
     select(tool) {
         this.setTool(this.tool === tool ? null : tool);
         this.onTool?.(this.tool);
     }
 
+    selectWith(mode) {
+        this.setSelectMode(this.selectMode === mode ? null : mode);
+        this.onSelectMode?.(this.selectMode);
+    }
+
+    setSelectMode(mode) {
+        this.selectMode = mode;
+
+        for (const [name, button] of this.selectButtons) {
+            const active = name === mode;
+
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', String(active));
+        }
+    }
+
     setTool(tool) {
         this.tool = tool;
+
+        if (tool !== null && this.selectMode !== null) {
+            this.setSelectMode(null);
+            this.onSelectMode?.(null);
+        }
 
         for (const [name, button] of this.buttons) {
             const active = name === tool;

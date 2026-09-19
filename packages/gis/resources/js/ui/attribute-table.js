@@ -31,7 +31,8 @@ export class AttributeTable {
      * @param {Function} options.onClose called when the dock is dismissed
      * @param {Function} options.onZoomTo called with a feature id to fly to it
      */
-    constructor({ container, strings, onClose, onZoomTo = null }) {
+    constructor({ container, strings, onClose, onZoomTo = null, onSelect = null }) {
+        this.onSelect = onSelect;
         this.strings = strings;
         this.onClose = onClose;
         this.onZoomTo = onZoomTo;
@@ -77,6 +78,10 @@ export class AttributeTable {
 
     attach(store) {
         this.store = store;
+
+        // The map and the table show one selection, so the table redraws when
+        // it changes wherever it changed.
+        store.subscribe('selection', () => this.list?.render());
     }
 
     /** Open on a layer, which is what makes its attributes worth loading. */
@@ -323,9 +328,17 @@ export class AttributeTable {
 
             const data = this.rows[Number(row.dataset.index)];
 
-            if (data && this.onZoomTo) {
-                this.onZoomTo(data);
+            if (!data) {
+                return;
             }
+
+            // **Selecting and zooming are the same click**, deliberately. The
+            // table is the accessible equivalent of the map (§18): what a
+            // click on the map does — select it and bring it into view — is
+            // what a click on the row has to do, or the two are different
+            // interfaces to the same data rather than two views of it.
+            this.onSelect?.(data, { additive: event.shiftKey });
+            this.onZoomTo?.(data);
         });
 
         return row;
@@ -343,6 +356,15 @@ export class AttributeTable {
         node.hidden = false;
         node.dataset.index = String(index);
         node.dataset.featureId = String(row.id);
+
+        // Rows are POOLED — the same node is reused for a different feature as
+        // the list scrolls — so this has to be set on every render, not once
+        // when the selection changes. A class left over from the previous
+        // occupant is a row that reports the wrong thing selected.
+        const selected = this.store?.state.selection?.has(row.id) ?? false;
+
+        node.classList.toggle('is-selected', selected);
+        node.setAttribute('aria-selected', String(selected));
 
         clear(node);
 
