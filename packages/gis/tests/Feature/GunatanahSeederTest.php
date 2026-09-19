@@ -313,6 +313,27 @@ it('raises rather than importing nothing when the service refuses outright', fun
         ->exists('gis/arcgis/gunatanah_zoning.done'))->toBeFalse();
 });
 
+it('records a reject as its window commits, not at the end of the run', function () {
+    // The ledger and the reject list are one fact: once a window is marked
+    // done, no later run fetches it again, so an id not written here can never
+    // be recovered from the service. Accumulating the list in memory lost it to
+    // every interruption — and on a run measured in hours against someone
+    // else's service, interruption is the normal case.
+    fakeArcGis(count: 5, unservable: [3]);
+
+    config(['gis.import.arcgis.window' => 2]);
+
+    $seeder = new GunatanahSeeder;
+    $seeder->only = ['gunatanah_zoning'];
+
+    // Stop after the window holding the bad id, as an interruption would.
+    $seeder->maxWindows = 2;
+    $seeder->run();
+
+    expect(file_get_contents(GunatanahSeeder::rejectPath('gunatanah_zoning')))
+        ->toContain('3');
+});
+
 it('bisects a refused window to keep everything but the record behind it', function () {
     // GTsemasa_06 OBJECTID 1460 behaves exactly like this: on its own the
     // service answers `Failed to execute query.`, and it poisons every window
@@ -327,7 +348,7 @@ it('bisects a refused window to keep everything but the record behind it', funct
     expect(Feature::query()->pluck('properties')->map(fn ($p) => $p['_src'])->sort()->values()->all())
         ->toBe([1, 2, 4, 5]);
 
-    expect(file_get_contents(storage_path('app/gis-arcgis-rejects-gunatanah_zoning.txt')))
+    expect(file_get_contents(GunatanahSeeder::rejectPath('gunatanah_zoning')))
         ->toContain('3');
 });
 

@@ -87,8 +87,15 @@ rather than appended to.
 
 Some records cannot be served: `GTsemasa_06` OBJECTID 1460 answers `Failed to
 execute query.` on its own and poisons any window containing it. A refused window
-is bisected down to the offending id, which is skipped and written to
-`storage/app/gis-arcgis-rejects-<key>.txt`; the other 999 features are kept.
+is bisected down to the offending id, which is skipped and appended to
+`storage/app/gis-arcgis-rejects-<key>.txt` as that window commits; the other 999
+features are kept. Measured on a live run: 816 of the first 1,542,000 semasa
+records, 0.05%.
+
+That file is written per window rather than at the end of the run for the same
+reason the ledger is: once a window is marked done, no later run fetches it
+again, so an id missing from that file can never be recovered from the service.
+If you ever need to rebuild it, the ids are the gaps in the `_src` property.
 
 `GUNATANAH_TRUNCATE=1` is for the one import that establishes a deployment. It
 destroys hand-drawn layers and every map's layer tree along with the imported

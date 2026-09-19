@@ -155,6 +155,10 @@ class GunatanahSeeder extends Seeder
         if ($this->fresh || env('GUNATANAH_FRESH')) {
             $deleted = Feature::query()->where('layer_id', $layer->id)->delete();
             $ledger->forget();
+
+            if (is_file(self::rejectPath($key))) {
+                unlink(self::rejectPath($key));
+            }
             $this->line("  deleted {$deleted} existing features");
         }
 
@@ -200,7 +204,7 @@ class GunatanahSeeder extends Seeder
         $rejects = [];
 
         foreach (array_chunk($windows, $concurrency) as $group) {
-            $this->importGroup($source, $layer, $definition, $ledger, $group, $fields, $rejects);
+            $this->importGroup($key, $source, $layer, $definition, $ledger, $group, $fields, $rejects);
             $bar?->advance(count($group) * $size);
         }
 
@@ -228,6 +232,7 @@ class GunatanahSeeder extends Seeder
      * @param  array<int, int>  $rejects
      */
     private function importGroup(
+        string $key,
         ArcGisSource $source,
         Layer $layer,
         array $definition,
@@ -242,7 +247,8 @@ class GunatanahSeeder extends Seeder
         ));
 
         foreach ($group as $index => $window) {
-            $features = $this->featuresFor($source, $responses[$index], $window, $fields, $rejects);
+            $found = [];
+            $features = $this->featuresFor($source, $responses[$index], $window, $fields, $found);
 
             DB::connection(config('gis.connection'))->transaction(
                 function () use ($layer, $definition, $features, $ledger, $window) {
@@ -251,6 +257,18 @@ class GunatanahSeeder extends Seeder
                     $ledger->mark($window[0]);
                 }
             );
+
+            // Written as the window commits, never accumulated for the end.
+            // Marking the window done and remembering what it dropped are one
+            // fact: once the ledger says a window is finished, no later run
+            // will fetch it again, so an id not recorded here can never be
+            // recovered from the service. Holding the list in memory lost it
+            // to every interruption — which, on a run measured in hours
+            // against someone else's service, is the normal case.
+            if ($found !== []) {
+                $this->recordRejects($key, $found);
+                $rejects = array_merge($rejects, $found);
+            }
         }
     }
 
@@ -326,17 +344,33 @@ class GunatanahSeeder extends Seeder
         );
     }
 
+    /**
+     * The ids the service refused, appended as they are found.
+     *
+     * @param  array<int, int>  $ids
+     */
+    private function recordRejects(string $key, array $ids): void
+    {
+        file_put_contents(
+            self::rejectPath($key),
+            implode(PHP_EOL, $ids).PHP_EOL,
+            FILE_APPEND,
+        );
+    }
+
+    public static function rejectPath(string $key): string
+    {
+        return storage_path("app/gis-arcgis-rejects-{$key}.txt");
+    }
+
     /** @param array<int, int> $rejects */
     private function finish(string $key, Layer $layer, array $definition, int $total, array $rejects): void
     {
         if ($rejects !== []) {
-            $path = storage_path("app/gis-arcgis-rejects-{$key}.txt");
-            file_put_contents($path, implode(PHP_EOL, $rejects).PHP_EOL, FILE_APPEND);
-
             $this->line(sprintf(
-                '  <comment>%d records the service could not serve; ids appended to %s</comment>',
+                '  <comment>%d records the service could not serve; ids in %s</comment>',
                 count($rejects),
-                $path,
+                self::rejectPath($key),
             ));
         }
 
