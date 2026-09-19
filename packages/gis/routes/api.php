@@ -3,6 +3,7 @@
 use Gis\Http\Controllers\Api\CommandController;
 use Gis\Http\Controllers\Api\CommandReplayController;
 use Gis\Http\Controllers\Api\FeatureReadController;
+use Gis\Http\Controllers\Api\ImageUploadController;
 use Gis\Http\Controllers\Api\LayerLibraryController;
 use Gis\Http\Controllers\Api\LayerValuesController;
 use Gis\Http\Controllers\Api\MapController;
@@ -38,3 +39,9 @@ Route::post('maps/{map}/commands', CommandController::class)
     ->name('maps.commands');
 
 Route::get('maps/{map}/commands', CommandReplayController::class)->name('maps.commands.replay');
+
+// The one multipart write in v1. Separate from the command endpoint on purpose:
+// that one stays JSON so it can stay atomic, idempotent and replayable.
+Route::post('images', ImageUploadController::class)
+    ->middleware('throttle:gis-images')
+    ->name('images.store');

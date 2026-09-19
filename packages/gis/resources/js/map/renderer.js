@@ -546,6 +546,8 @@ export const GisRenderer = L.Layer.extend({
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
 
+        this._drawEdit();
+
         this._stats = {
             candidates,
             drawn,
@@ -554,6 +556,34 @@ export const GisRenderer = L.Layer.extend({
             cullMs: buildMs,
             paintMs: performance.now() - paintStart,
         };
+    },
+
+    /**
+     * Whatever is currently being edited, on its own canvas.
+     *
+     * Handles, vertex dots and drag affordances go here rather than onto the
+     * feature canvas, so moving one costs a clear and a few dozen shapes
+     * instead of a repaint of every parcel in view. The painter is given a
+     * context already cleared and already scaled for the device, and works in
+     * container pixels — which is what the pointer gives and what the things it
+     * draws are anchored to.
+     */
+    setEditPainter(painter) {
+        this._editPainter = painter;
+        this.schedule();
+    },
+
+    _drawEdit() {
+        if (!this._edit) {
+            return;
+        }
+
+        const context = this._edit.getContext('2d');
+
+        context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
+        context.clearRect(0, 0, this._size.x, this._size.y);
+
+        this._editPainter?.(context, this._map);
     },
 
     /**

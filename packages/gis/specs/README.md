@@ -24,7 +24,7 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S4](S04-store-commands-sync.md) | Store, commands, undo, sync — **done** | S1 |
 | [S5a](S05-map-layer-tree.md) | Map CRUD, sharing, layer library — **done** | S4, S2 |
 | [S5b](S05-map-layer-tree.md) | Layer tree, drag and drop, panes, control panel — **done** | S5a |
-| [S5c](S05b-image-overlays.md) | Image overlays | S5b |
+| [S5c](S05b-image-overlays.md) | Image overlays — **done** | S5b |
 | [S5d](S05d-sublayers.md) | Sublayers — **done** | S5b, S3 |
 | [S6](S06-drawing-editing.md) | Drawing and vertex editing | S4, S2 |
 | [S7](S07-geometry-operations.md) | Geometry operations | S6 |

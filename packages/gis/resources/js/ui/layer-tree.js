@@ -55,7 +55,7 @@ export class LayerTree {
         container, strings, onChanged,
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
         onIsolate = null, onOpenMaps = null, onCollapse = null, onRenameMap = null,
-        onClassify = null, onClassPreview = null,
+        onClassify = null, onClassPreview = null, onAddOverlay = null, onEditOverlay = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -69,6 +69,8 @@ export class LayerTree {
         // renderer is told.
         this.onClassify = onClassify;
         this.onClassPreview = onClassPreview;
+        this.onAddOverlay = onAddOverlay;
+        this.onEditOverlay = onEditOverlay;
         this.onIsolate = onIsolate;
         this.onCollapse = onCollapse;
         this.onRenameMap = onRenameMap;
@@ -847,6 +849,35 @@ export class LayerTree {
      * the choice. "Add from library" deliberately does not say "import":
      * import means reading a file, and is v2.
      */
+    /**
+     * Ask for an image file, and hand it to the editor to upload and place.
+     *
+     * The input is created, used and thrown away rather than kept in the page.
+     * A persistent `<input type="file">` remembers its last selection, so
+     * picking the same plan twice in a row fires no `change` event at all and
+     * looks like the button has stopped working.
+     */
+    pickOverlayImage() {
+        const input = el('input', {
+            type: 'file',
+            accept: 'image/png,image/jpeg',
+            style: 'display:none',
+        });
+
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+
+            input.remove();
+
+            if (file) {
+                this.onAddOverlay?.(file);
+            }
+        });
+
+        document.body.append(input);
+        input.click();
+    }
+
     openAddMenu(anchor, onAddLayer) {
         this.closeMenu();
 
@@ -864,6 +895,7 @@ export class LayerTree {
             item(this.strings.newGroup, () => this.createLayer('group'), 'la-folder'),
             el('div', { class: 'dropdown-divider' }),
             item(this.strings.addFromLibrary, () => onAddLayer?.(), 'la-book'),
+            item(this.strings.addImageOverlay, () => this.pickOverlayImage(), 'la-image'),
         ]);
 
         const box = anchor.getBoundingClientRect();
@@ -1238,6 +1270,17 @@ export class LayerTree {
                     this.startRename(row, node);
                 }
             }, 'la-i-cursor'));
+        }
+
+        // An image overlay is aligned by dragging its corners, which is a mode
+        // rather than a dialog — so this turns the handles on and the menu
+        // closes behind it.
+        if (row.layer.kind === 'image' && this.onEditOverlay) {
+            items.push(item(
+                row.layer.locked ? this.strings.overlayLocked : this.strings.adjustOverlay,
+                () => this.onEditOverlay(row.layer.locked ? null : row),
+                'la-vector-square',
+            ));
         }
 
         if (!group && row.layer.extent !== null && this.onZoomTo) {

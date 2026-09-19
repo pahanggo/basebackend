@@ -19,7 +19,7 @@ class LayerFactory extends Factory
             'name' => fake()->words(2, true),
             'kind' => 'vector',
             'locked' => false,
-            'style' => ['stroke' => '#3388ff', 'weight' => 2, 'fill' => '#3388ff', 'fillOpacity' => 0.2],
+            'style' => ['stroke' => '#3388ff', 'weight' => 2, 'fill' => '#3388ff'],
             'attr_schema' => null,
             'source_config' => null,
             'feature_count' => 0,

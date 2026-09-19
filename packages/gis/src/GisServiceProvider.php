@@ -97,6 +97,13 @@ class GisServiceProvider extends ServiceProvider
         RateLimiter::for('gis-writes', fn ($request) => Limit::perMinute(
             (int) config('gis.rate_limits.writes_per_minute'),
         )->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
+
+        // Uploads are hourly rather than per minute: one overlay is a
+        // deliberate act a user performs a handful of times, and each one costs
+        // a decode and a re-encode of up to 20 MB.
+        RateLimiter::for('gis-images', fn ($request) => Limit::perHour(
+            (int) config('gis.rate_limits.image_uploads_per_hour'),
+        )->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
     }
 
     /**

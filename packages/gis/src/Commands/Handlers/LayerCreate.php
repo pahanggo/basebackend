@@ -49,7 +49,10 @@ class LayerCreate extends Command
             'name' => trim((string) $this->required('name')),
             'kind' => $kind,
             'locked' => false,
-            'style' => (array) $this->get('style', ['stroke' => '#3388ff', 'weight' => 2, 'fill' => '#3388ff', 'fillOpacity' => 0.2]),
+            // No `fillOpacity`: transparency has one control per object and the
+            // layer's opacity is it (specification section 10). It lingered here
+            // after the rest were removed in S5b, unread but ready to mislead.
+            'style' => (array) $this->get('style', ['stroke' => '#3388ff', 'weight' => 2, 'fill' => '#3388ff']),
             'attr_schema' => $this->get('attrSchema'),
             'source_config' => $this->get('sourceConfig'),
             'feature_count' => 0,

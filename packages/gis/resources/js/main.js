@@ -22,7 +22,7 @@ import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
 import { layerSetClassification } from './store/commands/layer.js';
 import { configureHttp, getJson, patchJson, putJson } from './lib/http.js';
-import { afterKey } from './lib/sort-key.js';
+import { afterKey, between } from './lib/sort-key.js';
 import { SeqCounter } from './lib/seq.js';
 import { LayerTree } from './ui/layer-tree.js';
 import { ControlPanel } from './ui/control-panel.js';
@@ -33,6 +33,9 @@ import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
 import { LayerLibrary } from './ui/layer-library.js';
 import { SublayerPanel } from './ui/sublayer-panel.js';
+import { ImageOverlay, initialCorners } from './map/overlay/image-overlay.js';
+import { CornerHandles } from './map/overlay/corner-handles.js';
+import { layerSetSource } from './store/commands/layer.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
 function readBootstrap() {
@@ -427,6 +430,8 @@ function hydrate(store, bootstrap) {
             kind: entry.kind,
             locked: entry.locked,
             style: entry.style,
+            // An image overlay's path, natural size and four corners live here.
+            sourceConfig: entry.sourceConfig ?? null,
             attrSchema: entry.attrSchema,
             featureCount: entry.featureCount,
             extent: entry.extent ?? null,
@@ -480,6 +485,31 @@ function visibleVectorLayers(store, { zoom = null, isolated = null } = {}) {
             opacity: effectiveOpacity(store.state, placement),
         }))
         .filter((entry) => entry.layer && entry.layer.kind === 'vector');
+}
+
+/**
+ * The pane an image overlay draws into.
+ *
+ * Panes exist per TOP-LEVEL node, so an overlay nested inside a group uses its
+ * outermost ancestor's — which is what makes it composite with that group
+ * rather than above or below everything. A node with no ancestors is its own.
+ */
+function paneIdFor(state, placement, index) {
+    let node = placement;
+
+    for (let depth = 0; node.parentId !== null && depth < 64; depth++) {
+        const parent = state.placements[node.parentId];
+
+        if (!parent) {
+            break;
+        }
+
+        node = parent;
+    }
+
+    void index;
+
+    return `gis-node-${node.id}`;
 }
 
 /**
@@ -548,6 +578,9 @@ class Editor {
             onPlace: (layerId, access) => this.place(layerId, access),
         });
 
+        // One `ImageOverlay` per visible image placement, keyed by placement.
+        this.overlays = new Map();
+
         this.sublayers = new SublayerPanel({
             apiBase: config.apiBase,
             strings: config.strings,
@@ -567,6 +600,8 @@ class Editor {
             onCollapse: (collapsed) => this.rememberPanels({ layers: !collapsed }, true),
             onRenameMap: (name) => this.renameMap(name),
             onClassify: (row) => this.sublayers.open(row),
+            onAddOverlay: (file) => this.addImageOverlay(file),
+            onEditOverlay: (row) => this.editOverlay(row),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -625,6 +660,7 @@ class Editor {
 
         // Groups, tiles and image overlays still fade through their pane.
         syncPanes(this.map, this.store.state);
+        this.syncOverlays();
     }
 
     /**
@@ -717,6 +753,7 @@ class Editor {
         }
 
         syncPanes(this.map, this.store.state);
+        this.syncOverlays();
         this.rebuildFeeds();
     }
 
@@ -953,6 +990,7 @@ class Editor {
         this.applyBasemap();
         this.applyPanels(this.bootstrap.viewState?.panels);
         syncPanes(this.map, this.store.state);
+        this.syncOverlays();
         this.rebuildFeeds();
 
         return true;
@@ -1006,6 +1044,57 @@ class Editor {
      * Stack position travels as the renderer's `order` rather than as array
      * position, so a reorder is a number per layer rather than a rebuild.
      */
+    /**
+     * Reconcile the image overlays against the tree.
+     *
+     * Reconciled rather than rebuilt, for the same reason the feature feeds
+     * are: recreating an `<img>` re-downloads it and flashes. A placement still
+     * wanted keeps its element and is told where its corners are now; one that
+     * has gone is removed; only a new one is constructed.
+     */
+    syncOverlays() {
+        const wanted = new Map();
+        const index = buildIndex(this.store.state);
+
+        for (const placement of Object.values(this.store.state.placements)) {
+            const layer = this.store.state.layers[placement.layerId];
+
+            if (!layer || layer.kind !== 'image' || !layer.sourceConfig?.url) {
+                continue;
+            }
+
+            if (!effectiveVisible(this.store.state, placement, this.map.getZoom())) {
+                continue;
+            }
+
+            wanted.set(placement.id, { placement, layer });
+        }
+
+        for (const [id, overlay] of this.overlays) {
+            if (!wanted.has(id)) {
+                overlay.remove();
+                this.overlays.delete(id);
+            }
+        }
+
+        for (const [id, { placement, layer }] of wanted) {
+            const source = { ...layer.sourceConfig, corners: layer.sourceConfig.corners };
+            let overlay = this.overlays.get(id);
+
+            if (!overlay) {
+                // Its own pane, so it composites with the tile and vector
+                // layers through the same z-index the tree already assigns.
+                overlay = new ImageOverlay(this.map, paneIdFor(this.store.state, placement, index), source);
+                this.overlays.set(id, overlay);
+            } else {
+                overlay.setSource(source);
+            }
+
+            overlay.setOpacity(effectiveOpacity(this.store.state, placement));
+            overlay.update();
+        }
+    }
+
     rebuildFeeds() {
         const wanted = visibleVectorLayers(this.store, {
             zoom: this.map.getZoom(),
@@ -1057,6 +1146,114 @@ class Editor {
 
     refresh() {
         this.feeds.forEach((feed) => feed.refresh(this.map));
+    }
+
+    /**
+     * Upload an image and place it over the map.
+     *
+     * Two steps on the wire, and deliberately: the file goes to `POST /images`
+     * on its own, and only the path it returns travels in the `layer.create`
+     * that follows. The command endpoint stays JSON, which is what keeps it
+     * atomic, idempotent and replayable.
+     */
+    async addImageOverlay(file) {
+        const name = window.prompt(
+            this.config.strings.overlayName,
+            file.name.replace(/\.[^.]+$/, ''),
+        );
+
+        if (name === null) {
+            return;
+        }
+
+        const body = new FormData();
+
+        body.append('image', file);
+
+        let uploaded;
+
+        try {
+            const response = await fetch(`${this.config.apiBase}/images`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.config.csrfToken },
+                body,
+            });
+
+            uploaded = await response.json();
+
+            if (!response.ok) {
+                notify(uploaded?.errors?.image?.[0] ?? this.config.strings.overlayFailed);
+
+                return;
+            }
+        } catch (error) {
+            console.error('gis: overlay upload failed', error);
+            notify(this.config.strings.overlayFailed);
+
+            return;
+        }
+
+        // At the top of the root, like any other new layer — an overlay is
+        // placed to be looked at, so it starts above what it is aligned to.
+        const first = childrenOf(this.store.state, null, buildIndex(this.store.state))[0] ?? null;
+        const sortKey = between(null, first ? first.sortKey : null);
+
+        await this.sendCommands([{
+            op: 'layer.create',
+            tempId: `tmp:overlay:${Date.now()}`,
+            kind: 'image',
+            name: name.trim() || uploaded.path,
+            sortKey,
+            sourceConfig: {
+                ...uploaded,
+                corners: initialCorners(this.map, uploaded.naturalWidth, uploaded.naturalHeight),
+            },
+        }]);
+
+        await this.treeChanged({ reload: true });
+    }
+
+    /**
+     * Show the corner handles for an overlay, or hide them.
+     *
+     * A locked layer keeps its image and loses its handles, which is what the
+     * lock means everywhere else (specification section 8).
+     */
+    editOverlay(row) {
+        if (!row || row.layer.kind !== 'image' || row.layer.locked) {
+            this.handles.setTarget(null);
+
+            return;
+        }
+
+        this.handles.setTarget({
+            layerId: row.layer.id,
+            version: row.layer.version,
+            corners: { ...row.layer.sourceConfig.corners },
+            sourceConfig: row.layer.sourceConfig,
+        });
+    }
+
+    /** A corner moved: repaint the image without recording anything. */
+    previewOverlay(target) {
+        const overlay = [...this.overlays.values()]
+            .find((candidate) => candidate.source.path === target.sourceConfig.path);
+
+        overlay?.setSource({ ...target.sourceConfig, corners: target.corners });
+    }
+
+    /** A corner drag finished: one command for the whole gesture. */
+    commitOverlay(target, corners) {
+        this.store.commit(layerSetSource({
+            id: target.layerId,
+            version: target.version,
+            sourceConfig: { ...target.sourceConfig, corners },
+        }));
+
+        target.corners = { ...corners };
+        target.version += 1;
+        this.treeChanged();
     }
 
     /**
@@ -1316,11 +1513,30 @@ async function boot() {
 
     editor.renderer = renderer;
 
+    // The corner handles need the renderer's edit canvas, so they are built
+    // after it and handed to the editor rather than constructed inside it.
+    editor.handles = new CornerHandles({
+        map,
+        renderer,
+        onPreview: (target) => editor.previewOverlay(target),
+        onCommit: (target, corners) => editor.commitOverlay(target, corners),
+    });
+
     trackPointer(map, document.getElementById('gis-coordinates'));
 
     map.on('moveend zoomend', () => {
         editor.refresh();
         editor.rememberView();
+    });
+
+    // An overlay's corners are longitude and latitude, so the warp is recomputed
+    // whenever the map moves — the image's pixels never change, only where its
+    // four points land on the screen. `move` rather than `moveend`, or the
+    // image lags a pan by a whole gesture.
+    map.on('move zoom', () => {
+        for (const overlay of editor.overlays.values()) {
+            overlay.update();
+        }
     });
 
     // Docks and toolbars resize the map container without the window changing,

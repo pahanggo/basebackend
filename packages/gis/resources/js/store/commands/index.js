@@ -16,6 +16,7 @@ export { featureCreate, featureUpdate, featureDelete, moveVertex } from './featu
 export {
     layerRename, layerSetStyle, layerSetVisible, layerReorder,
     layerSetClassification, layerSetClassState, layerReorderClass, classAt,
+    layerSetSource,
 } from './layer.js';
 export { measurementCreate, measurementUpdate, measurementDelete } from './measurement.js';
 

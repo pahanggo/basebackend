@@ -18,7 +18,8 @@ Upload a scanned site plan and line it up over the map by dragging its four corn
 - The placement flow: pick → name → upload → place → adjust
 - Quarter-viewport initial placement
 - Four-corner homography, rendered with CSS `matrix3d`
-- Corner handles on the edit canvas, plus numeric coordinate entry
+- Corner handles on the edit canvas
+- A fifth handle that rotates all four corners together
 - Server-side re-encode, validation and the §20 limits
 
 ## Out of scope
@@ -67,4 +68,50 @@ This is v1's only multipart write and its only file upload. If a later session w
 
 ## Results
 
-_Fill in when complete._
+Verified end to end in the browser against the real map: upload a 600 x 400
+plan, place, rotate a quarter turn, pull one corner in, reload. The rendering
+after the reload is the rendering before it, keystone included.
+
+| Metric | Result |
+| --- | --- |
+| Commands per rotate gesture (20 pointer moves) | 1 |
+| Commands per corner drag (12 pointer moves) | 1 |
+| Feature reads caused by any overlay gesture | 0 |
+| Upload: 600 x 400 PNG in, re-encoded out | 6,003 bytes |
+| Perspective terms after a single-corner drag | -4.76e-4, 3.80e-4 — a genuine projective warp |
+
+**A rotate handle was added beyond the original scope**, on request. A scanned
+sheet is almost never square to north, and squaring it a corner at a time means
+four drags that each undo part of the last: the quad shears before it turns.
+The fifth handle turns the whole quad about its centre and leaves its shape
+alone. It floats off the middle of the top edge along that edge's outward
+normal, so it follows the image round as it turns, and it is tested first when
+the pointer goes down — a small or heavily keystoned overlay can bring a corner
+within grabbing distance of it, and rotating by accident is the more surprising
+of the two.
+
+**Rotation happens in screen pixels, never in degrees.** At this latitude a
+degree of longitude is about a tenth shorter than a degree of latitude, so
+turning the stored lon-lat pairs directly would squash the image as it turned.
+The corners are projected to the container, turned there, and unprojected back.
+The Node tests use a map stub whose axes have deliberately different scales,
+which is the condition that would expose the mistake.
+
+**Numeric corner entry is not built.** It is listed in §13 as the
+keyboard-accessible path to the same adjustment, and dragging is not reachable
+without a pointer. Left for S11, which owns the accessibility pass and is where
+the keyboard equivalents for every other pointer gesture will be built together
+rather than one per session.
+
+Two things worth recording:
+
+- **`Storage::url()` returns an absolute URL built from `APP_URL`**, which is
+  not necessarily the host the page came from — the first upload came back
+  pointing at `basebackend.phgg.link` while the page was on `basebackend.test`.
+  This URL is stored in `source_config` and read back on every load, so a wrong
+  one outlives the request that made it. It is made root-relative now, which is
+  the rule §23 already records for URLs travelling inside JSON.
+- **The `<input type="file">` is created, used and discarded per pick.** A
+  persistent one remembers its last selection, so choosing the same plan twice
+  in a row fires no `change` event and looks like the button has stopped
+  working.

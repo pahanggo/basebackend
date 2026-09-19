@@ -198,6 +198,13 @@ class EditorController extends Controller
             'tooManyValues' => __('That attribute has more than :max different values, which is too many to split by.'),
             'valuesFailed' => __('The values could not be read. Try again.'),
             'close' => __('Close'),
+
+            // Image overlays.
+            'addImageOverlay' => __('Add an image overlay'),
+            'adjustOverlay' => __('Adjust corners'),
+            'overlayLocked' => __('Unlock the layer to adjust it'),
+            'overlayName' => __('Name this overlay'),
+            'overlayFailed' => __('The image could not be uploaded.'),
         ];
     }
 }

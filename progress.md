@@ -23,6 +23,39 @@ and kept going. They are here because you may disagree.
 
 ## Done
 
+### S5c — Image overlays
+
+Commit below. Upload a scanned plan and line it up over the map by dragging its
+four corners — plus a fifth handle that rotates all four together, which you
+asked for mid-session.
+
+- `POST /api/geo/images` is the only multipart write in v1. Upload and layer
+  creation stay two steps so the command endpoint remains JSON, atomic and
+  replayable.
+- The transform is **projective, not affine**: each corner moves alone, which
+  an affine fit cannot do without dragging a corner you did not touch.
+  Rendered as a CSS `matrix3d` on an `<img>`, so the GPU warps it and a corner
+  drag costs no canvas work at all.
+- **Rotation happens in screen pixels, not degrees.** A degree of longitude is
+  about a tenth shorter than a degree of latitude here, so turning the stored
+  coordinates would squash the image as it turned.
+- Measured: one command per gesture however many pointer moves it takes, zero
+  feature reads, and a reload reproduces the warp exactly.
+
+**Found on the way:** `Storage::url()` returns an absolute URL built from
+`APP_URL` — the first upload came back pointing at `basebackend.phgg.link`
+while the page was on `basebackend.test`. That URL is stored and read back on
+every load, so it is made root-relative now, per the rule already recorded for
+URLs inside JSON.
+
+**Not built: numeric corner entry.** §13 lists it as the keyboard-accessible
+path to the same adjustment. I left it for S11, which owns the accessibility
+pass — the keyboard equivalents for every pointer gesture are better built
+together than one per session. Noted as a decision, not an oversight.
+
+I removed the test overlay I created on `pahang-baru` (layer 14). Your own
+`md_lipis` overlay on map 13 is untouched.
+
 ### S5d — Sublayers (categorised layers)
 
 Commits `72399eb`, `3b44ab3`.

@@ -552,3 +552,40 @@ export function movedBefore(classes, value, before) {
 
     return [...rest.slice(0, at), moving, ...rest.slice(at)];
 }
+
+/**
+ * LAYER. The tile or WMS URL, or an image overlay's path and corners.
+ *
+ * Whole-object replacement like the style, and for the same reason: a source
+ * config half written is a layer that requests nothing or requests nonsense.
+ *
+ * An overlay's corner drag lands here, once per gesture rather than once per
+ * pointer move — the handles preview locally and commit on release.
+ */
+export function layerSetSource({ id, version, sourceConfig, previous = null }) {
+    return {
+        op: 'layer.setSource',
+        topics: ['layers', `layers:${id}`, 'style'],
+
+        apply(state) {
+            const layer = state.layers[id];
+            const was = previous ?? (layer ? { ...layer.sourceConfig } : null);
+
+            if (layer) {
+                layer.sourceConfig = sourceConfig;
+                layer.version += 1;
+            }
+
+            return layerSetSource({
+                id,
+                version: (layer?.version ?? version) + 1,
+                sourceConfig: was,
+                previous: sourceConfig,
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.setSource', id, version, sourceConfig };
+        },
+    };
+}

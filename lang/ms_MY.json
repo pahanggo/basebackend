@@ -148,5 +148,12 @@
     "This layer has no attributes to split by.": "Lapisan ini tiada atribut untuk dipecahkan.",
     "No features carry a value for that attribute.": "Tiada fitur mempunyai nilai bagi atribut itu.",
     "That attribute has more than :max different values, which is too many to split by.": "Atribut itu mempunyai lebih daripada :max nilai berbeza, terlalu banyak untuk dipecahkan.",
-    "The values could not be read. Try again.": "Nilai tidak dapat dibaca. Cuba lagi."
+    "The values could not be read. Try again.": "Nilai tidak dapat dibaca. Cuba lagi.",
+    "Add an image overlay": "Tambah tindanan imej",
+    "Adjust corners": "Laras bucu",
+    "Unlock the layer to adjust it": "Buka kunci lapisan untuk melarasnya",
+    "Name this overlay": "Namakan tindanan ini",
+    "The image could not be uploaded.": "Imej tidak dapat dimuat naik.",
+    "That file could not be read as an image.": "Fail itu tidak dapat dibaca sebagai imej.",
+    "That image is :actual px on its longer edge; the limit is :limit px.": "Imej itu :actual px pada sisi panjangnya; hadnya ialah :limit px."
 }
