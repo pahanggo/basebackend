@@ -1120,7 +1120,9 @@ The modal is a standard Bootstrap 4 modal, which the application already bundles
 
 ### Map control panel
 
-A collapsible overlay anchored top-right of the map, holding the controls that act on the *view* rather than on the layer tree. The tree owns what exists and in what order; the control panel owns where you are looking and what you are looking for.
+A collapsible block at the foot of the layers sidebar, holding the controls that act on the *view* rather than on the layer tree. The tree owns what exists and in what order; the control panel owns where you are looking.
+
+It was an overlay anchored top-right, and it is not any more. Two floating panels on one screen made the canvas the smallest thing on it, and both are the map's furniture read top-to-bottom — so they share a column, and the map keeps the rest. The tree gives up height first when the panel opens, so the layer list is never pushed out of the sidebar altogether.
 
 | Control | Behaviour |
 | --- | --- |

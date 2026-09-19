@@ -413,32 +413,25 @@
 // Map control panel (specification section 8)
 // ---------------------------------------------------------------------------
 
-// Below the toolbar, which owns the top-right corner. Both are chrome, and
-// two overlays stacked on the same corner hide each other.
+// The last block in the sidebar, under the tree. Not an overlay: it is read
+// in the same column as the layers, and it never covers the canvas.
 .gis-panel {
-    position: absolute;
-    top: calc(55px + env(safe-area-inset-top));
-    right: calc(12px + env(safe-area-inset-right));
-    z-index: 1002;
-    width: 240px;
-    border-radius: 4px;
+    flex: none;
+    border-top: 1px solid #c8ced3;
     background: #fff;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
 }
 
 .gis-panel-toggle {
     width: 100%;
     border: 0;
-    border-radius: 4px 4px 0 0;
+    border-radius: 0;
     text-align: left;
 }
 
-.gis-panel.is-collapsed .gis-panel-toggle {
-    border-radius: 4px;
-}
-
+// The tree gives up height first, so opening the controls never pushes the
+// layer list out of the sidebar altogether.
 .gis-panel-body {
-    max-height: min(60vh, 520px);
+    max-height: min(46vh, 420px);
     padding: 8px 12px 12px;
     overflow-y: auto;
 
@@ -506,14 +499,8 @@
         left: calc(12px + env(safe-area-inset-left));
     }
 
-    .gis-panel {
-        width: auto;
-        left: calc(12px + env(safe-area-inset-left));
-        max-height: calc(100% - 80px);
-    }
-
     .gis-panel-body {
-        max-height: 50vh;
+        max-height: 40vh;
     }
 }
 

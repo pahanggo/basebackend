@@ -465,8 +465,12 @@ class Editor {
             onChanged: (options) => this.treeChanged(options),
         });
 
+        // In the sidebar, under the tree, rather than floating over the map.
+        // Both are the map's furniture and both are read top-to-bottom; two
+        // separate overlays on the same screen made the canvas the smaller
+        // thing on it.
         this.panel = new ControlPanel({
-            container: document.getElementById('gis-app'),
+            container: document.getElementById('gis-sidebar'),
             strings: config.strings,
             onBasemap: (id) => this.setBasemap(id),
             onGoTo: (point) => this.goTo(point),

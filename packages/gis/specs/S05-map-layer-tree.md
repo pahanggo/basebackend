@@ -210,7 +210,8 @@ side, since that is where the merge lives.
   for one visible property. Removing the style alpha answers it properly:
   layers import solid, one slider dials them back per map, and what it says is
   what you see.
-- **The panel offers four basemaps and no weather overlays.** See §8.
+- **The panel offers four basemaps and no weather overlays**, and it lives at
+  the foot of the sidebar rather than floating over the map. See §8.
 - **Isolate, Maps and the panel toggle left the map toolbar.** Isolate acts on
   the tree's selection and now sits with the tree's other actions; choosing a
   map sits beside the map's name; the panel toggle sits beside the way out. A
