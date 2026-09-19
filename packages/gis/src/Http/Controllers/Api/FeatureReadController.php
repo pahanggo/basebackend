@@ -47,6 +47,17 @@ class FeatureReadController extends Controller
      */
     public function __invoke(Request $request, Layer $layer): SymfonyResponse
     {
+        // An explicit id list bypasses the bbox entirely, which is what the
+        // editor uses to re-read ONE feature it is about to write to. It needs
+        // the current `version` to take part in optimistic locking, and a
+        // viewport read cannot carry a version per feature without paying four
+        // bytes for every feature on the screen to serve the one being edited.
+        $ids = self::idList($request->query('ids'));
+
+        if ($ids !== []) {
+            return $this->byIds($layer, $ids);
+        }
+
         try {
             $viewport = ViewportRead::fromQuery($request->query());
         } catch (InvalidArgumentException $e) {
@@ -112,6 +123,79 @@ class FeatureReadController extends Controller
                 'X-Gis-Area-Threshold' => (string) round($threshold, 4),
             ],
         );
+    }
+
+    /**
+     * Named features, as GeoJSON, with their versions and attributes.
+     *
+     * Always readable rather than negotiated: this is the path a human and an
+     * editing session both take, it returns a handful of rows, and the binary
+     * format's whole reason — no parse step for tens of thousands of features
+     * — does not apply to five.
+     *
+     * @param  array<int, int>  $ids
+     */
+    protected function byIds(Layer $layer, array $ids): SymfonyResponse
+    {
+        $rows = DB::connection(config('gis.connection'))
+            ->table('gis_features')
+            ->where('layer_id', $layer->id)
+            ->whereIn('id', $ids)
+            ->select([
+                'id',
+                'version',
+                'area_m2',
+                'properties',
+                DB::raw($this->geometryColumn(null)),
+            ])
+            ->get();
+
+        $features = $rows->map(fn ($row) => [
+            'type' => 'Feature',
+            'id' => (int) $row->id,
+            'geometry' => json_decode($row->geometry, true, flags: JSON_THROW_ON_ERROR),
+            'properties' => [
+                '_area' => (float) $row->area_m2,
+                // The reason this endpoint exists. Without it the client has
+                // to guess a version, and a guess that is wrong reads as a
+                // conflict the user did not cause.
+                '_version' => (int) $row->version,
+                'attributes' => json_decode($row->properties ?: '{}', true),
+            ],
+        ])->all();
+
+        return response()->json([
+            'type' => 'FeatureCollection',
+            'features' => $features,
+        ], 200, ['Content-Type' => self::GEOJSON_TYPE]);
+    }
+
+    /**
+     * A comma-separated id list, bounded.
+     *
+     * Bounded because this path has no area cull and no cap of its own: it is
+     * for a selection, and a selection of ten thousand features is a viewport
+     * read wearing a disguise.
+     *
+     * @return array<int, int>
+     */
+    protected static function idList(mixed $value): array
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach (explode(',', $value) as $part) {
+            $part = trim($part);
+
+            if (ctype_digit($part)) {
+                $ids[] = (int) $part;
+            }
+        }
+
+        return array_slice(array_unique($ids), 0, 500);
     }
 
     /**
@@ -306,7 +390,7 @@ class FeatureReadController extends Controller
      * area cull decides which, and it drops whole features rather than
      * reshaping them.
      */
-    protected function geometryColumn(ViewportRead $viewport): string
+    protected function geometryColumn(?ViewportRead $viewport = null): string
     {
         return GeometryCast::selectGeoJson('geom', 'geometry');
     }

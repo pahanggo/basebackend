@@ -56,3 +56,35 @@ it('never writes feature data into the DOM as markup', function () {
 
     expect(trim((string) $hits))->toBe('');
 });
+
+it('never reaches for a Cartesian MySQL spatial function', function () {
+    // `ST_Buffer`, `ST_Union`, `ST_Difference`, `ST_Intersection` and
+    // `ST_Simplify` are Cartesian-only: on a geographic reference system they
+    // either error or return a confidently wrong answer in degrees, and
+    // `ST_MakeValid` does not exist in MySQL at all. Every constructive
+    // operation goes through `GeometryService` instead (specification §5).
+    //
+    // This is an architecture test rather than a code review because the
+    // shortcut is tempting and its failure is invisible: geometry in the wrong
+    // place still draws, still indexes and still exports.
+    $forbidden = [
+        'ST_Buffer', 'ST_Union', 'ST_Difference', 'ST_Intersection',
+        'ST_Simplify', 'ST_MakeValid', 'ST_ConvexHull',
+    ];
+
+    $offenders = [];
+
+    foreach ($forbidden as $function) {
+        $hits = array_filter(explode("\n", (string) shell_exec(sprintf(
+            'grep -rl %s %s 2>/dev/null',
+            escapeshellarg($function),
+            escapeshellarg(base_path('packages/gis/src')),
+        ))));
+
+        foreach ($hits as $file) {
+            $offenders[] = trim($file).' calls '.$function;
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});

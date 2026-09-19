@@ -8,6 +8,10 @@ use Gis\Models\Map;
 use Gis\Policies\MapPolicy;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
+use Gis\Geometry\GeometryService;
+use Gis\Geometry\GeosGeometryService;
+use Gis\Geometry\GeosOp;
+use Gis\Geometry\UnavailableGeometryService;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -22,6 +26,7 @@ class GisServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/gis.php', 'gis');
         $this->registerDatabaseConnections();
+        $this->registerGeometryService();
     }
 
     /**
@@ -83,6 +88,31 @@ class GisServiceProvider extends ServiceProvider
             'middleware' => $middleware,
             'as' => 'gis.api.',
         ], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/api.php'));
+    }
+
+    /**
+     * Constructive geometry, bound to whichever implementation can actually
+     * run here.
+     *
+     * **A resolver closure, never a constructor injection.** Octane boots the
+     * application once and reuses it, so a singleton holding the container,
+     * the request or the config repository holds the FIRST request's copy for
+     * the life of the worker. The closure re-reads on every resolution
+     * instead, which is also what lets the binary's absence be noticed without
+     * a restart.
+     *
+     * `scoped` rather than `singleton` for the same reason: it is discarded
+     * between requests.
+     */
+    protected function registerGeometryService(): void
+    {
+        $this->app->scoped(GeometryService::class, function () {
+            $geos = new GeosOp;
+
+            return $geos->available()
+                ? new GeosGeometryService($geos)
+                : new UnavailableGeometryService;
+        });
     }
 
     /**

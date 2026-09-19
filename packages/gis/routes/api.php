@@ -3,6 +3,7 @@
 use Gis\Http\Controllers\Api\CommandController;
 use Gis\Http\Controllers\Api\CommandReplayController;
 use Gis\Http\Controllers\Api\FeatureReadController;
+use Gis\Http\Controllers\Api\GeometryOpsController;
 use Gis\Http\Controllers\Api\ImageUploadController;
 use Gis\Http\Controllers\Api\LayerLibraryController;
 use Gis\Http\Controllers\Api\LayerValuesController;
@@ -42,6 +43,13 @@ Route::get('maps/{map}/commands', CommandReplayController::class)->name('maps.co
 
 // The one multipart write in v1. Separate from the command endpoint on purpose:
 // that one stays JSON so it can stay atomic, idempotent and replayable.
+// Constructive geometry above the client's vertex limit. Not a write path: it
+// returns geometry and creates nothing, which is what keeps the command
+// endpoint the only way anything is stored.
+Route::post('geometry/ops', GeometryOpsController::class)
+    ->middleware('throttle:gis-writes')
+    ->name('geometry.ops');
+
 Route::post('images', ImageUploadController::class)
     ->middleware('throttle:gis-images')
     ->name('images.store');

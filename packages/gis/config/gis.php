@@ -468,6 +468,14 @@ return [
 
     'geometry' => [
         'geosop' => env('GIS_GEOSOP_PATH', '/opt/homebrew/bin/geosop'),
+
+        // Above this many vertices a constructive operation goes to the
+        // server instead of running in Turf. The client reads it from
+        // `capabilities`, so raising it is a config change rather than a
+        // deployment of different JavaScript — and a client that ignores it
+        // is still handled correctly, because the endpoint does not care how
+        // the caller decided to call it.
+        'inline_op_vertex_limit' => 20000,
         'timeout_seconds' => 15,
         'buffer_quad_segs' => 32,
         'metric_srid' => [

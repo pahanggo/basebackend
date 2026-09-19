@@ -236,6 +236,16 @@ class EditorController extends Controller
             'keepTheirs' => __('Keep theirs'),
             'keepAllTheirs' => __('Discard all of mine'),
             'applyResolution' => __('Apply'),
+
+            // Constructive geometry on a selected feature.
+            'buffer' => __('Buffer'),
+            'simplify' => __('Simplify'),
+            'convexHull' => __('Convex hull'),
+            'makeValid' => __('Repair'),
+            'bufferPrompt' => __('Buffer by how many metres? Negative shrinks.'),
+            'simplifyPrompt' => __('Simplify to what tolerance, in metres?'),
+            'operationEmpty' => __('That left nothing behind.'),
+            'operationFailed' => __('The operation could not be completed.'),
         ];
     }
 }

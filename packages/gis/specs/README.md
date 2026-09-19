@@ -28,7 +28,7 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S5d](S05d-sublayers.md) | Sublayers — **done** | S5b, S3 |
 | [S6a](S06-drawing-editing.md) | Drawing, readout, validation — **done** | S4, S2 |
 | [S6b](S06-drawing-editing.md) | Vertex editing, snapping, clipboard, conflicts | S6a |
-| [S7](S07-geometry-operations.md) | Geometry operations | S6 |
+| [S7](S07-geometry-operations.md) | Geometry operations — **done** | S6 |
 | [S8](S08-styling-labels-legend.md) | Styling, labels, legend | S5d, S2 |
 | [S9](S09-attributes-selection-query.md) | Attribute table and selection | S5, S8 |
 | [S9b](S09b-query.md) | Spatial and attribute query | S9 |

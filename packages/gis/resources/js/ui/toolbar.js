@@ -17,6 +17,15 @@ import { el, clear } from '../lib/dom.js';
 import { TOOLS } from '../map/draw/draw-session.js';
 import { destination } from '../lib/measure.js';
 import { rectangleRing, circleRing } from '../map/draw/shapes.js';
+import { available } from '../map/ops/index.js';
+
+/** Line Awesome icons, one per operation on a selected feature. */
+const OP_ICONS = {
+    buffer: 'la-dot-circle',
+    simplify: 'la-compress-arrows-alt',
+    convexHull: 'la-expand',
+    makeValid: 'la-wrench',
+};
 
 /** Line Awesome icons, one per tool. */
 const ICONS = {
@@ -37,11 +46,12 @@ export class Toolbar {
      * @param {Function} options.onNumeric called with a finished GeoJSON geometry
      * @param {Function} options.centre () => the map centre as [lng, lat]
      */
-    constructor({ container, strings, onTool, onNumeric, centre }) {
+    constructor({ container, strings, onTool, onNumeric, centre, onOperation = null }) {
         this.container = container;
         this.strings = strings;
         this.onTool = onTool;
         this.onNumeric = onNumeric;
+        this.onOperation = onOperation;
         this.centre = centre;
         this.tool = null;
         this.buttons = new Map();
@@ -73,6 +83,40 @@ export class Toolbar {
         const shell = document.getElementById('gis-map') ?? container.parentElement;
 
         shell?.append(this.readout, this.numeric);
+    }
+
+    /**
+     * Show or hide the operations that act on a selected feature.
+     *
+     * They appear only when there is something to act on, and only the ones
+     * this deployment can actually complete — `available()` refuses buffer and
+     * make-valid where GEOS is absent, because a control that cannot finish is
+     * worse than one that is not there.
+     */
+    setOperationsFor(target, capabilities) {
+        this.opsGroup?.remove();
+        this.opsGroup = null;
+
+        if (!target) {
+            return;
+        }
+
+        const ops = ['buffer', 'simplify', 'convexHull', 'makeValid']
+            .filter((op) => available(op, capabilities));
+
+        if (ops.length === 0) {
+            return;
+        }
+
+        this.opsGroup = el('div', { class: 'btn-group btn-group-sm gis-ops' }, ops.map((op) => el('button', {
+            type: 'button',
+            class: 'btn btn-light',
+            title: this.strings[op] ?? op,
+            'aria-label': this.strings[op] ?? op,
+            onclick: () => this.onOperation?.(op),
+        }, [el('i', { class: `la ${OP_ICONS[op]}`, 'aria-hidden': 'true' })])));
+
+        this.container.after(this.opsGroup);
     }
 
     /** Choosing the active tool again turns it off, which is how Escape feels. */

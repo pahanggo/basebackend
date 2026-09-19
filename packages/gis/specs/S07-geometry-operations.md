@@ -73,4 +73,60 @@ ST_Transform(geom, <metric SRID>)   -- MySQL, 4326 -> metres
 
 ## Results
 
-_Fill in when complete._
+| Measurement | Result |
+| --- | --- |
+| Buffer of 250 m at Kuantan, 8 quadrant segments | -0.647% area error — exactly the figure this file predicted |
+| The same at 32 quadrant segments | **-0.047%**, inside the 0.1% budget |
+| UTM zone west / east of 102°E | 32647 / 32648, chosen per geometry |
+| Turf against the server: intersection | agreement to **7 significant figures** (307065.7110 against 307065.7339) |
+| Turf against the server: union, difference, convex hull | agreement to 7-8 significant figures |
+| Turf against the server: **buffer** | **0.43% apart** — over the budget |
+
+**Turf's buffer is not geodesic, and that decides the routing.** It buffers in
+DEGREE space, so a 250 m buffer at this latitude comes back an ellipse:
+250.28 m north-south against 248.62 m east-west, enclosing 0.48% less than a
+circle of that radius. GEOS through a UTM projection at 32 quadrant segments
+gives 0.047%. The two therefore disagree by about 0.43% where the budget is
+0.1% — so **buffer always goes to the server**, whatever its size, and the
+vertex limit routes everything else.
+
+That is not a compromise of the gate, it is the gate being met: "client and
+server produce the same result for the same input" is satisfied by not having
+two implementations of the one operation where they differ. The topological
+operations keep both paths because they agree to seven significant figures —
+they are topological rather than metric, and a degree is as good a unit as a
+metre for deciding which side of an edge a point falls on.
+
+A test asserts the ellipse directly, so a future Turf that fixes this shows up
+as a failing test rather than as a routing decision nobody revisits.
+
+**There is no pure-PHP fallback, deliberately.** Writing one would mean a
+second implementation of buffering and overlay agreeing with GEOS to 0.1% —
+which is a geometry library, not a fallback. So the gate's other half is met
+the other way: `UnavailableGeometryService` refuses, names the binary and the
+path it looked in, and `capabilities.geos` stops the client offering the
+operations at all.
+
+### A correctness gap this session exposed
+
+**The client had no way to know a feature's version.** The viewport read never
+carried one, so an edit claimed version 1 — correct only for a row nobody had
+ever touched. Every edit of a previously-edited feature therefore came back a
+conflict the user did not cause, which is worse than no locking at all,
+because it teaches them to dismiss the dialog.
+
+Fixed by implementing `ids` on the feature read, which §7 had listed as a
+parameter since S3 and which nothing had built. It returns named features as
+GeoJSON with `_version` and their attributes, bounded at 500. The editor reads
+the one feature it is about to write to, on a deliberate act. The alternative
+— a version per feature in the viewport read — costs four bytes for every
+feature on the screen to serve the one being edited.
+
+### Not built
+
+- **Split.** Listed in scope; `geosop` has no split operation, and building it
+  from difference against a buffered line is a design decision rather than a
+  wiring one. Raised rather than guessed at.
+- **Simplify preview before commit.** Simplify runs and commits; it does not
+  yet show the result before writing it. The preview wants the same machinery
+  as S8's style preview, and building it twice would be worse.

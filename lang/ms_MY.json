@@ -181,5 +181,13 @@
     "Keep mine": "Kekalkan milik saya",
     "Keep theirs": "Kekalkan milik mereka",
     "Discard all of mine": "Buang semua milik saya",
-    "Apply": "Guna"
+    "Apply": "Guna",
+    "Buffer": "Penampan",
+    "Simplify": "Permudah",
+    "Convex hull": "Hul cembung",
+    "Repair": "Baiki",
+    "Buffer by how many metres? Negative shrinks.": "Penampan berapa meter? Negatif mengecilkan.",
+    "Simplify to what tolerance, in metres?": "Permudah pada toleransi berapa meter?",
+    "That left nothing behind.": "Tiada apa yang tinggal.",
+    "The operation could not be completed.": "Operasi tidak dapat diselesaikan."
 }

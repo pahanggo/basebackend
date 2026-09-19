@@ -205,6 +205,78 @@ final class GeometryCast implements CastsAttributes
     }
 
     /**
+     * The same geometry in another reference system.
+     *
+     * **MySQL does both legs of every reprojection in this package, and no PHP
+     * library does any of it.** `proj4php` never enters the dependency list:
+     * every SRID this application uses is already in
+     * `INFORMATION_SCHEMA.ST_SPATIAL_REFERENCE_SYSTEMS`, the 4326 round trip is
+     * exact, and a second definition of a projection is a second thing that can
+     * disagree with the database about where a point is.
+     *
+     * It lives here with the other raw spatial calls for the usual reason: the
+     * axis-order footgun. Going out is longitude-latitude, and coming back the
+     * bytes are whatever the target system declares — which for a UTM zone is
+     * easting then northing, and is why the result is read as bare WKB against
+     * the new SRID rather than reinterpreted as 4326.
+     */
+    public static function transform(Geometry $geometry, int $toSrid): Geometry
+    {
+        $row = DB::connection(config('gis.connection'))->selectOne(sprintf(
+            'select ST_AsBinary(ST_Transform(%s, %d)) as geom',
+            self::literal($geometry),
+            $toSrid,
+        ));
+
+        if ($row === null || $row->geom === null) {
+            throw new InvalidArgumentException("Could not transform geometry to SRID {$toSrid}.");
+        }
+
+        return (new WkbReader)->read($row->geom, $toSrid);
+    }
+
+    /**
+     * WKT for a geometry already in a projected system.
+     *
+     * `literal()` hardcodes SRID 4326 and its axis order, which is right for
+     * everything stored in this package and wrong for the metre-space geometry
+     * a constructive operation works in. Same safety check on the characters;
+     * same reason it is interpolated rather than bound.
+     */
+    public static function projectedLiteral(Geometry $geometry, int $srid): string
+    {
+        $wkt = (new WktWriter)->write($geometry);
+
+        if (preg_match(self::SAFE_WKT, $wkt) !== 1) {
+            throw new InvalidArgumentException('Refusing to write geometry whose WKT contains unexpected characters.');
+        }
+
+        return sprintf("ST_GeomFromText('%s', %d)", $wkt, $srid);
+    }
+
+    /**
+     * A projected geometry back into 4326.
+     *
+     * The inverse of `transform`, and separate from it because the way back
+     * needs the axis-order option that the way out does not.
+     */
+    public static function toGeographic(Geometry $geometry, int $fromSrid): Geometry
+    {
+        $row = DB::connection(config('gis.connection'))->selectOne(sprintf(
+            "select ST_AsBinary(ST_Transform(%s, %d), '%s') as geom",
+            self::projectedLiteral($geometry, $fromSrid),
+            self::SRID,
+            self::AXIS_ORDER,
+        ));
+
+        if ($row === null || $row->geom === null) {
+            throw new InvalidArgumentException('Could not transform geometry back to WGS84.');
+        }
+
+        return (new WkbReader)->read($row->geom, self::SRID);
+    }
+
+    /**
      * Geodesic area in square metres.
      *
      * `ST_Area` on SRID 4326 IS geodesic and returns m² — verified in S1b

@@ -1020,3 +1020,29 @@ hr {
     padding: 10px 14px;
     border-top: 1px solid #e4e7ea;
 }
+
+// The operations that act on a selected feature, beside the drawing tools.
+// Separate group rather than more buttons in the same one: these act on
+// something already there, the tools make something new, and a divider is the
+// cheapest way to say so.
+.gis-ops {
+    position: absolute;
+    top: calc(12px + env(safe-area-inset-top));
+    right: calc(216px + env(safe-area-inset-right));
+    z-index: 1000;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+
+    .btn {
+        background: #fff;
+        color: #23282c;
+
+        &:hover,
+        &:focus {
+            background: #f0f3f5;
+        }
+
+        @media (pointer: coarse) {
+            min-height: 44px;
+        }
+    }
+}

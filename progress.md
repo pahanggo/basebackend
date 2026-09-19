@@ -17,6 +17,7 @@ and kept going. They are here because you may disagree.
 
 | # | Question | What I did | Where |
 | --- | --- | --- | --- |
+| 3 | **Split** is in S7's scope but `geosop` has no split operation. It can be built as a difference against a buffered cutting line, but the buffer width is arbitrary and affects the result. | Left unbuilt and raised here rather than guessing a width. | S7 |
 | 2 | A circle is stored as a **polygon** of 72 segments. MySQL has no circle type and `geom` is one column, so there is nowhere else for it to go — but the centre and radius are then not exactly recoverable. §7's GIS1 type 4 anticipates carrying them in the attribute tail; nothing writes that yet. | Stored as a polygon and raised it here. | S6a |
 | 1 | `gis.read.min_area_px` is 1 and `max_features_per_response` is 1,000,000. At those values a zoom-12 viewport returns ~25,000 features from `Lot` alone against a 10,000 design target. They look like S3 verification settings that were never restored. | Left them alone. Retuning moves the §19 budgets, which are a hard gate. | spec §23 |
 
@@ -26,6 +27,39 @@ testing — delete it whenever you like, or tell me to.
 ---
 
 ## Done
+
+### S7 — Geometry operations
+
+Buffer, union, difference, intersection, convex hull, centroid, point-on-
+surface, simplify and repair. Turf on the client for small inputs, GEOS on the
+server above the vertex limit, routed from `capabilities` so a deployment
+without the binary degrades without different JavaScript.
+
+**The measurement that decided the design:** Turf's buffer is *not* geodesic.
+It works in degree space, so a 250 m buffer here comes back an ellipse —
+250.28 m north–south against 248.62 m east–west — 0.48% short on area, where
+GEOS through UTM gives 0.047%. They disagree by 0.43% and the budget is 0.1%.
+So **buffer always goes to the server**. Everything else stays client-side
+below the limit, because intersection, union, difference and hull agree with
+the server to **seven significant figures**.
+
+I also measured the spec's own claim and it held exactly: 8 quadrant segments
+gives −0.647%, 32 gives −0.047%.
+
+**A correctness gap this exposed, now fixed.** The client had no way to know a
+feature's version — the viewport read never carried one — so every edit of a
+previously-edited feature came back as a conflict nobody caused. That is worse
+than no locking, because it teaches you to dismiss the dialog. Fixed by
+implementing `ids` on the feature read, which §7 had specified since S3 and
+nothing had built.
+
+**Dependency added:** nine `@turf/*` function packages, which the spec's
+dependency table pre-approves ("npm, bundled per function"). +11 kB gzipped,
+against a 300 kB budget.
+
+**Not built:** *split* (geosop has no split operation; building it from a
+buffered-line difference is a design decision, not wiring — see open questions)
+and *simplify preview* (wants S8's preview machinery).
 
 ### S6b — Vertex editing, snapping, conflict resolution (partly done)
 

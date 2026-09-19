@@ -39,7 +39,8 @@ import { DrawSession } from './map/draw/draw-session.js';
 import { Toolbar } from './ui/toolbar.js';
 import { ConflictPanel } from './ui/conflict-panel.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
-import { VertexEditor } from './map/edit/vertex-editor.js';
+import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
+import { run as runOperation } from './map/ops/index.js';
 import { Snapper } from './map/snap.js';
 import { layerSetSource } from './store/commands/layer.js';
 
@@ -1356,7 +1357,7 @@ class Editor {
      * Only when no drawing tool is active: while a tool is selected a click
      * places a vertex, and hit-testing as well would do both at once.
      */
-    pickFeature(event) {
+    async pickFeature(event) {
         if (this.draw?.tool) {
             return;
         }
@@ -1369,6 +1370,7 @@ class Editor {
 
         if (!hit) {
             this.vertices.setTarget(null);
+            this.toolbar?.setOperationsFor(null, this.config.capabilities);
 
             return;
         }
@@ -1383,17 +1385,134 @@ class Editor {
             return;
         }
 
+        this.toolbar?.setOperationsFor(hit, this.config.capabilities);
+
         this.vertices.setTarget({
             slot: hit.slot,
             feature: hit.feature,
             id: hit.id,
             layerId: feed.layer.id,
             type: feed.entry.geometry.types[hit.feature],
-            // The feature's own version is not in the store — geometry is the
-            // renderer's and the store holds metadata — so an edit claims the
-            // version it was read at and lets the server say otherwise.
+            // Provisional. The viewport read does not carry a version — it
+            // would cost four bytes for every feature on the screen to serve
+            // the one being edited — so the real one is fetched below.
             version: this.store.state.features[hit.id]?.version ?? 1,
         });
+
+        await this.syncFeatureVersion(hit.id, feed.layer.id);
+    }
+
+    /**
+     * Run a constructive operation on the selected feature.
+     *
+     * The result REPLACES the feature rather than becoming a new one. That is
+     * the right default for the four offered here — a buffer of a parcel is
+     * still that parcel's buffer, a repaired polygon is still the polygon —
+     * and undo puts the original back, which is what makes it safe to try.
+     */
+    async runOperation(op) {
+        const target = this.vertices.target;
+
+        if (!target) {
+            return;
+        }
+
+        const geometry = geometryOf(target.type, target.rings);
+        const options = {
+            apiBase: this.config.apiBase,
+            csrfToken: this.config.csrfToken,
+            capabilities: this.config.capabilities,
+        };
+
+        if (op === 'buffer') {
+            const metres = Number(window.prompt(this.config.strings.bufferPrompt, '10'));
+
+            if (!Number.isFinite(metres) || metres === 0) {
+                return;
+            }
+
+            options.metres = metres;
+        }
+
+        if (op === 'simplify') {
+            const metres = Number(window.prompt(this.config.strings.simplifyPrompt, '5'));
+
+            if (!Number.isFinite(metres) || metres <= 0) {
+                return;
+            }
+
+            options.toleranceMetres = metres;
+        }
+
+        this.activity.start();
+
+        try {
+            const result = await runOperation(op, [geometry], options);
+
+            if (result === null) {
+                notify(this.config.strings.operationEmpty);
+
+                return;
+            }
+
+            this.store.commit(featureUpdate({
+                id: target.id,
+                layerId: target.layerId,
+                version: target.version,
+                // A client result is GeoJSON and a server one is base64 WKB.
+                // Both are encodings the command already speaks, so neither
+                // needs converting to match the other.
+                geom: result.geometry ?? result.wkb,
+                geomEncoding: result.geometry ? 'geojson' : 'wkb',
+            }));
+
+            target.version += 1;
+            this.vertices.setTarget(null);
+            this.toolbar.setOperationsFor(null, this.config.capabilities);
+            this.refreshLayer(target.layerId);
+        } catch (error) {
+            console.error('gis: operation failed', error);
+            notify(error.message || this.config.strings.operationFailed);
+        } finally {
+            this.activity.stop();
+        }
+    }
+
+    /**
+     * Learn the real version of the feature about to be edited.
+     *
+     * **Without this every edit of a previously-edited feature conflicts.** A
+     * version defaulted to 1 is wrong for any row anyone has ever touched, and
+     * the user sees a conflict dialog for a collision that did not happen —
+     * which is worse than no locking at all, because it teaches them to
+     * dismiss the dialog.
+     *
+     * One small read of one row, on a deliberate act. It also brings the
+     * feature's attributes back, which is what the attribute panel will want.
+     */
+    async syncFeatureVersion(id, layerId) {
+        try {
+            const collection = await getJson(
+                `${this.config.apiBase}/layers/${layerId}/features?ids=${id}`,
+            );
+
+            const found = collection.features?.[0];
+
+            if (found && this.vertices.target?.id === id) {
+                this.vertices.target.version = found.properties._version;
+                this.store.state.features[id] = {
+                    id,
+                    layerId,
+                    properties: found.properties.attributes ?? {},
+                    version: found.properties._version,
+                };
+            }
+        } catch (error) {
+            // Not fatal: the write will simply claim the version it had and
+            // the server will say otherwise, which is the conflict path and is
+            // survivable. Failing the selection would not be.
+            console.warn('gis: could not read the feature version', error);
+        }
     }
 
     /** A vertex edit finished: one command for the whole gesture. */
@@ -1698,6 +1817,7 @@ async function boot() {
         centre: () => [map.getCenter().lng, map.getCenter().lat],
         onTool: (tool) => editor.draw.setTool(tool),
         onNumeric: (geometry) => editor.commitDrawn(geometry),
+        onOperation: (op) => editor.runOperation(op),
     });
 
     editor.draw = new DrawSession({

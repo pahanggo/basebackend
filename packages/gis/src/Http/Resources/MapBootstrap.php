@@ -179,7 +179,12 @@ class MapBootstrap
     public static function capabilities(): array
     {
         return [
-            'geos' => false,
+            // Asked of the service rather than assumed, so a deployment
+            // without the binary tells the client and the client stops
+            // offering operations it cannot complete — rather than shipping
+            // different code to different deployments.
+            'geos' => app(\Gis\Geometry\GeometryService::class)->available(),
+            'inlineOpVertexLimit' => (int) config('gis.geometry.inline_op_vertex_limit'),
             'maxBatch' => (int) config('gis.write.max_batch'),
             'maxFeaturesPerResponse' => (int) config('gis.read.max_features_per_response'),
             'binaryFeatures' => true,
