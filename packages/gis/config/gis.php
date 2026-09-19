@@ -424,6 +424,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Measurements
+    |--------------------------------------------------------------------------
+    |
+    | Saved measurements ride along with the bootstrap, geometry and all, which
+    | is the one place that response carries coordinates. The ceiling is what
+    | keeps that exception honest: a map with a hundred measurements is a busy
+    | map, and a map with ten thousand is a mistake that must not become a slow
+    | first paint. Past it the client is told it is seeing a subset.
+    |
+    */
+
+    'measurements' => [
+        'max_per_map' => (int) env('GIS_MAX_MEASUREMENTS_PER_MAP', 500),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Rate limits
     |--------------------------------------------------------------------------
     */

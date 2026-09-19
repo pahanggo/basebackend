@@ -44,6 +44,11 @@ import { AttributeTable } from './ui/attribute-table.js';
 import { QueryPanel } from './ui/query-panel.js';
 import { ScaleBar } from './ui/scale-bar.js';
 import { PerformanceOverlay } from './ui/performance-overlay.js';
+import { MeasurePanel } from './ui/measure-panel.js';
+import { MeasureSession } from './map/measure/measure-session.js';
+import { AnnotationLayer } from './map/measure/annotation-layer.js';
+import { outlineOf } from './map/measure/annotations.js';
+import { measurementCreate, measurementUpdate, measurementDelete } from './store/commands/measurement.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
 import { Snapper } from './map/snap.js';
@@ -496,6 +501,12 @@ function hydrate(store, bootstrap) {
 
         store.state.tree.push(entry.placementId);
     }
+
+    store.state.measurements = {};
+
+    for (const measurement of bootstrap.measurements?.items ?? []) {
+        store.state.measurements[measurement.id] = { ...measurement };
+    }
 }
 
 /**
@@ -841,9 +852,7 @@ class Editor {
             await this.sync?.drain();
             this.bootstrap = await getJson(`${this.config.apiBase}/maps/${this.bootstrap.id}`);
             hydrate(this.store, this.bootstrap);
-        // `hydrate` writes into state directly rather than through `commit`,
-        // so nothing is emitted and anything listening has to be told.
-        this.legend?.render();
+            this.syncMeasurements();
             this.tree.rebuild();
             this.legend?.render();
         }
@@ -1077,6 +1086,13 @@ class Editor {
         this.table?.attach(store);
         this.sync = sync;
 
+        // Bound to THIS store, not to the one that existed when the page was
+        // built. Opening another map replaces the store outright, and a
+        // subscription left on the old one would quietly stop firing — the
+        // list would keep showing the previous map's measurements and nothing
+        // would report an error.
+        store.subscribe('measurements', () => this.syncMeasurements());
+
         // A map switch is the one case where nothing carries over, so the
         // renderer is emptied outright rather than reconciled.
         for (const feed of this.feeds) {
@@ -1088,8 +1104,14 @@ class Editor {
 
         hydrate(this.store, this.bootstrap);
         // `hydrate` writes into state directly rather than through `commit`,
-        // so nothing is emitted and anything listening has to be told.
+        // so nothing is emitted and anything listening has to be told. The
+        // measurement list is one of those: telling it BEFORE the hydrate gave
+        // an empty list on every load, while the measurement sat in the
+        // bootstrap and in the database the whole time, and nothing errored.
         this.legend?.render();
+        this.selectMeasurement(null);
+        this.measurePanel?.setReadOnly(!this.mayMeasure());
+        this.syncMeasurements();
         this.rememberInUrl();
         this.tree.attach(this.store);
         this.panel.setProviders(
@@ -1634,6 +1656,126 @@ class Editor {
         }
     }
 
+    /**
+     * Save what the measure session just took.
+     *
+     * The value is whatever `valueFor` derived from the finished geometry, so
+     * the number and the line agree by construction rather than by care.
+     */
+    commitMeasurement({ kind, tool, geom, value }) {
+        if (!this.mayMeasure()) {
+            notify(this.config.strings.measure_readonly);
+
+            return;
+        }
+
+        this.store.commit(measurementCreate({
+            tempId: `msr-${Date.now().toString(36)}`,
+            kind,
+            tool,
+            geom,
+            value,
+            unit: this.unitPreferences().system ?? 'si',
+        }));
+
+        this.syncMeasurements();
+    }
+
+    renameMeasurement(measurement, label) {
+        this.store.commit(measurementUpdate({
+            id: measurement.id,
+            version: measurement.version,
+            label,
+        }));
+
+        this.syncMeasurements();
+    }
+
+    async deleteMeasurement(measurement) {
+        const confirmed = await confirmAction({
+            title: this.config.strings.measure_delete_title,
+            text: this.config.strings.measure_delete_text,
+            confirmLabel: this.config.strings.delete,
+            cancelLabel: this.config.strings.cancel,
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        this.store.commit(measurementDelete({
+            id: measurement.id,
+            version: measurement.version,
+        }));
+
+        if (this.selectedMeasurement === measurement.id) {
+            this.selectMeasurement(null);
+        }
+
+        this.syncMeasurements();
+    }
+
+    /** Fit the map to a measurement, wherever on earth it is. */
+    zoomToMeasurement(measurement) {
+        const outline = outlineOf(measurement.geom);
+
+        if (outline.length === 0) {
+            return;
+        }
+
+        const lngs = outline.map((point) => point[0]);
+        const lats = outline.map((point) => point[1]);
+
+        this.ignoreMoves();
+        this.map.fitBounds(
+            [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]],
+            // Padded, because a two-point line fits to a degenerate box and
+            // Leaflet would otherwise zoom to the maximum on a 5 m distance.
+            { maxZoom: 19, padding: [40, 40] },
+        );
+    }
+
+    selectMeasurement(id) {
+        this.selectedMeasurement = id;
+        this.annotations?.setSelected(id);
+        this.measurePanel?.setSelected(id);
+    }
+
+    /** Push the store's measurements at the things that draw and list them. */
+    syncMeasurements() {
+        const items = Object.values(this.store.state.measurements ?? {});
+
+        this.annotations?.setItems(items);
+        this.measurePanel?.setItems(items);
+    }
+
+    /** A viewer may measure on screen; only a contributor may save one. */
+    mayMeasure() {
+        return !['viewer'].includes(this.store.state.map?.role);
+    }
+
+    /**
+     * The reader's unit preferences.
+     *
+     * `localStorage`, the same home the coordinate readout's format uses. §11
+     * calls this `ui.units` and puts it on the user; until there is a place to
+     * put it on the server this is the honest version — a preference that
+     * follows the browser rather than one that pretends to follow the account.
+     */
+    unitPreferences() {
+        if (this._units) {
+            return this._units;
+        }
+
+        try {
+            this._units = JSON.parse(window.localStorage.getItem('gis.units') ?? '{}');
+        } catch {
+            this._units = {};
+        }
+
+        return this._units;
+    }
+
     /** Fit the map to one row's feature. */
     zoomToFeature(row) {
         const feed = this.table.feed;
@@ -2123,7 +2265,14 @@ async function boot() {
         container: document.querySelector('#gis-app .gis-toolbar'),
         strings: config.strings,
         centre: () => [map.getCenter().lng, map.getCenter().lat],
-        onTool: (tool) => editor.draw.setTool(tool),
+        onTool: (tool) => {
+            if (tool) {
+                editor.measurePanel?.setTool(null);
+                editor.measure?.setTool(null);
+            }
+
+            editor.draw.setTool(tool);
+        },
         onNumeric: (geometry) => editor.commitDrawn(geometry),
         onOperation: (op) => editor.runOperation(op),
     });
@@ -2134,6 +2283,44 @@ async function boot() {
         onCommit: (geometry) => editor.commitDrawn(geometry),
         onReadout: (readout) => editor.toolbar.showReadout(readout),
     });
+
+    editor.annotations = new AnnotationLayer({ map, renderer });
+    editor.annotations.setPreferences(editor.unitPreferences());
+
+    editor.measure = new MeasureSession({
+        map,
+        renderer,
+        onCommit: (taken) => editor.commitMeasurement(taken),
+        onReadout: (readout) => editor.toolbar.showReadout(readout),
+        onInfo: (point) => editor.pickFeature({
+            clientX: point[0] + map.getContainer().getBoundingClientRect().left,
+            clientY: point[1] + map.getContainer().getBoundingClientRect().top,
+        }),
+    });
+
+    editor.measurePanel = new MeasurePanel({
+        container: document.getElementById('gis-sidebar'),
+        strings: config.strings,
+        // **The two sessions share one edit canvas and one painter slot.**
+        // Arming a measure tool disarms the draw tool and vice versa, or the
+        // second painter installed silently replaces the first and the user is
+        // left drawing with a tool whose preview belongs to another one.
+        onTool: (tool) => {
+            if (tool) {
+                editor.toolbar.setTool(null);
+                editor.draw.setTool(null);
+            }
+
+            editor.measure.setTool(tool);
+        },
+        onSelect: (id) => editor.selectMeasurement(editor.selectedMeasurement === id ? null : id),
+        onRename: (measurement, label) => editor.renameMeasurement(measurement, label),
+        onDelete: (measurement) => editor.deleteMeasurement(measurement),
+        onZoomTo: (measurement) => editor.zoomToMeasurement(measurement),
+        onVisible: (visible) => editor.annotations.setVisible(visible),
+    });
+
+    editor.measurePanel.setPreferences(editor.unitPreferences());
 
     editor.snapper = new Snapper({
         map,

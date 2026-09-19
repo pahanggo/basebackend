@@ -1456,3 +1456,107 @@ hr {
         border: 1px solid #23282c;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Measurement (S10b)
+
+   The panel sits in the sidebar above the layer tree, collapsed by default:
+   it is a tool someone reaches for rather than a thing they read, and the tree
+   is what the sidebar is for.
+   --------------------------------------------------------------------------- */
+
+.gis-measure {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    .gis-measure-tools {
+        display: flex;
+        width: 100%;
+        margin-bottom: 0.5rem;
+
+        .btn {
+            flex: 1 1 0;
+
+            /* Amber, the colour the annotations are drawn in, so an armed
+               measure tool cannot be confused with an armed draw tool. */
+            &.active {
+                background: #b7791f;
+                border-color: #b7791f;
+                color: #fff;
+            }
+        }
+    }
+
+    .gis-measure-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.8125rem;
+        cursor: pointer;
+    }
+
+    .gis-measure-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 14rem;
+        overflow-y: auto;
+    }
+
+    .gis-measure-row {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.25rem;
+        border-radius: 3px;
+        font-size: 0.8125rem;
+
+        &:hover,
+        &.is-selected {
+            background: rgba(183, 121, 31, 0.12);
+        }
+    }
+
+    .gis-measure-name {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .gis-measure-value {
+        flex: 0 0 auto;
+        font-variant-numeric: tabular-nums;
+        color: #6b5b3e;
+    }
+
+    .gis-measure-actions {
+        flex: 0 0 auto;
+        display: flex;
+
+        .btn {
+            padding: 0 0.25rem;
+        }
+    }
+
+    .gis-measure-empty {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: #6c757d;
+    }
+}
+
+/* The list is the one place in the sidebar with a row of icon buttons, so on a
+   touch screen it is the one place they would otherwise be 20 px apart. */
+@media (pointer: coarse) {
+    .gis-measure .gis-measure-actions .btn,
+    .gis-measure .gis-measure-tools .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}

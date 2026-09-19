@@ -94,14 +94,111 @@ Updating it on `move` alone left it a zoom level behind: during Leaflet's zoom
 animation `containerPointToLatLng` still answers for the projection the map is
 leaving. It listens for the settle as well now.
 
-### Still to build in S10
+### Still to build in S10 — as of S10a
 
 - **The measurement tools**: distance, area, radius, diameter, bearing and
-  feature info, saved as annotations in `gis_measurements`. The table, the
-  commands (`measurement.create/update/delete`) and all the geodesy they need
-  already exist — what is missing is the tools themselves and the list that
-  manages them.
-- **The units preference, persisted per user.** The module takes preferences
-  and nothing yet stores them; the coordinate readout remembers its format in
-  `localStorage`, which is the right home for a per-reader preference but is
-  not the same as `ui.units` per §11.
+  feature info, saved as annotations in `gis_measurements`. Built in S10b
+  below.
+- **The units preference, persisted per user.** Still open; see S10b.
+
+## Results — the measurement tools (S10b)
+
+**Done.** Six tools, saved annotations, and the gate met against MySQL on real
+geometry rather than a fixture.
+
+### The gate
+
+| | Client | MySQL | Divergence |
+| --- | --- | --- | --- |
+| Distance, 532 m | 532.23819 m | 532.23515 m | **0.00057%** |
+| Area, 8.46 ha | 84,641.424 m² | 84,636.737 m² | **0.0055%** |
+| Radius, 238 m | 238.34013 m | 238.34015 m | 0.0000096% |
+| Diameter, 477 m | 476.68380 m | 476.68380 m | 0.00000025% |
+
+Against a budget of 0.1%, the worst is fifty-five thousandths of one percent,
+and these are measurements taken by hand over Kuantan rather than a synthetic
+case. The latitude sweep from 0° to 70° is asserted separately, in
+`MeasurementTest`, against `tests/fixtures/geodesic.json`.
+
+**That fixture is the part worth explaining.** The PHP gate cannot call into
+the JavaScript, and hardcoding the client's numbers in a PHP test makes them a
+record of what the client used to do. So the figures live in one JSON file,
+the PHP test compares MySQL against it, and a Node test recomputes every one of
+them from `lib/measure.js` and fails if it has moved. Neither side can drift
+without something going red.
+
+### Decisions
+
+**Three stored kinds, six tools.** `gis_measurements.kind` is an enum of what
+the value MEANS — a length, an area, an azimuth — and radius and diameter are
+both lengths. Which tool took it goes in `properties`, because it changes how
+the annotation is read and not what the number is. The alternative was widening
+an enum to record a gesture.
+
+**A diameter is stored as the whole line through the centre**, not as
+centre-to-edge with a doubled value. The invariant the module exists to hold is
+that a stored distance IS the geodesic length of the stored geometry; a doubled
+value would be a number nobody could check against the line beside it. And the
+far end is computed by travelling the opposite bearing, not by reflecting the
+coordinates — on an ellipsoid the reflection is not the same point, and at
+these latitudes it is wrong by enough to fail the gate and right by enough to
+look correct.
+
+**`unit` holds the PREFERENCE, not the unit of `value`.** `value` is always
+metres, square metres or degrees, and `kind` says which of the three. What is
+stored beside it is `si`, `imperial`, `rai` — how the taker was reading at the
+time, which is what lets a measurement read back the way it was written.
+
+**Saved measurements paint on the overlay canvas**, which S2 created and
+nothing had drawn to until now. They survive a pan, so not the edit canvas,
+which is cleared per gesture; they are not features, so not the feature canvas,
+whose paths are cached per layer and rebuilt per zoom.
+
+**Visibility is one flag for the whole map**, as §11 asks. Per-row visibility
+would be a second kind of hidden: a row you cannot see and a row that is not
+there look identical on the map and different in the list.
+
+**The tools live in the measurement panel, not the drawing toolbar.** They look
+identical in the hand and are completely different in consequence — one writes
+a feature into a layer, the other an annotation onto the map — and one strip of
+buttons invites exactly the mistake of measuring a boundary and finding you
+have edited it. The two sessions share the edit canvas's single painter slot,
+so arming either disarms the other.
+
+**Measurements ride along with the bootstrap, geometry and all.** The one place
+that response carries coordinates, and the exception holds because a
+measurement is never read by viewport — one outside the current view is still
+something the reader needs to find in the list.
+`gis.measurements.max_per_map` caps it at 500 and the client is told when it
+was hit.
+
+### Three things found while building it
+
+- **`notify()` took an options object and eight call sites passed a bare
+  string.** Destructuring a string gives an undefined title, so every one of
+  those was an empty dialog where a message should have been, and none of them
+  errored. It takes either now.
+- **The toolbar's live readout carried its own conversion factors** — its own
+  `/1000` and `/10_000` and its own DMS arithmetic — which §11 forbids in as
+  many words. The scale bar carried its own foot and mile. Both delegate to
+  `units.js` now, and there is a test that greps for every factor outside it:
+  a foot defined twice is a foot that can differ once.
+- **The measurement list was told about the store before the store was
+  hydrated**, so it was empty on every load while the measurement sat in the
+  bootstrap and in the database. Nothing errored, and the only symptom was a
+  list that looked correct for a map with nothing in it.
+
+### Still to build in S10
+
+- **The units preference, persisted per user.** It is read from
+  `localStorage` under `gis.units`, which follows the browser rather than the
+  account. §11 calls it `ui.units` and puts it on the user; there is nowhere
+  on the server to put it yet, and a preference that pretends to follow the
+  account while following the browser is worse than one that says which it is.
+  The live drawing readout does not take the preference at all yet — a user
+  working in acres still draws in hectares and sees acres once it is saved.
+- **Editing a saved measurement's geometry.** The command takes a new `geom`
+  and re-measures; nothing in the UI sends one. The vertex editor works on
+  features, and pointing it at an annotation is a session of its own.
+- **Measurements in exports and share links**, which §11 asks for and which
+  belong with S14 and S15 rather than here.

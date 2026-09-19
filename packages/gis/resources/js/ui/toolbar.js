@@ -18,6 +18,7 @@ import { TOOLS } from '../map/draw/draw-session.js';
 import { destination } from '../lib/measure.js';
 import { rectangleRing, circleRing } from '../map/draw/shapes.js';
 import { available } from '../map/ops/routing.js';
+import { formatDistance, formatArea, formatBearing } from '../lib/units.js';
 
 /** Line Awesome icons, one per operation on a selected feature. */
 const OP_ICONS = {
@@ -294,30 +295,22 @@ export class Toolbar {
     }
 }
 
-/** A length, in whichever unit reads better at that size. */
-function metres(value) {
-    return value >= 1000 ? `${(value / 1000).toFixed(3)} km` : `${value.toFixed(2)} m`;
-}
-
-/** An area, likewise — hectares are what land is actually discussed in. */
-function squareMetres(value) {
-    if (value >= 1e6) {
-        return `${(value / 1e6).toFixed(4)} km²`;
-    }
-
-    if (value >= 10_000) {
-        return `${(value / 10_000).toFixed(4)} ha`;
-    }
-
-    return `${value.toFixed(2)} m²`;
-}
-
-/** A bearing, as degrees, minutes and seconds — how a title document says it. */
-function degrees(value) {
-    const d = Math.floor(value);
-    const minutesFloat = (value - d) * 60;
-    const m = Math.floor(minutesFloat);
-    const s = Math.round((minutesFloat - m) * 60);
-
-    return `${d}°${String(m).padStart(2, '0')}'${String(s).padStart(2, '0')}"`;
-}
+/*
+ * The readout's formatting, which used to live here.
+ *
+ * It carried its own 1000, 10,000 and 1,000,000 and its own DMS arithmetic —
+ * a second set of conversion factors in a component, which §11 forbids in as
+ * many words, and which had already drifted: this file rounded a kilometre to
+ * three decimals where `units.js` rounds to three and a hectare to four where
+ * it rounds to four, but neither knew about the other, and a change to one
+ * would have moved only half the numbers a user sees. It delegates now, and
+ * `units.js` is the only place in this package where a factor exists.
+ *
+ * The preferences are not threaded through yet: the readout is live figures
+ * during a gesture rather than a saved value, and S10b's preference plumbing
+ * stops at the annotation. That is a gap, not a design — it means a user
+ * working in acres still draws in hectares.
+ */
+const metres = formatDistance;
+const squareMetres = formatArea;
+const degrees = formatBearing;

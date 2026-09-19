@@ -275,6 +275,22 @@ class EditorController extends Controller
             'queryFailed' => __('The query could not be run.'),
             'value' => __('Value'),
             'remove' => __('Remove'),
+
+            // Measurement.
+            'measure' => __('Measure'),
+            'measure_distance' => __('Distance'),
+            'measure_area' => __('Area'),
+            'measure_radius' => __('Radius'),
+            'measure_diameter' => __('Diameter'),
+            'measure_bearing' => __('Bearing'),
+            'measure_info' => __('Feature info'),
+            'measure_show' => __('Show measurements'),
+            'measure_empty' => __('Nothing measured yet. Pick a tool, then click on the map.'),
+            'measure_readonly' => __('You may measure here, but not save a measurement.'),
+            'measure_delete_title' => __('Delete this measurement?'),
+            'measure_delete_text' => __('It will be removed from the map for everyone who can see it.'),
+            'save' => __('Save'),
+            'zoomToFeature' => __('Zoom to'),
         ];
     }
 }

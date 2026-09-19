@@ -2,11 +2,14 @@
 
 namespace Gis\Http\Resources;
 
+use Gis\Casts\GeometryCast;
 use Gis\Models\Layer;
 use Gis\Models\Map;
 use Gis\Models\MapLayer;
+use Gis\Models\Measurement;
 use Gis\Support\BasemapProviders;
 use Gis\Support\MapAccess;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The bootstrap response: everything the editor needs before its first feature
@@ -36,8 +39,53 @@ class MapBootstrap
             'role' => $access->role->value,
             'viewState' => $map->view_state,
             'layers' => self::layers($map),
+            'measurements' => self::measurements($map),
             'basemaps' => self::basemaps(),
             'capabilities' => self::capabilities(),
+        ];
+    }
+
+    /**
+     * Saved measurements, geometry and all.
+     *
+     * The one place this response carries coordinates, and the exception
+     * proves the rule above: a map holds a handful of measurements, not a
+     * million, and they are drawn from the moment the map opens rather than
+     * fetched by viewport — a measurement outside the current view is still
+     * something the reader needs to find in the list.
+     *
+     * Capped all the same. `ST_AsGeoJSON` is read as a string and decoded
+     * here, so an unbounded list would be an unbounded parse on the critical
+     * path; `gis.measurements.max_per_map` is the ceiling, and the client is
+     * told when it was hit rather than silently shown a subset.
+     *
+     * @return array<string, mixed>
+     */
+    protected static function measurements(Map $map): array
+    {
+        $limit = (int) config('gis.measurements.max_per_map');
+
+        $rows = Measurement::query()
+            ->where('map_id', $map->id)
+            ->orderBy('id')
+            ->limit($limit + 1)
+            ->get(['id', 'kind', 'value', 'unit', 'label', 'properties', 'version',
+                DB::raw(GeometryCast::selectGeoJson('geom', 'geometry'))]);
+
+        $truncated = $rows->count() > $limit;
+
+        return [
+            'truncated' => $truncated,
+            'items' => $rows->take($limit)->map(fn (Measurement $measurement) => [
+                'id' => $measurement->id,
+                'kind' => $measurement->kind,
+                'tool' => $measurement->properties['tool'] ?? null,
+                'value' => (float) $measurement->value,
+                'unit' => $measurement->unit,
+                'label' => $measurement->label,
+                'version' => $measurement->version,
+                'geom' => json_decode((string) $measurement->getAttribute('geometry'), true),
+            ])->values()->all(),
         ];
     }
 

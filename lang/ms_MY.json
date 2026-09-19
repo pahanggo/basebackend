@@ -214,5 +214,14 @@
     "The query could not be run.": "Pertanyaan tidak dapat dijalankan.",
     "Value": "Nilai",
     ":count found, from :examined in the area": ":count dijumpai, daripada :examined dalam kawasan itu",
-    "Click to change the coordinate format": "Klik untuk menukar format koordinat"
+    "Click to change the coordinate format": "Klik untuk menukar format koordinat",
+    "Measure": "Ukur",
+    "Feature info": "Maklumat fitur",
+    "Show measurements": "Tunjuk ukuran",
+    "Nothing measured yet. Pick a tool, then click on the map.": "Belum ada ukuran. Pilih alat, kemudian klik pada peta.",
+    "You may measure here, but not save a measurement.": "Anda boleh mengukur di sini, tetapi tidak boleh menyimpan ukuran.",
+    "Delete this measurement?": "Padam ukuran ini?",
+    "It will be removed from the map for everyone who can see it.": "Ia akan dibuang daripada peta untuk semua orang yang dapat melihatnya.",
+    "Save": "Simpan",
+    "Zoom to": "Zum ke"
 }

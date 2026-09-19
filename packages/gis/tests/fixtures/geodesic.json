@@ -1,0 +1,19 @@
+{
+    "note": "Geodesic figures computed by resources/js/lib/measure.js. Regenerated and asserted by tests/js/measure-fixture.test.mjs; compared against MySQL by tests/Feature/MeasurementTest.php.",
+    "length": {
+        "0.0": 111319.4907932264,
+        "10.0": 109639.32210561469,
+        "25.0": 100949.86143105032,
+        "45.0": 78846.33470959222,
+        "60.0": 55799.47039335791,
+        "70.0": 38186.113293354305
+    },
+    "area": {
+        "0.0": 12308463894.290226,
+        "10.0": 12108188648.617754,
+        "25.0": 11137467459.868519,
+        "45.0": 8686494956.892704,
+        "60.0": 6123140878.902693,
+        "70.0": 4158118506.5296535
+    }
+}

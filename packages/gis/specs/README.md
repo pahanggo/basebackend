@@ -35,7 +35,7 @@ v1 ships after S11b. Sessions are sequential unless the file says otherwise.
 | [S9b](S09-attributes-selection-query.md) | Selection, schema editing, popups | S9a |
 | [S9c](S09b-query.md) | Spatial and attribute query — **done** | S9a |
 | [S10a](S10-measurement-units.md) | Units, coordinate formats, scale bar — **done** | S6a |
-| [S10b](S10-measurement-units.md) | Measurement tools as saved annotations | S10a |
+| [S10b](S10-measurement-units.md) | Measurement tools as saved annotations — **done** | S10a |
 | [S11a](S11-responsive-a11y-performance.md) | Performance overlay, responsive and a11y pass — **done** | all v1 |
 | [S11b](S11-responsive-a11y-performance.md) | Mobile editing, command palette, degradation | S11a |
 | — | **v1 ships** | |

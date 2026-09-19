@@ -44,9 +44,13 @@ class MeasurementCreate extends Command
             'kind' => $kind,
             'geom' => GeometryInput::parse($this->payload),
             'value' => (float) $this->get('value', 0),
-            'unit' => (string) $this->get('unit', 'm'),
+            'unit' => (string) $this->get('unit', 'si'),
             'label' => $this->get('label'),
-            'properties' => [],
+            // Which tool took it. `kind` says what the value MEANS — a length,
+            // an area, an azimuth — and radius and diameter are both lengths,
+            // so the enum cannot tell them apart and the reading of the
+            // annotation depends on knowing which it was.
+            'properties' => array_filter(['tool' => $this->get('tool')]),
             'version' => 1,
         ]);
 

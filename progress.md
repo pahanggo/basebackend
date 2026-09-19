@@ -29,6 +29,66 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S10b — The measurement tools
+
+Six tools — distance, area, radius, diameter, bearing and feature info — in
+their own panel, each saving an annotation that survives a reload. **The gate
+is met on real geometry**, not a fixture: measurements taken by hand over
+Kuantan and then handed to MySQL's own `ST_Length` and `ST_Area` for a second
+opinion. Worst divergence 0.0055% against a budget of 0.1%.
+
+The latitude sweep from 0° to 70° is asserted separately, and the way it is
+wired is the part I would want you to look at. A PHP test cannot call into the
+JavaScript, and a PHP test carrying hardcoded client numbers is a record of
+what the client used to do. So the figures live in one JSON file; the PHP gate
+compares MySQL against it, and a Node test recomputes every one of them from
+`lib/measure.js` and fails if it has moved. Neither side can drift quietly.
+
+**Three stored kinds, six tools.** The enum says what a value MEANS — a length,
+an area, an azimuth — and radius and diameter are both lengths. Which tool took
+it goes beside it in `properties`, because that changes how the annotation is
+read and not what the number is.
+
+**A diameter is stored as the whole line through the centre**, not as
+centre-to-edge with the value doubled. The rule the module exists to keep is
+that a stored distance is the geodesic length of the stored geometry — a
+doubled value is a number nobody can check against the line next to it. The far
+end is found by travelling the opposite bearing rather than by reflecting the
+coordinates; on an ellipsoid the reflection is a different point, wrong by
+enough to fail the gate and right by enough to look correct.
+
+**The tools are in their own panel, not the drawing toolbar.** They look
+identical in the hand and are completely different in consequence: one writes a
+feature into a layer, the other an annotation onto the map. One strip of
+buttons invites the mistake of measuring a boundary and finding you have edited
+it. Arming either disarms the other, since both want the same canvas.
+
+**Three bugs, none of which raised an error:**
+
+- `notify()` took an options object and **eight call sites passed a bare
+  string**. Destructuring a string gives an undefined title, so every one of
+  those was an empty dialog where a message should have been. It takes either
+  now.
+- The drawing readout carried **its own conversion factors** — its own 1000 and
+  10,000 and its own degrees-minutes-seconds — and the scale bar carried its
+  own foot and mile. §11 forbids that in as many words. Both delegate now, and
+  there is a test that greps for every factor outside `units.js`.
+- The measurement list was told about the store **before the store was
+  hydrated**, so it was empty on every load while the measurement sat in the
+  bootstrap and in the database. The only symptom was a list that looked
+  perfectly correct for a map with nothing on it.
+
+**Still open, and yours to decide** — the unit preference lives in
+`localStorage`, which follows the browser rather than the account. §11 calls it
+`ui.units` and puts it on the user; there is nowhere on the server to put it
+yet. A preference that pretends to follow the account while following the
+browser would be worse than one that says which it is. The live readout while
+drawing does not take the preference at all, so a user working in acres still
+draws in hectares.
+
+I took five measurements on **Pahang baru** while testing and deleted all five
+when I was done. Nothing else in that table was touched.
+
 ### S11a — Performance overlay, responsive and accessibility pass
 
 **`Ctrl+Shift+P` opens a live performance panel**, in production and not only in

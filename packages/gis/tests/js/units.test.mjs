@@ -215,3 +215,58 @@ test('a scale bar with nothing to measure returns zero rather than infinity', ()
         assert.equal(roundToReadable(NaN), 0);
     });
 });
+
+/**
+ * The architecture assertion §11 asks for: no conversion factor outside this
+ * module.
+ *
+ * It is a grep, and a grep is a blunt instrument — but the thing it catches is
+ * blunt too. The toolbar's readout carried its own `/ 1000` and `/ 10_000` for
+ * three sessions; nothing failed, and a user who had chosen acres was shown
+ * hectares while drawing and acres once it was saved.
+ */
+test('no unit conversion factor lives outside units.js', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    const root = new URL('../../resources/js/', import.meta.url).pathname;
+
+    // Every factor `units.js` defines. A file that spells one of these out is
+    // either converting, or coincidentally naming the same number — and the
+    // second is rare enough to be worth an exemption rather than a silence.
+    const factors = [
+        '0.3048', '1609.344', '1852', '20.1168',
+        '0.09290304', '4046.8564224', '2_589_988.110336', '2589988.110336',
+        '1600', '1011.7141056',
+    ];
+
+    const offenders = [];
+
+    const walk = (directory) => {
+        for (const entry of readdirSync(directory)) {
+            const path = join(directory, entry);
+
+            if (statSync(path).isDirectory()) {
+                walk(path);
+
+                continue;
+            }
+
+            if (!entry.endsWith('.js') || path.endsWith('lib/units.js')) {
+                continue;
+            }
+
+            const source = readFileSync(path, 'utf8');
+
+            for (const factor of factors) {
+                if (source.includes(factor)) {
+                    offenders.push(`${path.slice(root.length)} carries ${factor}`);
+                }
+            }
+        }
+    };
+
+    walk(root);
+
+    assert.deepEqual(offenders, [], offenders.join('\n'));
+});

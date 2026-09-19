@@ -15,6 +15,7 @@
 
 import { el } from '../lib/dom.js';
 import { distance } from '../lib/measure.js';
+import { ladderFor } from '../lib/units.js';
 
 /** The widest the bar may be, in screen pixels. */
 const MAX_WIDTH = 110;
@@ -74,15 +75,11 @@ export class ScaleBar {
             return;
         }
 
-        this.draw(this.metric, perPixel * MAX_WIDTH, [
-            { limit: 1000, per: 1, unit: 'm' },
-            { limit: Infinity, per: 1000, unit: 'km' },
-        ], perPixel);
-
-        this.draw(this.imperial, perPixel * MAX_WIDTH, [
-            { limit: 1609.344, per: 0.3048, unit: 'ft' },
-            { limit: Infinity, per: 1609.344, unit: 'mi' },
-        ], perPixel);
+        // From `units.js`, not from constants here. This bar used to spell out
+        // its own foot and mile, which is the second definition of a foot in
+        // one package and the kind that drifts silently (specification §11).
+        this.draw(this.metric, perPixel * MAX_WIDTH, ladder('si'), perPixel);
+        this.draw(this.imperial, perPixel * MAX_WIDTH, ladder('imperial'), perPixel);
     }
 
     /**
@@ -127,4 +124,20 @@ export function roundToReadable(value) {
 
 function trim(value) {
     return String(Number(value.toFixed(3)));
+}
+
+/**
+ * One system's distance ladder, in the shape `draw` steps through.
+ *
+ * A step ends where the next one takes over, so the limits come from the
+ * neighbouring `at` values rather than from a second list of numbers.
+ */
+function ladder(system) {
+    const steps = ladderFor('distance', system);
+
+    return steps.map((step, index) => ({
+        limit: steps[index + 1]?.at ?? Infinity,
+        per: step.per,
+        unit: step.unit,
+    }));
 }

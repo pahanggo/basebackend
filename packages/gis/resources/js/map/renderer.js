@@ -551,6 +551,7 @@ export const GisRenderer = L.Layer.extend({
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
 
+        this._drawOverlay();
         this._drawEdit();
 
         this._stats = {
@@ -573,6 +574,33 @@ export const GisRenderer = L.Layer.extend({
      * container pixels — which is what the pointer gives and what the things it
      * draws are anchored to.
      */
+    /**
+     * Saved annotations, between the features and the work in progress.
+     *
+     * Its own canvas for the same reason the edit one has: a measurement list
+     * is a handful of lines and labels, and redrawing them must not cost a
+     * repaint of every parcel in view. The overlay canvas has existed since S2
+     * and nothing drew to it until measurements needed somewhere to live that
+     * survives a pan but is not a feature.
+     */
+    setOverlayPainter(painter) {
+        this._overlayPainter = painter;
+        this.schedule();
+    },
+
+    _drawOverlay() {
+        if (!this._overlay) {
+            return;
+        }
+
+        const context = this._overlay.getContext('2d');
+
+        context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
+        context.clearRect(0, 0, this._size.x, this._size.y);
+
+        this._overlayPainter?.(context, this._map);
+    },
+
     setEditPainter(painter) {
         this._editPainter = painter;
         this.schedule();

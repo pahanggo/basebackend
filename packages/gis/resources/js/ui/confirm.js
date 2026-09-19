@@ -46,8 +46,19 @@ export async function confirmAction({ title, text = '', confirmLabel, cancelLabe
     return answer === true;
 }
 
-/** A notice with nothing to decide. */
-export async function notify({ title, text = '', icon = 'error' }) {
+/**
+ * A notice with nothing to decide.
+ *
+ * Takes a bare string as well as an options object, because eight call sites
+ * pass one — `notify(strings.drawNeedsLayer)` — and destructuring a string
+ * yields an undefined title and an empty dialog. Every one of those was a
+ * message the user needed and did not get, and none of them errored.
+ */
+export async function notify(options) {
+    const { title, text = '', icon = 'error' } = typeof options === 'string'
+        ? { title: options }
+        : (options ?? {});
+
     const swal = window.swal;
 
     if (typeof swal !== 'function') {

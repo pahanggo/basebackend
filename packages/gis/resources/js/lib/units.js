@@ -58,6 +58,24 @@ const UNITS = {
 };
 
 /**
+ * The ladder itself, for a caller that does its own stepping.
+ *
+ * The scale bar is the one such caller: it shows metric and imperial at once
+ * rather than choosing between them, and it rounds to a readable bar length
+ * rather than to a fixed number of decimals. It still must not carry its own
+ * factors — a foot defined in two places is a foot that can differ in one —
+ * so it takes the ladder and does its own walking.
+ *
+ * Each step's `at` is the value at which it takes over, so the step before it
+ * ends there.
+ *
+ * @return {Array<{unit: string, per: number, at: number, decimals: number}>}
+ */
+export function ladderFor(quantity, system = 'si') {
+    return UNITS[quantity]?.[system] ?? [];
+}
+
+/**
  * The ladder of units for a quantity under a set of preferences.
  *
  * `{ system: 'si', area: 'rai' }` means SI for everything except area.
