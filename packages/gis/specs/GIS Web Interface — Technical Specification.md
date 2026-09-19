@@ -11,7 +11,7 @@ A browser-based GIS editing and publishing interface: Leaflet, ES modules built 
 - Layer CRUD, grouping, ordering, visibility and opacity through a drag-and-drop tree
 - Drawing and editing of points, lines, polygons, rectangles and circles
 - Raster image overlays: upload a PNG or JPEG and georeference it by dragging its four corners
-- 1.4 million cadastral features imported from an existing database, rendered by area cull
+- 4.3 million cadastral, land-use and administrative features imported from public ArcGIS services, rendered by area cull
 - Geodesic measurement (distance, area, radius, diameter, bearing) with SI / imperial toggle
 - Data-driven styling, labels and legend
 - Attribute table with filtering, sorting and map-linked selection
@@ -214,7 +214,7 @@ Parsed GeoJSON is discarded after import. Geometry lives in flat typed arrays, o
 }
 ```
 
-The imported `lots` layer — 672,112 features averaging 6.7 vertices — holds roughly 72 MB of coordinates; the 12,929 drawn in a zoom-12 viewport are about 1.4 MB of it. The equivalent as GeoJSON objects is 60-100x that, and the allocation churn alone causes visible GC pauses.
+The imported `Lot` layer — 672,132 features averaging 6.5 vertices — holds roughly 70 MB of coordinates; the 12,929 drawn in a zoom-12 viewport are about 1.4 MB of it. The equivalent as GeoJSON objects is 60-100x that, and the allocation churn alone causes visible GC pauses.
 
 Circles store centre and a radius in metres, not a densified ring. They are densified only at draw time and at export.
 
@@ -233,14 +233,14 @@ Target hit-test time is under 5 ms including the exact test. The index is rebuil
 flowchart LR
   A[Map move] --> B[rAF scheduled]
   B --> C[rbush viewport query]
-  C --> D[Pick LOD for zoom]
-  D --> E[Project to pixels]
+  C --> D[Area cull]
+  D --> E[Translate cached path]
   E --> F[Group by style]
   F --> G[Paint feature canvas]
   H[Selection change] --> I[Paint overlay canvas]
 ```
 
-Redraws are coalesced onto `requestAnimationFrame`; multiple invalidations in one frame produce one paint. During an active pan or zoom the renderer uses a coarser simplification tolerance and skips labels; on `moveend` it repaints at full fidelity.
+Redraws are coalesced onto `requestAnimationFrame`; multiple invalidations in one frame produce one paint. During an active pan the cached path is translated with `ctx.setTransform` rather than rebuilt, and labels are skipped; on `moveend` it repaints at full fidelity. Geometry is never coarsened — see *Level of detail* below.
 
 Features are batched by resolved style so canvas state changes (`fillStyle`, `strokeStyle`, `lineWidth`) are minimised. Within a batch, paths are accumulated into one `Path2D` and filled once.
 
@@ -258,9 +258,13 @@ Dragging a vertex repaints only the edit canvas. Without this split, every point
 
 **Area culling is the primary mechanism, not simplification.** This is the opposite of what a vector-rendering design usually assumes, and it follows from what the data is.
 
-The workload is cadastral parcels: 672,000 lots averaging 6.7 vertices and 746,000 land-use polygons averaging 11.1. A parcel is a quadrilateral. Simplifying it does not remove a few vertices from a long boundary — it turns a rectangle into a triangle and then into a line. There is nothing to simplify, and the cost was never vertex count in the first place: it is the number of polygons.
+The workload is cadastral parcels: 672,000 lots averaging 6.5 vertices and 3.6 million land-use polygons averaging around 11 to 17. A parcel is a quadrilateral. Simplifying it does not remove a few vertices from a long boundary — it turns a rectangle into a triangle and then into a line. There is nothing to simplify, and the cost was never vertex count in the first place: it is the number of polygons.
 
-What makes that tractable is that **most parcels are smaller than a pixel at overview zooms.** 41% of lots are under 500 m², roughly a 22 m square, which at zoom 12 is 0.35 px². Dropping every polygon below 4 px² at the current zoom flattens the draw count to a near-constant:
+**The administrative boundary layers invert every term of that argument, and the design absorbs them anyway.** They are few and enormous rather than many and tiny: 14 states averaging 25,982 vertices each, 93 districts averaging 5,257, 1,730 mukims averaging 466. Three features exceed 50,000 vertices; Sarawak's outline is 99,253. The area cull never drops one, because a state is never smaller than a pixel, so a visible boundary layer contributes its whole vertex count to the built path at every zoom — 364,000 vertices for all 14 states, which is a single path build of a few tens of milliseconds and then nothing, since paths are built per zoom and translated per frame (section 4, *Rendering*).
+
+That is acceptable precisely because these layers are placed as a thin reference outline over the cadastre rather than as the working data, and because there are only 2,549 of them in total. It is not a licence to reintroduce simplification: a state boundary that has been simplified no longer coincides with the district boundaries inside it, and the gap is visible at exactly the zoom where someone is checking whether a parcel falls inside a mukim.
+
+What makes that tractable is that **most parcels are smaller than a pixel at overview zooms.** 41% of lots are under 500 m², roughly a 22 m square, which at zoom 12 is 0.35 px². Dropping every polygon below a few square pixels at the current zoom flattens the draw count to a near-constant. Measured at a 4 px² threshold:
 
 | Zoom | m/px at 3.8°N | Drop below | Features in view | Actually drawn |
 | --- | --- | --- | --- | --- |
@@ -270,6 +274,8 @@ What makes that tractable is that **most parcels are smaller than a pixel at ove
 
 Zooming out shrinks parcels below the threshold faster than it admits new ones, so the drawn set stays near 13,000 at every zoom. That is the 10,000-feature design target, reached without vector tiling and without a degradation banner.
 
+**A square-pixel threshold bounds nothing on its own, and S3 replaced it as the bound.** The table above was calibrated at one window size; a larger window simply admits more features, and at 1456 x 840 the same 4 px² took 3.6x the intended count. The read therefore **orders by `area_m2` descending and caps the row count** (section 7). The count is then bounded whatever the threshold is, and what falls off the end is always the least visible thing on the screen. The threshold survives as a cheap pre-filter that makes the cap cheap to serve, not as the thing that makes it correct.
+
 **The cost moves from painting to culling.** At zoom 12 the spatial index returns 159,654 candidates to produce 12,929 drawn features, so the index query and the cull loop are the hot path, not the paint. Both are tight loops over typed arrays, which is what the storage design in this section exists to make possible.
 
 Two consequences the rest of the specification depends on:
@@ -277,19 +283,17 @@ Two consequences the rest of the specification depends on:
 - **The cull runs server-side first.** Shipping 160,000 features so the client can discard 92% of them would blow the transfer and first-render budgets. The feature read (section 7) applies the area threshold for the requested zoom, and the client re-culls for exactness against its actual viewport.
 - `gis_features` carries an indexed area column for that filter (section 6). Computing area per row per request is not an option at this row count.
 
-Simplification is still used, but for the minority case it was actually meant for: the few large polygons. `usages` runs to 7,886 vertices at the top end, and a forest or estate lot spanning kilometres stays on screen at every zoom, so it is exactly the feature that benefits. Tolerance by band:
+**There is no simplification anywhere in this package, and it must not come back without new measurements.** An earlier draft of this section kept it for the minority case — the few large polygons that stay on screen at every zoom — with a per-band Visvalingam-Whyatt tolerance and a `geom_simple` column. S2 removed all of it, and the numbers are why: the vertex mask saved 0.03% to 1.3% of vertices across zooms 11 to 15, and a full path rebuild measured 24.6 ms with it against 24.8 ms without. It had also been silently destroying large features, because its threshold was a constant left behind when client coordinates moved from degrees to normalised Web Mercator.
 
-| Zoom | Tolerance | Behaviour |
-| --- | --- | --- |
-| 0-11 | 8 px | Area cull, simplified geometry on survivors, points clustered, no labels |
-| 12-15 | 3 px | Area cull, simplified geometry on survivors, labels above threshold |
-| 16+ | 0 | Area cull (near no-op), full geometry, all labels, editing enabled |
+The distinction that replaced it is worth stating plainly: **the area cull varies which features are drawn, never what shape they are.** A feature arrives with the vertices it was imported with, or it does not arrive. Dropping a feature is honest; reshaping one is not. Coordinate quantisation below the editing zoom varies precision, not vertices, and is not level of detail in this sense.
 
-Simplification uses Visvalingam-Whyatt, computed in the worker at ingest and stored as additional index arrays rather than separate coordinate copies. Points denser than one per 8 px are clustered via supercluster.
+Points denser than one per 8 px are still clustered via supercluster; clustering replaces a group of features with a marker rather than reshaping a geometry, so it is not level of detail either.
+
+If the long tail ever does justify simplification, it belongs at import — one pass over the data, stored — and not in a worker recomputing it per response.
 
 ### Workers
 
-Import parsing, reprojection, simplification and index construction run in `parse.worker.js`. Results return as transferable `ArrayBuffer`s, so there is no structured-clone cost on handoff.
+Import parsing, reprojection and index construction run in `parse.worker.js`. Results return as transferable `ArrayBuffer`s, so there is no structured-clone cost on handoff.
 
 The worker stays dependency-free — no Turf, no Leaflet — so its only job is arithmetic over typed arrays. Vite builds it from `new Worker(new URL('./worker/parse.worker.js', import.meta.url), { type: 'module' })`, which emits it as its own chunk with a hashed filename and no manual registration. Reprojection uses a small inlined proj4 subset.
 
@@ -324,7 +328,7 @@ That covers every per-request path: viewport queries, select-by-region, server-s
 | --- | --- | --- |
 | `ST_Buffer` | Cartesian only, errors on 4326 | Project, compute in GEOS, project back — see below |
 | `ST_Union`, `ST_Difference`, `ST_Intersection` | Cartesian only | Same |
-| `ST_Simplify` | Cartesian only, can emit invalid output | Worker at ingest; store a pre-simplified LOD column |
+| `ST_Simplify` | Cartesian only, can emit invalid output | Not used. Simplification was removed outright in S2 — see *Level of detail* |
 | `ST_MakeValid` | Not available | Validate at ingest; repair or reject in PHP |
 | `ST_AsMVT` | Not available | Not needed: the area cull (section 4) holds the drawn set near 13,000 without tiling |
 | Clustering | No `ST_ClusterDBSCAN` | supercluster, client-side |
@@ -465,7 +469,7 @@ For planning:
 
 ## 6. Data model
 
-Six core tables. Geometry is stored once in SRID 4326 with a second pre-simplified column for low-zoom reads.
+Six core tables. Geometry is stored once, in SRID 4326. There is no second pre-simplified column: `geom_simple` existed briefly and was dropped in S2 along with every other form of level of detail.
 
 ### Tables
 
@@ -517,7 +521,6 @@ CREATE TABLE gis_features (
   id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   layer_id      BIGINT UNSIGNED NOT NULL,
   geom          GEOMETRY NOT NULL SRID 4326,
-  geom_simple   GEOMETRY NULL SRID 4326,
   minx          DOUBLE NOT NULL, miny DOUBLE NOT NULL,
   maxx          DOUBLE NOT NULL, maxy DOUBLE NOT NULL,
   area_m2       DOUBLE NOT NULL DEFAULT 0,   -- 0 for points and lines
@@ -528,7 +531,7 @@ CREATE TABLE gis_features (
   SPATIAL INDEX sx_geom (geom),
   INDEX ix_layer (layer_id),
   INDEX ix_layer_bbox (layer_id, minx, maxx),
-  INDEX ix_layer_area (layer_id, area_m2)
+  INDEX ix_layer_read (layer_id, area_m2, minx, maxx, miny, maxy)
 );
 ```
 
@@ -553,7 +556,7 @@ A layer can appear in more than one map. That is the mechanism behind shared lay
 
 The split falls out of asking which columns would have to differ between two maps showing the same layer. Position in the tree, visibility, opacity and zoom range all would — they describe where a layer sits in *this* map. Name, kind, style, schema, extent and feature count would not — they describe the layer itself, wherever it appears.
 
-This matters most for the data that motivated it. `bencana` imports 1.4 million cadastral features into two layers, "Lot" and "Gunatanah" (section 12). Those exist **once**, with `owner_map_id` NULL, and every map places them read-only. Without the split, a second map over the same cadastre would mean a second copy of 1.4 million rows.
+This matters most for the data that motivated it. The import brings 3.6 million cadastral and land-use features into three layers, "Lot", "Gunatanah Semasa" and "Gunatanah Zoning" (section 12). Those exist **once**, with `owner_map_id` NULL, and every map places them read-only. Without the split, a second map over the same cadastre would mean a second copy of 4.3 million rows.
 
 `owner_map_id` NULL means a global layer, owned by no map: the imported base data. A layer created by drawing is owned by the map it was created in, which is where authority to delete it lives.
 
@@ -665,9 +668,9 @@ This is one of only two writes that sit outside the command envelope — the oth
 | `copy` | Recreates the source map's tree by **sharing its layers**, not duplicating them. No features are copied at any size |
 | `import` | v2, with import |
 
-Copying a map creates placements, never features. The source map's layers are shared into the new map — `read` for layers the source does not own, `edit` for those it does — so copying a statewide map holding 1.4 million features writes a handful of rows and completes instantly.
+Copying a map creates placements, never features. The source map's layers are shared into the new map — `read` for layers the source does not own, `edit` for those it does — so copying a statewide map holding 4.3 million features writes a handful of rows and completes instantly.
 
-This supersedes an earlier design in which copy duplicated features up to a 20,000-row cap. That cap was written when a map was assumed to hold a few thousand hand-drawn features; against real data it would reject every copy, and duplicating 1.4 million cadastral rows per copy was never the right behaviour anyway. Shared layers (section 8) make the question disappear rather than answer it.
+This supersedes an earlier design in which copy duplicated features up to a 20,000-row cap. That cap was written when a map was assumed to hold a few thousand hand-drawn features; against real data it would reject every copy, and duplicating 4.3 million cadastral rows per copy was never the right behaviour anyway. Shared layers (section 8) make the question disappear rather than answer it.
 
 A user who genuinely wants an independent copy of a layer's features uses **Duplicate** on that layer (section 8), which is explicit, scoped to one layer, and prompts above 5,000 features.
 
@@ -759,7 +762,7 @@ Accept: application/vnd.gis.features+gis1-stream
 | Parameter | Meaning |
 | --- | --- |
 | `bbox` | `minx,miny,maxx,maxy` in WGS84 lon-lat. Required |
-| `zoom` | Drives two things: the server-side area cull threshold (section 4), and which geometry column is returned — below 16 `geom_simple`, 16+ `geom` |
+| `zoom` | Drives the server-side area cull threshold (section 4), and the coordinate quantisation in the binary encoding — below `edit_min_zoom` ordinates are sent as biased `uint32`, at or above it as `float64`, because a coordinate that can be dragged and sent back must not be rounded on the way out |
 | `fields` | Properties to include. Omitted means geometry and id only |
 | `ids` | Explicit id list, bypasses bbox |
 | `cursor` | Continuation from a previous partial response |
@@ -770,25 +773,33 @@ Accept: application/vnd.gis.features+gis1-stream
 The default above 2,000 features. A header plus buffers mapping directly onto the renderer's typed arrays:
 
 ```
-magic     u32      0x47495331
-version   u16
-count     u32      features returned
-lod       u8       0 = full, 1 = simplified
-reserved  u8
-culled    u32      features matched but dropped by the area cull
-areaMin   Float64  cull threshold in m², 0 when suppressed
-offsets   u32 x 6  byte offset of each array from body start
-lengths   u32 x 6  element count of each array
-[ coords     Float64  interleaved lng, lat
-  ringStarts Uint32   index into coords, per ring
-  featStarts Uint32   index into ringStarts, per feature
-  types      Uint8    1 point, 2 line, 3 polygon, 4 circle
-  ids        Uint32
-  radii      Float64  metres, circles only ]
-[ properties JSON tail, present only when fields= was sent ]
+ 0  char[4]   magic 'GIS1'
+ 4  uint16    version
+ 6  uint16    flags   bit 0 = an attribute tail follows
+                      bit 1 = coordinates are quantised
+ 8  uint32    featureCount
+12  uint32    ringCount
+16  uint32    vertexCount
+20  uint32    propertiesLength
+24  uint32[8] section offsets, in the order below
+56  uint32    totalLength
+60  uint32    coordExponent, 0 when coordinates are float64
+64  float64   coords, interleaved longitude and latitude
+              ...or uint32, when the quantisation flag is set
+    float64   bbox, 4 per feature
+    float64   ids
+    float64   area in m²
+    uint32    ringStarts, ringCount + 1 with a sentinel
+    uint32    featStarts, featureCount + 1 with a sentinel
+    uint8     types   1 point, 2 line, 3 polygon, 4 circle
+    char[]    attribute tail, JSON, only when fields= was sent
 ```
 
-All arrays are 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds without copying. Circles carry their centre in `coords` and their radius in `radii`.
+All float sections are 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds without copying. Circles carry their centre in `coords` and their radius in the attribute tail.
+
+**No cull counts in the header.** `culled`, `returned`, `capped` and `smallestReturnedM2` are only known once the last row has been read, and a header is written before the first — so they travel in the trailer frame described under *Streaming*. Only `X-Gis-Area-Threshold` is a header, because the threshold is derived from the zoom and is known up front.
+
+**Quantisation is what replaced the `lod` byte an earlier draft carried here.** With a non-zero `coordExponent` (`gis.read.coord_exponent`) each ordinate becomes a `uint32` holding `round((lng + 180) * 10^e)` — the bias is what keeps it unsigned, and unsigned is what keeps it portable, since PHP's `pack()` has no signed little-endian code. It halves the coordinate section, which is two thirds of the payload, and it is **not applied at or above `edit_min_zoom`**: there a vertex can be dragged and sent back, so a rounded read would write its own rounding into storage and move the vertex again on every edit. Quantisation shortens every ordinate and drops none; that is the whole difference between it and the simplification this format used to signal.
 
 The client views the buffers and hands them to the renderer: no parse, no object allocation, no GC pressure. A 10,000-feature GeoJSON response is roughly 14 MB and costs about 400 ms to parse on the reference device; the same data in this format is roughly 4 MB and under 5 ms to view. This is what makes the import and first-render budgets in section 19 reachable.
 
@@ -816,9 +827,9 @@ Because the response is framed, the binary encoding carries its own media type �
 
 #### Area culling
 
-The response excludes polygons whose area is below 4 px² at the requested zoom, because they cannot be seen and shipping them would blow the transfer budget for no visible result. The threshold is derived server-side from `zoom` and the viewport latitude, never sent by the client.
+The response excludes polygons whose area is below `gis.read.min_area_px` square pixels at the requested zoom, because they cannot be seen and shipping them would blow the transfer budget for no visible result. The threshold is derived server-side from `zoom` and the viewport latitude, never sent by the client.
 
-This is why a bbox that contains 159,654 features returns roughly 12,900 of them at zoom 12, and why the paging cap below is rarely reached in practice.
+**The threshold is not what bounds the response; `gis.read.max_features_per_response` is.** Rows come back ordered by `area_m2` descending and the read takes at most that many, so the count is bounded whatever window the client asks for (section 4). `ix_layer_read` serves that ordering with a backward index scan and no filesort, which is what makes the first row immediate and the cap cheap. The response reports `capped` so the client knows the picture is partial, and a client must not send `held` after a capped response — a capped read dropped features inside the box it covers, and excluding that box next time would lose them until the zoom changes.
 
 The response reports what it dropped, in the binary header (`culled`, `areaMin`) or, for a GeoJSON response, as members alongside the feature collection:
 
@@ -928,7 +939,7 @@ map version 31, in order, each with the commands it carried and the rows it
 touched. It is the read half of "the command log is shaped for replay"
 (section 16): a client whose connection dropped knows the version it last saw,
 and replaying six commands is cheaper than re-reading a map whose layers hold
-1.4 million features — and it preserves the client's own pending queue, which a
+4.3 million features — and it preserves the client's own pending queue, which a
 re-read would silently invalidate.
 
 ```json
@@ -994,7 +1005,7 @@ Validation and the limits that apply are in section 20. A rejection is a `422` p
 
 ### Spatial and attribute query
 
-Ships in v1. An earlier draft ran query client-side against the rbush index with a 5,000-candidate cap and deferred the endpoint — which was tenable when a map held a few thousand hand-drawn features and is not tenable against 1.4 million. A cap that refuses almost every real query is not a feature.
+Ships in v1. An earlier draft ran query client-side against the rbush index with a 5,000-candidate cap and deferred the endpoint — which was tenable when a map held a few thousand hand-drawn features and is not tenable against 4.3 million. A cap that refuses almost every real query is not a feature.
 
 The client still answers trivially small queries from the loaded set, because a round trip for a marquee over forty parcels is wasteful. The threshold comes from `capabilities`, not a constant.
 
@@ -1086,7 +1097,7 @@ It opens automatically when the editor is reached without a map, and from the to
 | --- | --- |
 | Name | Click to load. The current map is marked and not clickable |
 | Layers | Layer count |
-| Features | Summed `feature_count` across the layers this map **owns**. Layers shared in from elsewhere are excluded, so the column shows the work done in this map rather than repeating the 1.4M cadastral base on every row |
+| Features | Summed `feature_count` across the layers this map **owns**. Layers shared in from elsewhere are excluded, so the column shows the work done in this map rather than repeating the 4.3M imported base on every row |
 | Updated | Relative time, with the absolute timestamp on hover |
 | Owner | Omitted when the user can only ever see their own |
 | Actions | Delete, for owners only |
@@ -1149,7 +1160,7 @@ On phone widths the panel collapses to a single button that opens it as a sheet,
 
 A layer belongs to one map but can be placed in many. Sharing copies nothing: the second map holds a placement pointing at the same layer and the same features.
 
-This is what makes a statewide cadastral base workable. "Lot" and "Gunatanah" hold 1.4 million features between them, imported once (section 12) and placed read-only in every map that needs them. Each map then adds its own drawn layers on top. A map is a *view over shared data plus its own work*, not a container that owns everything in it.
+This is what makes a statewide cadastral base workable. "Lot", "Gunatanah Semasa" and "Gunatanah Zoning" hold 4.3 million features between them, imported once (section 12) and placed read-only in every map that needs them. Each map then adds its own drawn layers on top. A map is a *view over shared data plus its own work*, not a container that owns everything in it.
 
 | Access | Holder may |
 | --- | --- |
@@ -1190,9 +1201,9 @@ Searchable by name, filterable by kind, debounced at 300 ms, server-side paged. 
 - `read` is available for anything they can see.
 - `edit` is available only where they already hold edit rights on that layer — they own the layer's map, or hold an `edit` placement of it elsewhere.
 
-Without that second rule the whole permission model leaks: a user with their own map could add the cadastral base as editable and rewrite 1.4 million features they were only ever meant to read. The modal offers the levels the server will actually grant, and the server re-checks on the command regardless, because a disabled control in a modal is not an authorization boundary.
+Without that second rule the whole permission model leaks: a user with their own map could add the cadastral base as editable and rewrite 4.3 million features they were only ever meant to read. The modal offers the levels the server will actually grant, and the server re-checks on the command regardless, because a disabled control in a modal is not an authorization boundary.
 
-Global layers are the common case. "Lot" and "Gunatanah" appear in the library for every user, `read` only unless someone has been given edit rights explicitly, and adding either to a new map takes one click and writes one row.
+Global layers are the common case. "Lot", the two land-use layers and the six boundary layers appear in the library for every user, `read` only unless someone has been given edit rights explicitly, and adding one to a new map takes one click and writes one row.
 
 ### Visibility inheritance
 
@@ -1441,30 +1452,45 @@ Dual scale bar showing both unit systems simultaneously when the toggle is set t
 The v2 half of this section is retained in full because three v1 decisions exist to serve it, and changing them later would be expensive:
 
 - Geometry is stored in SRID 4326 with an axis-order discipline (section 6), so imported data has a defined target.
-- `gis_layers.attr_schema` exists in v1 and is populated by the `bencana` import, so the attribute table and validation already speak schema.
-- The worker (section 4) already does the simplify and index-building work that file import will reuse, so v2 adds parsing and reprojection to it rather than building it.
+- `gis_layers.attr_schema` exists in v1 and is populated by the ArcGIS import, so the attribute table and validation already speak schema.
+- The worker (section 4) already does the index-building work that file import will reuse, so v2 adds parsing and reprojection to it rather than building it.
 
 The cost of keeping these in v1 is small. The cost of retrofitting them is a data migration.
 
-### v1 data: import from an existing database
+### v1 data: import from the PLANMalaysia services
 
-v1 does not begin empty, and it is not drawing-only. Its features come from an existing MySQL database, `bencana`, by a one-off import command — not through the file-import pipeline specified in the rest of this section, which remains v2.
+v1 does not begin empty, and it is not drawing-only. Its features come from PLANMalaysia's public ArcGIS feature services, by a one-off seeder — not through the file-import pipeline specified in the rest of this section, which remains v2.
 
-| Source table | Rows | Becomes | Attributes |
+| Service | Layer | Rows | Becomes |
 | --- | --- | --- | --- |
-| `bencana.lots` | 672,112 | Layer "Lot" | `upi`, `negeri`, `daerah`, `mukim`, `seksyen`, `no_lot`, `keluasan` |
-| `bencana.usages` | 746,104 | Layer "Gunatanah" | `lot_upi`, `kod_gtn`, `gunatanah1` |
+| `iPLAN/LOT_06` | Lot Pahang | 672,132 | Layer "Lot" |
+| `iPLAN/GTsemasa_06` | Gunatanah Semasa Pahang | 2,863,522 | Layer "Gunatanah Semasa" |
+| `iPLAN/GTzoning_06` | Gunatanah Zoning Pahang | 738,104 | Layer "Gunatanah Zoning" |
+| `SCHARMS/Persempadanan` | Parlimen (166), DUN (445), PBT (101) | 712 | Layers "Sempadan Parlimen", "Sempadan DUN", "Sempadan PBT" |
+| `SCHARMS/Demarcation` | Negeri (14), Daerah (93), Mukim (1,730) | 1,837 | Layers "Sempadan Negeri", "Sempadan Daerah", "Sempadan Mukim" |
 
-Both are created as **global layers** — `owner_map_id` NULL — and placed `read` into every map that wants them (section 8). They are imported once for the deployment, not once per map. This is the reason the layer table is split in two, and without it a second map over the same cadastre would mean a second copy of 1.4 million rows.
+The three `iPLAN` services are Pahang only; the six `SCHARMS` boundary layers are national, and a deployment that wants only its own state narrows them with a `where` on `kod_negeri` rather than with code. 4,276,307 features in total.
 
-Both are `POLYGON NOT NULL SRID 4326` with a spatial index already in place. Both store coordinates in MySQL's native EPSG axis order, latitude-longitude, which is correct for the column definition — verified by reading a row back with and without `axis-order=long-lat`. The import therefore reads with `axis-order=long-lat` and needs no reprojection, no CRS negotiation and no coordinate repair. This is the whole reason a database import is cheap where a file import is a milestone.
+All are created as **global layers** — `owner_map_id` NULL, `locked` true — and placed `read` into every map that wants them (section 8). They are imported once for the deployment, not once per map. This is the reason the layer table is split in two, and without it a second map over the same cadastre would mean a second copy of 4.3 million rows.
 
-`php artisan gis:import-bencana` reads over a second connection and writes `gis_features` in chunks, computing `minx/miny/maxx/maxy`, `area_m2`, `vertex_count` and `geom_simple` as it goes. It is a one-off per environment, not a sync: once imported, features belong to this application and are edited here. Re-running it against a changed source is out of scope, and if that becomes a requirement it is a change-detection design, not a flag on this command.
+`Gis\Database\Seeders\GunatanahSeeder` reads each service over HTTP and writes `gis_features`, computing `minx/miny/maxx/maxy`, `vertex_count` and `area_m2` as it goes. It is a one-off per environment, not a sync: once imported, features belong to this application and are edited here. Re-running it against a changed source is out of scope, and if that becomes a requirement it is a change-detection design, not a flag on this seeder.
+
+Five properties of the services shape the design, and all five were measured rather than assumed:
+
+- **Paging is by OBJECTID range, never `resultOffset`.** Three records at offset 2,000,000 on `GTsemasa_06` took 49 s; a thousand records in an OBJECTID window took 3.4 s wherever in the table they fell. Ranges are also what make the import resumable and concurrent, since a window is defined by its bounds alone.
+- **Some records cannot be served at all.** `GTsemasa_06` OBJECTID 1460 answers `Failed to execute query.` on its own and poisons every window containing it. A refused window is bisected to find the offending id, which is skipped and recorded; without that, one bad record silently costs a thousand features.
+- **The service answers errors with HTTP 200** and an `error` object, so a successful status proves nothing.
+- **A window is a memory budget, not a page size.** One `Sempadan Negeri` feature is about 19 MB of GeoJSON, so the boundary sources page two to ten features at a time while the cadastral sources page a thousand. For the same reason `area_m2` is computed by a second statement over the rows just written rather than inline in the `INSERT`: inline binds the same document twice, which is what exhausted a 256 MB limit the first time the boundaries were imported.
+- **The layers are `locked`, and three boundary features could not be edited even if they were not.** `write.max_vertices_per_feature` is 50,000 and Sarawak's outline is 99,253 vertices. The lock refuses the edit first, so the cap is never the thing the user meets — but a deployment that unlocks a boundary layer should raise the cap in the same change, or the refusal will look like a bug.
+
+Geometry is requested with `outSR=4326` and arrives as GeoJSON, which is longitude-latitude by RFC 7946; `ST_GeomFromGeoJSON` reads it in that order whatever the reference system declares, so the import needs no axis-order option and no coordinate repair. Verified against known quantities: Pahang's state outline computes to 35,953 km² against an official 35,965, and each land-use feature's geodesic `ST_Area` matches the source's own surveyed `luas_hektar`.
+
+Service field names are **renamed on ingest**. The services carry names truncated to a shapefile's ten-character column limit — `nama_neger`, `seksyen_na`, `luas_hekta`, `mukim_name` — and storing those would make them what every popup, label, filter and export says forever. The stored names use one vocabulary across every source (`negeri`, `daerah`, `mukim`, `seksyen`, `upi`), so a boundary feature and a cadastral feature answer the same question with the same key. `gis_layers.attr_schema` describes the stored names, never the service's.
 
 Two notes for the sessions that consume this:
 
-- **The S2 renderer gate runs against this data, not a synthetic fixture.** Generated geometry with uniform vertex counts would have made the gate meaningless in both directions: real parcels are far lighter per feature (6.7 vertices, not 40) and far more numerous in view (159,654 at zoom 12, not 10,000).
-- `gunatanah1` has 14 distinct values and is the natural demonstration of categorized styling; `keluasan` is the natural graduated field. Section 10 costs nothing extra to demonstrate on this data.
+- **The S2 renderer gate runs against this data, not a synthetic fixture.** Generated geometry with uniform vertex counts would have made the gate meaningless in both directions: real parcels are far lighter per feature (6.5 vertices, not 40) and far more numerous in view (159,654 at zoom 12, not 10,000). The boundary layers are the opposite shape and are characterised separately in section 4.
+- `gunatanah_kategori` on "Gunatanah Semasa" and `gunatanah` on "Gunatanah Zoning" both carry the same 14-value national land-use taxonomy, and are the natural demonstration of categorized styling; `keluasan` on "Lot" and `luas_hektar` on either land-use layer are the natural graduated fields. Section 10 costs nothing extra to demonstrate on this data.
 
 The rest of this section specifies v2 behaviour: file formats, CRS handling, the import pipeline, attribute schema inference and data export.
 
@@ -1491,7 +1517,7 @@ Leaflet renders EPSG:3857 and the data model stores EPSG:4326. Everything else i
 
 | Code | Name | Why |
 | --- | --- | --- |
-| 4326 | WGS84 | Storage CRS; what `bencana` already uses |
+| 4326 | WGS84 | Storage CRS; what the import requests with `outSR` |
 | 3857 | Web Mercator | What Leaflet renders |
 | 4742 | GDM2000 | Current national geodetic datum |
 | 3375 | GDM2000 / Peninsular RSO | Current cadastral projection, Peninsular |
@@ -1514,7 +1540,7 @@ flowchart TD
   E --> F[Stream parse in chunks]
   F --> G[Validate geometry]
   G --> H[Reproject to 4326]
-  H --> I[Simplify to geom_simple]
+  H --> I[Compute bbox, area_m2, vertex_count]
   I --> J[Chunked insert, 1000 rows]
   J --> K[Rebuild extent and counts]
   K --> L[Report: accepted, rejected, warnings]
@@ -2045,7 +2071,7 @@ These are acceptance criteria. A feature that breaks a budget is not done, and a
 | Device | 4-core mobile-class CPU, 4 GB RAM |
 | Throttle | 4x CPU slowdown in DevTools |
 | Network | Fast 3G for load metrics, unthrottled for interaction |
-| Dataset | The imported `bencana` data: 672,112 lots averaging 6.7 vertices and 746,104 land-use polygons averaging 11.1 |
+| Dataset | The imported PLANMalaysia data: 672,132 lots averaging 6.5 vertices and 3.6 million land-use polygons averaging 11 to 17. The boundary layers are excluded from the budget viewports — 2,549 features that the area cull never drops are a different workload, characterised in section 4 |
 | Viewports | Three, pinned by coordinate over Kuantan — zoom 12 (159,654 candidates, 12,929 drawn), zoom 14 (55,729 / 11,819), zoom 16 (5,025 / 4,990) |
 | Viewport | 1280 x 800, and 390 x 844 for mobile runs |
 
@@ -2252,9 +2278,9 @@ Specific invariants worth dedicated tests:
 
 ### Performance gates
 
-This repository has no CI. Until it does, the section 19 budgets are verified at the end of each session against the imported `bencana` data at zoom 12, 14 and 16, and the numbers are recorded in the session's summary alongside the previous baseline.
+This repository has no CI. Until it does, the section 19 budgets are verified at the end of each session against the imported data at zoom 12, 14 and 16, and the numbers are recorded in the session's summary alongside the previous baseline.
 
-Comparability comes from fixing the viewports rather than from committing a dataset: the three test viewports are pinned by coordinate in the test suite, so the same features are measured every run. A 1.4M-row dataset is not something to commit to a repository.
+Comparability comes from fixing the viewports rather than from committing a dataset: the three test viewports are pinned by coordinate in the test suite, so the same features are measured every run. A 4.3M-row dataset is not something to commit to a repository.
 
 When CI arrives, the same Pest suite becomes the merge gate with the 10% regression threshold section 19 specifies. Nothing about the tests changes — only what happens when they fail.
 
@@ -2276,8 +2302,8 @@ The build is organised as sessions rather than the original phases, each sized t
 | --- | --- | --- |
 | S0 | Package skeleton: `packages/gis/{src,config,database,resources,routes}`, service provider, PSR-4 wiring, `brick/geo` added, Vite input registered, blank editor page in the plain layout | Page loads behind the admin guard, provider boots, `npm run build` clean |
 | S1 | Data model: migrations (section 6), `GeometryCast` with long-lat axis order, models, factories | Axis order round-trips; `EXPLAIN` confirms the spatial index on the viewport query |
-| S1b | Import from `bencana`: `gis:import-bencana`, chunked, computing bbox, `area_m2`, `vertex_count` and `geom_simple` | 1.4M features imported, area cull returns ~12,900 at zoom 12, `EXPLAIN` clean on the culled viewport query |
-| S2 | Renderer: typed-array geometry, rbush, custom `L.Layer`, three-canvas split, area cull, parse worker | **Hard gate.** Section 19 budgets against real `bencana` data at zoom 12, 14 and 16 |
+| S1b | Import from the PLANMalaysia services: `GunatanahSeeder`, windowed by OBJECTID, computing bbox, `area_m2` and `vertex_count` | Features imported, area cull returns ~12,900 at zoom 12, `EXPLAIN` clean on the culled viewport query |
+| S2 | Renderer: typed-array geometry, rbush, custom `L.Layer`, three-canvas split, area cull, parse worker | **Hard gate.** Section 19 budgets against real imported data at zoom 12, 14 and 16 |
 | S3 | Feature read API: `GET /layers/{id}/features`, binary encoder, GeoJSON negotiation, cursor paging, client fetch into the renderer | Viewport query p95 < 150 ms; seeded layer to first render < 3 s |
 | S4 | Store, commands, undo, sync: `commit()`, command catalogue, coalesced undo, outbound queue, `POST /commands` atomic and idempotent, 409 payload, RFC 7807 errors | Every command's inverse restores byte-identical state |
 | S5 | Map browser and layer tree: bootstrap, map create/copy/delete, virtualized ARIA tree, fractional sort keys, drag-and-drop, visibility and opacity inheritance, shared layers and access, panes and z-order | Tree budgets met, accessibility clean; a `read` placement refuses every mutation |
@@ -2299,13 +2325,19 @@ S2 remains the hard gate. The renderer's architecture is the one decision every 
 
 S5, S6 and S8 are each large enough that they may split in two when reached. S5 is the largest, carrying the map browser, the tree, the layer library and the control panel. That is expected; the gate is what matters, not the session count.
 
-S12, S14 and S15 are the deferred work from sections 12 and 15, in dependency order: the job protocol enables file import, which brings the external read sources with it, and export depends on nothing but the renderer separation already built in S2. Query moved into v1 as S9b — against 1.4 million features, a 5,000-candidate client-side cap would have refused the normal case.
+S12, S14 and S15 are the deferred work from sections 12 and 15, in dependency order: the job protocol enables file import, which brings the external read sources with it, and export depends on nothing but the renderer separation already built in S2. Query moved into v1 as S9b — against 4.3 million features, a 5,000-candidate client-side cap would have refused the normal case.
 
 ### Definition of done
 
 A session is complete when its functionality works, its budgets are met on the reference device and recorded against the previous baseline, its tests pass under `php artisan test`, its failure modes from section 21 behave as specified, and its UI passes an accessibility check.
 
 ## 23. Open questions
+
+### Open
+
+| # | Question | State |
+| --- | --- | --- |
+| — | **Are the shipped read bounds the intended ones?** | `gis.read.min_area_px` is **1** and `gis.read.max_features_per_response` is **1,000,000**. Both were loosened from 4 and 30,000 in the S3 commit that removed level of detail, which is where "every vertex loaded is painted, at every zoom" was verified — so they look like verification settings that were never restored. Measured at those values on a 1456 x 840 zoom-12 viewport over Kuantan, the `Lot` layer alone returns **25,573** features of 169,567 candidates, against the 10,000-feature design target in section 4; the cap never engages. 4 px² gives 15,945 and 8 px² gives 9,145. Retuning changes the section 19 budgets, so it is a decision, not a fix — take it before S6 adds work to the paint path |
 
 ### Resolved
 
@@ -2316,13 +2348,13 @@ A session is complete when its functionality works, its budgets are met on the r
 | 8 | Does the package need to be reusable across projects? | Yes. Every table carries the `gis_` prefix from the first migration, and access is resolved by a policy over a spatie permission plus the `gis_map_user` pivot, both swappable (sections 6 and 20) |
 | — | Does anyone need offline or field use? | No. Out of scope. The sync queue stays in memory and assumes a connection that returns |
 | — | Is multi-user editing expected within a year? | **Yes, likely.** v1 still ships optimistic locking, but per-field merge, a replay-shaped command log and Reverb are built now rather than retrofitted (sections 5 and 16) |
-| — | Who is v1 for? | Real users with real data. v1 is not drawing-only: it imports 1.4M cadastral features from the `bencana` database (section 12) |
-| — | Does the fixture reflect real data? | It is not a fixture. The S2 gate runs against the imported `bencana` data, which is what exposed that the original 10,000-feature target was really a zoom-16 workload (section 4) |
+| — | Who is v1 for? | Real users with real data. v1 is not drawing-only: it imports 4.3M cadastral, land-use and administrative features from the PLANMalaysia services (section 12) |
+| — | Does the fixture reflect real data? | It is not a fixture. The S2 gate runs against the imported data, which is what exposed that the original 10,000-feature target was really a zoom-16 workload (section 4) |
 | — | What does one map contain? | The whole state. Bounding by district was considered and rejected; the area cull makes it unnecessary and a statewide map keeps the layer tree meaningful |
 | — | Retention, and what runs the sweeps | 30 days for soft-deleted rows, 24 hours for exports, as assumed. S0 registers `gis:sweep` and documents the cron entry, since the application has no scheduler today (section 5) |
 | — | Magnetic declination for bearings | Not needed. Magnetic bearing is dropped; the bearing tool reports true forward and back azimuth only. Malaysian declination is around 0.2°E, below the precision anyone reads off a map, and cadastral work uses true or grid bearings (section 11) |
 | — | Is the 20,000-row cap on map copy acceptable? | The question is void. Map copy shares layers rather than duplicating features, so no row cap applies (sections 7 and 8) |
-| — | Can layers be shared between maps? | Yes, and it is the mechanism that makes a 1.4M-feature cadastral base workable. `gis_layers` holds identity, `gis_map_layer` holds per-map placement and access. Style is layer-level; `edit` grants everything but delete (sections 6 and 8) |
+| — | Can layers be shared between maps? | Yes, and it is the mechanism that makes a 4.3M-feature imported base workable. `gis_layers` holds identity, `gis_map_layer` holds per-map placement and access. Style is layer-level; `edit` grants everything but delete (sections 6 and 8) |
 | — | Does `tiles.pahanggo.com` send CORS headers? | **Yes.** Verified 2026-09-18: the service returns `access-control-allow-origin: *` on a 200 tile response, behind Cloudflare. Client-side export is therefore available for the default basemap, provided every tile layer also sets `crossOrigin: 'anonymous'` (section 13). The same check confirmed the `{x}/{y}/{z}` path order returns a real 256 x 256 tile |
 
 ### Still open
@@ -2339,7 +2371,7 @@ Checked on 2026-09-18 against the development machine:
 | `public` disk and `public/storage` symlink, for overlay images | Present |
 | A `brick/geo` geometry engine (section 5) | GEOS 3.15.0, `geosop` at `/opt/homebrew/bin/geosop`. Server needs the same package |
 | MySQL `ST_Transform` and all ten registry SRIDs | Present; 4326 round trip is exact |
-| **A `bencana` database connection** | **Absent.** `config/database.php` has `kitchensink` as the precedent for a second MySQL connection. Blocks S1b |
+| **Outbound HTTP to `scharms.planmalaysia.gov.my`** | Required by S1b. Public and unauthenticated; no credentials to provision |
 
 The remaining absence does not block S0. It is configuration, not design.
 

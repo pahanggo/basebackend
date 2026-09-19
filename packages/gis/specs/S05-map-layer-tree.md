@@ -65,7 +65,7 @@ packages/gis/
 
 - The modal is called **Add from library**, not "Import". In this specification import means reading a file (§12, v2); reusing the word for placing an existing layer confuses two operations that share nothing.
 - Lists every global layer plus every layer owned by a map the user may open. **Nothing else** — the library must not become a discovery channel for maps the user cannot access.
-- `availableAccess` is computed per user per layer. `read` for anything listed; `edit` **only** where they already hold edit rights on that layer. Without this a user could add the cadastral base as editable to their own map and rewrite 1.4M features they were only meant to read.
+- `availableAccess` is computed per user per layer. `read` for anything listed; `edit` **only** where they already hold edit rights on that layer. Without this a user could add the cadastral base as editable to their own map and rewrite 4.3M features they were only meant to read.
 - The server re-checks access on `layer.share` regardless of what the modal offered. **A disabled control in a modal is not an authorization boundary** — write the test that calls the command directly with `access: edit`.
 - Layers already placed in this map are listed but marked and unselectable; `(map_id, layer_id)` is unique.
 - Show `feature_count` in the listing, so the weight of what is being added is visible beforehand.
@@ -82,7 +82,7 @@ packages/gis/
 
 ## Map browser constraints
 
-- The **Features** column counts only layers this map owns. Summing shared layers would print the 1.4M cadastral base on every row and tell the user nothing.
+- The **Features** column counts only layers this map owns. Summing shared layers would print the 4.3M imported base on every row and tell the user nothing.
 - The listing is **server-side paged, not virtualized.** A user has tens of maps, not thousands. Do not reach for `virtual-list.js` here.
 - **Load flushes the outbound queue first.** Switching maps with unsynced commands in flight strands them against a map that is no longer open. If the flush fails, block the switch and offer the changes as an export — never discard them silently.
 - Loading clears the undo stack; it is per map.
@@ -179,7 +179,7 @@ tested rather than asserted in prose:
   user's role elsewhere. That is what an escalation attempt would look like.
 - `layer.setAccess` is refused unless the **acting map owns the layer**. Without
   it, anyone holding a read-only placement of the cadastral base could promote
-  their own placement and rewrite 1.4 million rows.
+  their own placement and rewrite 4.3 million rows.
 - `layer.share` with `access: edit` is refused when the user holds only read
   rights — **tested by calling the command directly**, because the library modal
   offering only "read" is a courtesy and not a fence.
@@ -224,7 +224,7 @@ Administrator role in the seeder.
 
 The editor was driven end to end against the imported cadastre: the map browser
 lists both dev maps and marks the open one, the library lists `Lot` and
-`Gunatanah` as base data with their feature counts, marks the already-placed one
+the land-use layers as base data with their feature counts, marks the already-placed one
 unselectable, and offers **read-only alone** for both — which is the permission
 rule showing through the UI rather than being described by it. Placing `Lot`
 wrote one row and the renderer picked it up: 27,041 + 24,615 features across two

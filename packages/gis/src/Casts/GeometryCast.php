@@ -19,9 +19,9 @@ use InvalidArgumentException;
  * MySQL reads SRID 4326 as latitude-longitude, following the EPSG definition.
  * Every GeoJSON file and every GIS tool is longitude-latitude. Mixing them puts
  * geometry in the wrong hemisphere and raises no error at all, which is why
- * `ST_GeomFromText`, `ST_AsText`, `ST_AsBinary` and `ST_GeomFromWKB` appear
- * here and nowhere else in the package — a `grep` assertion in the test suite
- * keeps it that way.
+ * `ST_GeomFromText`, `ST_AsText`, `ST_AsBinary`, `ST_GeomFromWKB` and
+ * `ST_GeomFromGeoJSON` appear here and nowhere else in the package — a `grep`
+ * assertion in the test suite keeps it that way.
  *
  * On the way in, geometry becomes `ST_GeomFromText(..., 4326, 'axis-order=long-lat')`.
  * On the way out, MySQL hands back its internal format: a 4-byte little-endian
@@ -145,27 +145,27 @@ final class GeometryCast implements CastsAttributes
     }
 
     /**
-     * SQL counting every vertex in a polygon column, including hole rings.
+     * A bindable `ST_GeomFromGeoJSON` fragment, for bulk ingest.
      *
-     * There is no `ST_NumPoints` for a polygon and no way to loop over rings in
-     * an expression — and looping is not academic here: one source row has
-     * 2,164 interior rings. So the count comes out of the WKB layout instead,
-     * which is exact. A polygon is 1 byte of byte order, 4 of type, 4 of ring
-     * count, then per ring 4 bytes of point count and 16 bytes per point:
+     * The GeoJSON travels as an ordinary placeholder, unlike the WKT in
+     * `literal()`: MySQL takes no placeholder inside `ST_GeomFromText`'s
+     * options argument, but it takes one perfectly well here. So this is the
+     * one way geometry enters the database without being parsed by PHP first,
+     * which is what makes a three-million-row import finish.
      *
-     *     points = (length - 9 - 4 * rings) / 16
+     * Options `2` accepts a document carrying Z or M ordinates and strips them,
+     * rather than erroring: the iPLAN services are 2D, but a source that
+     * quietly gained a third ordinate should not stop an import overnight.
      *
-     * Lives here because `ST_AsBinary` does, and that is the whole point of the
-     * rule: one file owns the raw spatial calls.
+     * No axis-order option, and none is needed. GeoJSON is longitude-latitude
+     * by RFC 7946 and `ST_GeomFromGeoJSON` reads it that way whatever the
+     * reference system declares — the same asymmetry as `ST_AsGeoJSON` above,
+     * and the reason both live in this file.
      */
-    public static function vertexCountExpression(string $column): string
+    public static function geoJsonPlaceholder(): string
     {
-        return sprintf(
-            '((LENGTH(ST_AsBinary(`%1$s`)) - 9 - 4 * (1 + ST_NumInteriorRings(`%1$s`))) / 16)',
-            $column,
-        );
+        return sprintf('ST_GeomFromGeoJSON(CAST(? AS JSON), 2, %d)', self::SRID);
     }
-
 
     /**
      * Read a geometry off the wire.
@@ -233,9 +233,9 @@ final class GeometryCast implements CastsAttributes
     /**
      * Every vertex in a geometry, hole rings included.
      *
-     * Counted in PHP on the write path, where the geometry is already parsed —
-     * unlike the read path, where `vertexCountExpression()` gets it out of the
-     * WKB layout because MySQL cannot loop over rings in an expression.
+     * Counted in PHP because MySQL cannot: there is no `ST_NumPoints` for a
+     * polygon and no way to loop over rings in an expression, and looping is not
+     * academic — one source row in the cadastre has 2,164 interior rings.
      */
     public static function countVertices(Geometry $geometry): int
     {

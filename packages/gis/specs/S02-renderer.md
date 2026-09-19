@@ -2,17 +2,17 @@
 
 **Depends on:** S1b
 **Specification:** §4 (whole section), §19 (budgets)
-**Gate:** **hard gate.** §19 budgets met against real `bencana` data at zoom 12, 14 and 16, on the reference device.
+**Gate:** **hard gate.** §19 budgets met against real imported data at zoom 12, 14 and 16, on the reference device.
 
 ## Goal
 
-Render 1.4M cadastral features at 60fps. This is the one decision every later session depends on, and the only session whose failure means rethinking the architecture rather than fixing a bug.
+Render a statewide cadastre at 60fps — 1.4M features when this session ran, 4.3M since the import moved to the PLANMalaysia services (specification §12). This is the one decision every later session depends on, and the only session whose failure means rethinking the architecture rather than fixing a bug.
 
 **Treat the budget as a gate, not a task.** If it misses, stop and say so rather than proceeding to S3.
 
 ## What the workload actually is
 
-Profiled from `bencana` before this session was written, and it is not what a vector renderer usually assumes:
+Profiled from the source cadastre before this session was written, and it is not what a vector renderer usually assumes:
 
 | Zoom | Candidates in view | Drawn after 4 px² cull | Vertices drawn |
 | --- | --- | --- | --- |
@@ -65,7 +65,7 @@ packages/gis/resources/js/map/
 
 ## Gate
 
-Measured on the reference device (4-core mobile-class CPU, 4 GB RAM, 4x CPU throttle) against imported `bencana` data, **at zoom 12, 14 and 16** — zoom 12 is the stress case because of the candidate count:
+Measured on the reference device (4-core mobile-class CPU, 4 GB RAM, 4x CPU throttle) against imported data, **at zoom 12, 14 and 16** — zoom 12 is the stress case because of the candidate count:
 
 | Metric | Budget |
 | --- | --- |
@@ -97,7 +97,7 @@ measured at all**, and that qualification matters more than any number below.
 
 ### Measured, on the development machine
 
-Apple Silicon, Chrome, 1710 x 930 viewport, against the imported `bencana`
+Apple Silicon, Chrome, 1710 x 930 viewport, against the imported
 data at zoom 12 with both layers placed. **No CPU throttling was applied**: the
 tooling available here cannot drive Chrome's throttling, so every figure is
 from hardware several times faster than the reference device.

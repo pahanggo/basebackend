@@ -6,7 +6,7 @@
 
 ## Goal
 
-Answer "which features satisfy these conditions" against 1.4M features, from a panel in the map control panel.
+Answer "which features satisfy these conditions" against 4.3M features, from a panel in the map control panel.
 
 ## Why this is v1
 

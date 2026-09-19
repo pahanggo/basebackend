@@ -16,12 +16,12 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 
 | # | Session | Depends on |
 | --- | --- | --- |
-| [S0](S00-package-skeleton.md) | Package skeleton | — |
-| [S1](S01-data-model.md) | Data model | S0 |
-| [S1b](S01b-import-bencana.md) | Import from the bencana database | S1 |
-| [S2](S02-renderer.md) | Rendering engine — **hard gate** | S1b |
-| [S3](S03-feature-read-api.md) | Feature read API | S1b, S2 |
-| [S4](S04-store-commands-sync.md) | Store, commands, undo, sync | S1 |
+| [S0](S00-package-skeleton.md) | Package skeleton — **done** | — |
+| [S1](S01-data-model.md) | Data model — **done** | S0 |
+| S1b | Import — **done**, and replaced. It was a one-off command reading a copy of the cadastre from a second MySQL database; that command and its session file are gone, and `Gis\Database\Seeders\GunatanahSeeder` reads the PLANMalaysia ArcGIS services directly. See specification §12 and the package README — there is no session file | S1 |
+| [S2](S02-renderer.md) | Rendering engine — **hard gate**, **done** | S1b |
+| [S3](S03-feature-read-api.md) | Feature read API — **done** | S1b, S2 |
+| [S4](S04-store-commands-sync.md) | Store, commands, undo, sync — **done** | S1 |
 | [S5a](S05-map-layer-tree.md) | Map CRUD, sharing, layer library — **done** | S4, S2 |
 | [S5b](S05-map-layer-tree.md) | Layer tree, drag and drop, panes, control panel | S5a |
 | [S5b](S05b-image-overlays.md) | Image overlays | S5 |
@@ -38,6 +38,15 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S15](S15-share-links.md) | Share links and embed | S14 |
 
 S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count. **S5 did split**, at the seam its own file named: S5a is the data and the authorization, S5b is the view over it. Both halves live in the one file.
+
+## Imported data
+
+Sessions from S2 onwards measure against real imported data, never a fixture. It arrives through `Gis\Database\Seeders\GunatanahSeeder` — nine global layers from PLANMalaysia's public ArcGIS services, 4.3 million features (specification §12). The package README has the run instructions, the environment-variable knobs and the resume behaviour.
+
+Two things to know before measuring anything:
+
+- **The cadastral and land-use layers are the budget workload**: millions of small polygons, 6.5 to 17 vertices each, held near a constant drawn count by the area cull.
+- **The six boundary layers are not**, and must not be placed in a budget viewport without saying so. They are 2,549 features that the cull never drops, some of them tens of thousands of vertices (specification §4).
 
 ## Definition of done
 

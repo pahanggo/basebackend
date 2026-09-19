@@ -4192,7 +4192,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/gis",
-                "reference": "177d26b80a848f659744911ff9ef0813559b19c0"
+                "reference": "8a0a02329b37e1cfe2611131d65964d630d25ba6"
             },
             "require": {
                 "brick/geo": "^0.13",
@@ -4209,7 +4209,8 @@
             "autoload": {
                 "psr-4": {
                     "Gis\\": "src",
-                    "Gis\\Database\\Factories\\": "database/factories"
+                    "Gis\\Database\\Factories\\": "database/factories",
+                    "Gis\\Database\\Seeders\\": "database/seeders"
                 }
             },
             "license": [

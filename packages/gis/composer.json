@@ -11,7 +11,8 @@
     "autoload": {
         "psr-4": {
             "Gis\\": "src",
-            "Gis\\Database\\Factories\\": "database/factories"
+            "Gis\\Database\\Factories\\": "database/factories",
+            "Gis\\Database\\Seeders\\": "database/seeders"
         }
     },
     "extra": {

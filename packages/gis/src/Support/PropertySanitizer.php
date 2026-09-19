@@ -27,10 +27,19 @@ class PropertySanitizer
     public const KEY_PATTERN = '/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/';
 
     /**
+     * The property key an imported feature carries its source row id under.
+     *
+     * Canonical here rather than on either importer, because this is the class
+     * that has to refuse it: provenance is written by the server, and a command
+     * that could set it could forge it.
+     */
+    public const SOURCE_ID_KEY = '_src';
+
+    /**
      * Keys the import reserves for provenance. They are written by the server
      * and may not be set from a command.
      */
-    public const RESERVED_KEYS = ['_src'];
+    public const RESERVED_KEYS = [self::SOURCE_ID_KEY];
 
     /**
      * @param  array<string, mixed>  $properties

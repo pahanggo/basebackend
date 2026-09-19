@@ -6,7 +6,7 @@
 
 ## Goal
 
-Every table and the geometry cast. Data arrives in S1b, from the `bencana` database.
+Every table and the geometry cast. Data arrives in S1b, from the PLANMalaysia ArcGIS services.
 
 ## In scope
 
@@ -52,7 +52,7 @@ Each table carries its own `version`. Reorder and visibility guard on the placem
 
 - A geometry written through the cast and read back is identical, and lands in the right hemisphere.
 - `EXPLAIN` on the viewport query reports the spatial index, not a full scan. This is an assertion in a test, not a manual check.
-- `gis_features.area_m2` exists with its `(layer_id, area_m2)` index. The whole area-cull design in §4 rests on it, and adding it later means rewriting 1.4M rows.
+- `gis_features.area_m2` exists with its `(layer_id, area_m2)` index. The whole area-cull design in §4 rests on it, and adding it later means rewriting 4.3M rows. (S3 widened that index into `ix_layer_read`; `ix_layer_area` was dropped.)
 - `gis_layers` and `gis_map_layer` are separate from the first migration. **This is the one structural decision that cannot be deferred**: layers are shared between maps (§8), so identity and per-map placement must be separate tables. Retrofitting means migrating live rows and rewriting every tree query.
 
 ## Tests
@@ -64,7 +64,7 @@ Each table carries its own `version`. Reorder and visibility guard on the placem
 
 ## Notes
 
-There is no synthetic fixture. Real data arrives in S1b and every later budget is measured against it — that decision came out of profiling `bencana`, which showed the original assumed profile (10,000 features averaging 40 vertices) wrong in both directions.
+There is no synthetic fixture. Real data arrives in S1b and every later budget is measured against it — that decision came out of profiling the source cadastre, which showed the original assumed profile (10,000 features averaging 40 vertices) wrong in both directions.
 
 ## Results
 
@@ -118,7 +118,7 @@ second run finds the GIS tables still standing. `Gis\Testing\RefreshesGisDatabas
 wipes the GIS connection first and transacts both.
 
 **Not built here:** generated columns for attribute filters (S9), and there is
-still no data — S1b imports it from `bencana`, which needs that connection
+still no data — S1b imports it from the PLANMalaysia services
 configured.
 
 | Gate | Result |

@@ -39,7 +39,7 @@ packages/gis/
 
 - **Only viewport rows are in the DOM.** 10,000 rows scroll at 60fps because the recycler from S5 is doing its job.
 - Selection highlight draws on the **overlay canvas**, so changing selection never repaints features (S2).
-- Selection tools answer from the loaded set only. Anything needing a predicate over the whole layer goes through S9b's endpoint — against 1.4M features the client cannot be the source of truth for "which features match".
+- Selection tools answer from the loaded set only. Anything needing a predicate over the whole layer goes through S9b's endpoint — against 4.3M features the client cannot be the source of truth for "which features match".
 - Generated columns are limited to **eight per layer**; beyond that write cost outweighs read benefit.
 - Property keys are validated against `^[a-zA-Z_][a-zA-Z0-9_]{0,63}$` before becoming column names (§20).
 - **Popup and table values render as text.** `innerHTML` and jQuery's `.html()` are forbidden on any path touching feature data. HTML popup templates are opt-in per layer, restricted to users with edit rights, and still escape every interpolated value: the template author controls structure, never content.

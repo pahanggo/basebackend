@@ -52,19 +52,47 @@ If that entry is declined, nothing breaks and storage grows: soft-deleted rows
 are never purged, so the 30-day restore window becomes indefinite retention, and
 orphaned overlay images are never reclaimed.
 
-## Importing the cadastre
+## Importing the data
 
-`php artisan gis:import-bencana` copies the state cadastre from the `bencana`
-database into two global layers, once per environment. It is not a sync.
+`Gis\Database\Seeders\GunatanahSeeder` pulls nine layers from PLANMalaysia's
+public ArcGIS services — the cadastre, the two land-use layers, and six
+administrative boundaries:
 
-Both databases must sit on the same MySQL server: the import is a cross-database
-`INSERT ... SELECT`, so 1.4 million rows never pass through PHP. It takes about
-eight minutes and needs read-only credentials on `bencana`.
+```
+php artisan db:seed --class='Gis\Database\Seeders\GunatanahSeeder'
+```
 
-A layer that already holds features is refused. Pass `--fresh` to replace them,
-or `--resume` to continue an import that was interrupted — appending instead of
-resuming would double the layer with nothing to show for it but a feature count
-that does not add up.
+| key | service | layer | features |
+| --- | --- | --- | --- |
+| `lot` | `iPLAN/LOT_06` | Lot | 672,132 |
+| `gunatanah_semasa` | `iPLAN/GTsemasa_06` | Gunatanah Semasa | 2,863,522 |
+| `gunatanah_zoning` | `iPLAN/GTzoning_06` | Gunatanah Zoning | 738,104 |
+| `parlimen` `dun` `pbt` | `SCHARMS/Persempadanan` | Sempadan Parlimen / DUN / PBT | 712 |
+| `negeri` `daerah` `mukim` | `SCHARMS/Demarcation` | Sempadan Negeri / Daerah / Mukim | 1,837 |
+
+`db:seed` passes no options to a seeder, so it takes environment variables:
+
+| variable | effect |
+| --- | --- |
+| `GUNATANAH_SOURCES=negeri,daerah` | import only these keys |
+| `GUNATANAH_WINDOWS=3` | stop after three windows per source — a one-minute smoke run |
+| `GUNATANAH_FRESH=1` | drop the layer's features and ledger, then import again |
+| `GUNATANAH_TRUNCATE=1` | empty `gis_features`, `gis_map_layer` and `gis_layers` and restart ids at 1 |
+
+The land-use pair is 3.6 million features and takes hours. Interrupt it freely:
+each window of OBJECTIDs is committed in its own transaction and recorded in a
+ledger under `storage/app/gis/arcgis/` only once committed, so a re-run continues
+from exactly where it stopped. A layer holding features with no ledger is refused
+rather than appended to.
+
+Some records cannot be served: `GTsemasa_06` OBJECTID 1460 answers `Failed to
+execute query.` on its own and poisons any window containing it. A refused window
+is bisected down to the offending id, which is skipped and written to
+`storage/app/gis-arcgis-rejects-<key>.txt`; the other 999 features are kept.
+
+`GUNATANAH_TRUNCATE=1` is for the one import that establishes a deployment. It
+destroys hand-drawn layers and every map's layer tree along with the imported
+base — placements cannot outlive the layers they point at.
 
 ## GEOS
 

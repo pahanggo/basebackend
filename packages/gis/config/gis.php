@@ -20,33 +20,249 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | One-off cadastral import
+    | Bulk import
     |--------------------------------------------------------------------------
     |
-    | `gis:import-bencana` copies the state cadastre in once per deployment. It
-    | is not a sync: once imported, the features belong to this application and
-    | are edited here. File import is a separate, later thing (v2).
+    | Where v1's data comes from. PLANMalaysia publishes the cadastre, the land
+    | use and the administrative boundaries as public, read-only ArcGIS feature
+    | services, and `Gis\Database\Seeders\GunatanahSeeder` pulls them into global
+    | layers once per deployment. It is not a sync: once imported, the features
+    | belong to this application and are edited here. File import — a user
+    | uploading a shapefile — is a separate, later thing (v2).
+    |
+    | The land-use pair are not the same thing: `semasa` is land use as surveyed
+    | on the ground, `zoning` is land use as a local plan allocates it. The
+    | mapping below was read off each service's own layer name rather than
+    | inferred from the URL, because the two are easy to transpose and nothing
+    | downstream would notice — a zoning allocation stored as a survey is a
+    | plausible-looking map that is simply wrong.
+    |
+    | The boundary sources are administrative outlines, national rather than
+    | Pahang-only and three orders of magnitude smaller: they exist to be drawn
+    | over the land use, not culled against it. Narrow one with its `where`, as
+    | the commented filters show, if a deployment wants only its own state.
     |
     */
 
     'import' => [
-        'bencana' => [
-            'connection' => env('GIS_BENCANA_CONNECTION', 'bencana'),
 
-            // Rows per INSERT ... SELECT. Both databases sit on the same MySQL
-            // server, so rows never travel through PHP.
-            'chunk' => 2000,
+        'arcgis' => [
+            // The services root. Each source names its folder and service below,
+            // because they are not all in one folder: land use is under `iPLAN`,
+            // the boundaries under `SCHARMS`.
+            'base_url' => env(
+                'GIS_ARCGIS_BASE_URL',
+                'https://scharms.planmalaysia.gov.my/arcgis/rest/services',
+            ),
 
-            'layers' => [
-                'lots' => [
-                    'table' => 'lots',
+            // Features per request, as a span of OBJECTID. Measured against
+            // GTsemasa_06: a thousand rows is ~330 KB and 3.4 s wherever in the
+            // table it falls, because the window is an indexed range rather than
+            // an offset the server has to count past.
+            //
+            // A source may override it, and the boundary layers all do: their
+            // features are whole administrative outlines, so the window is a
+            // memory budget rather than a page size.
+            'window' => 1000,
+
+            // Windows in flight at once. The fetch is latency-bound, and the
+            // service is someone else's: four is polite and roughly halves a
+            // three-hour job.
+            'concurrency' => 4,
+
+            'timeout_seconds' => 180,
+            'retries' => 3,
+            'retry_sleep_ms' => 2000,
+
+            // The ledger of committed windows, which is what makes an interrupted
+            // import resume instead of doubling. See `Gis\Support\ImportLedger`.
+            'progress_disk' => env('GIS_ARCGIS_PROGRESS_DISK', 'local'),
+            'progress_folder' => 'gis/arcgis',
+
+            /*
+            | Each source names its service, its layer, the global layer it fills,
+            | and how its fields are stored.
+            |
+            | `attributes` maps a SERVICE field to `[property name, type]`. The
+            | rename is the point: the services carry names truncated to fit a
+            | shapefile's ten-character column limit — `nama_neger`, `seksyen_na`,
+            | `luas_hekta`, `mukim_name` — and those would otherwise be what every
+            | popup, label, filter and export in this application says forever. One
+            | vocabulary across every source (`negeri`, `daerah`, `mukim`,
+            | `seksyen`, `upi`), so a feature from a boundary layer and a feature
+            | from the cadastre answer the same question with the same key.
+            |
+            | `type` is what `attr_schema` reports to the client: `string` or
+            | `number`. `where` is optional and defaults to `1=1`.
+            */
+
+            'sources' => [
+
+                'lot' => [
+                    'service' => 'iPLAN/LOT_06',
+                    'layer' => 0,
                     'name' => 'Lot',
-                    'attributes' => ['upi', 'negeri', 'daerah', 'mukim', 'seksyen', 'no_lot', 'keluasan'],
+
+                    'attributes' => [
+                        'UPI' => ['upi', 'string'],
+                        'NEGERI' => ['negeri', 'string'],
+                        'DAERAH' => ['daerah', 'string'],
+                        'MUKIM' => ['mukim', 'string'],
+                        'SEKSYEN' => ['seksyen', 'string'],
+                        'LOT' => ['no_lot', 'string'],
+                        'KELUASAN' => ['keluasan', 'number'],
+                    ],
+
+                    'style' => ['stroke' => '#8a6d3b', 'weight' => 1, 'fill' => '#f0ad4e', 'fillOpacity' => 0.15],
                 ],
-                'usages' => [
-                    'table' => 'usages',
-                    'name' => 'Gunatanah',
-                    'attributes' => ['lot_upi', 'kod_gtn', 'gunatanah1'],
+
+                'gunatanah_semasa' => [
+                    'service' => 'iPLAN/GTsemasa_06',
+                    'layer' => 0,
+                    'name' => 'Gunatanah Semasa',
+
+                    // Land use as surveyed on the ground, classified three levels
+                    // deep: Komersial > Perkhidmatan > Agensi Perkhidmatan.
+                    'attributes' => [
+                        'lot_upi' => ['lot_upi', 'string'],
+                        'kod_gtn' => ['kod_gunatanah', 'string'],
+                        'gunatanah1' => ['gunatanah_kategori', 'string'],
+                        'gunatanah2' => ['gunatanah_subkategori', 'string'],
+                        'gunatanah3' => ['gunatanah_terperinci', 'string'],
+                        'nama' => ['nama', 'string'],
+                        'tahun_data' => ['tahun_data', 'number'],
+                        'luas_hekta' => ['luas_hektar', 'number'],
+                        'negeri_nam' => ['negeri', 'string'],
+                        'daerah_nam' => ['daerah', 'string'],
+                        'mukim_name' => ['mukim', 'string'],
+                        'seksyen_na' => ['seksyen', 'string'],
+                        'pbt_name' => ['pbt', 'string'],
+                    ],
+
+                    'style' => [
+                        'stroke' => '#2f6f3e',
+                        'weight' => 1,
+                        'fill' => '#7bc47f',
+                        'fillOpacity' => 0.2,
+                    ],
+                ],
+
+                'gunatanah_zoning' => [
+                    'service' => 'iPLAN/GTzoning_06',
+                    'layer' => 0,
+                    'name' => 'Gunatanah Zoning',
+
+                    // Land use as a local plan allocates it: one level, and the
+                    // plan that allocated it.
+                    'attributes' => [
+                        'lot_upi' => ['lot_upi', 'string'],
+                        'kod_gtn' => ['kod_gunatanah', 'string'],
+                        'gunatanah1' => ['gunatanah', 'string'],
+                        'nama_ranca' => ['nama_rancangan', 'string'],
+                        'tahun_data' => ['tahun_data', 'number'],
+                        'luas_hekta' => ['luas_hektar', 'number'],
+                        'negeri_nam' => ['negeri', 'string'],
+                        'daerah_nam' => ['daerah', 'string'],
+                        'mukim_name' => ['mukim', 'string'],
+                        'seksyen_na' => ['seksyen', 'string'],
+                        'pbt_name' => ['pbt', 'string'],
+                    ],
+
+                    'style' => [
+                        'stroke' => '#5b3f8c',
+                        'weight' => 1,
+                        'fill' => '#b39ddb',
+                        'fillOpacity' => 0.2,
+                    ],
+                ],
+
+                // Persempadanan: the electoral and local-authority boundaries.
+                'parlimen' => [
+                    'service' => 'SCHARMS/Persempadanan',
+                    'layer' => 0,
+                    'name' => 'Sempadan Parlimen',
+                    'window' => 10,
+                    'attributes' => [
+                        'UPI' => ['upi', 'string'],
+                        'Nama' => ['nama', 'string'],
+                        'Negeri' => ['negeri', 'string'],
+                    ],
+                    'style' => ['stroke' => '#b71c1c', 'weight' => 2, 'fill' => '#ef5350', 'fillOpacity' => 0.05],
+                ],
+
+                'dun' => [
+                    'service' => 'SCHARMS/Persempadanan',
+                    'layer' => 1,
+                    'name' => 'Sempadan DUN',
+                    'window' => 10,
+                    'attributes' => [
+                        'UPI' => ['upi', 'string'],
+                        'Nama' => ['nama', 'string'],
+                        'Parlimen' => ['parlimen', 'string'],
+                        'Negeri' => ['negeri', 'string'],
+                    ],
+                    'style' => ['stroke' => '#e65100', 'weight' => 2, 'fill' => '#ffb74d', 'fillOpacity' => 0.05],
+                ],
+
+                'pbt' => [
+                    'service' => 'SCHARMS/Persempadanan',
+                    'layer' => 2,
+                    'name' => 'Sempadan PBT',
+                    'window' => 10,
+                    'attributes' => [
+                        'UPI' => ['upi', 'string'],
+                        'NamaPBT' => ['nama', 'string'],
+                        'Singkatan' => ['singkatan', 'string'],
+                        'KodNegeri' => ['kod_negeri', 'string'],
+                        'NamaNegeri' => ['negeri', 'string'],
+                    ],
+                    'style' => ['stroke' => '#00695c', 'weight' => 2, 'fill' => '#4db6ac', 'fillOpacity' => 0.05],
+                ],
+
+                // Demarcation: the administrative hierarchy the cadastre's `negeri`,
+                // `daerah` and `mukim` codes name.
+                'negeri' => [
+                    'service' => 'SCHARMS/Demarcation',
+                    'layer' => 0,
+                    'name' => 'Sempadan Negeri',
+
+                    // Sarawak alone is a nineteen-megabyte GeoJSON document.
+                    'window' => 2,
+                    // 'where' => "kod_negeri = '06'",
+                    'attributes' => [
+                        'kod_negeri' => ['kod_negeri', 'string'],
+                        'nama_neger' => ['nama', 'string'],
+                    ],
+                    'style' => ['stroke' => '#263238', 'weight' => 3, 'fill' => '#90a4ae', 'fillOpacity' => 0.04],
+                ],
+
+                'daerah' => [
+                    'service' => 'SCHARMS/Demarcation',
+                    'layer' => 1,
+                    'name' => 'Sempadan Daerah',
+                    'window' => 10,
+                    // 'where' => "kod_negeri = '06'",
+                    'attributes' => [
+                        'kod_negeri' => ['kod_negeri', 'string'],
+                        'kod_daerah' => ['kod_daerah', 'string'],
+                        'nama_daera' => ['nama', 'string'],
+                    ],
+                    'style' => ['stroke' => '#37474f', 'weight' => 2, 'fill' => '#b0bec5', 'fillOpacity' => 0.04],
+                ],
+
+                'mukim' => [
+                    'service' => 'SCHARMS/Demarcation',
+                    'layer' => 2,
+                    'name' => 'Sempadan Mukim',
+                    'window' => 10,
+                    // 'where' => "kod_negeri = '06'",
+                    'attributes' => [
+                        'kod_negeri' => ['kod_negeri', 'string'],
+                        'kod_daerah' => ['kod_daerah', 'string'],
+                        'kod_mukim' => ['kod_mukim', 'string'],
+                        'nama_mukim' => ['nama', 'string'],
+                    ],
+                    'style' => ['stroke' => '#455a64', 'weight' => 1, 'fill' => '#cfd8dc', 'fillOpacity' => 0.04],
                 ],
             ],
         ],

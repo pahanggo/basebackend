@@ -2,7 +2,6 @@
 
 namespace Gis;
 
-use Gis\Console\ImportBencanaCommand;
 use Gis\Console\SweepCommand;
 use Illuminate\Console\Scheduling\Schedule;
 use Gis\Models\Map;
@@ -41,30 +40,22 @@ class GisServiceProvider extends ServiceProvider
         $this->registerSchedule();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ImportBencanaCommand::class, SweepCommand::class]);
+            $this->commands([SweepCommand::class]);
         }
     }
 
     /**
-     * The package owns its connection definitions so the application's
+     * The package owns its connection definition so the application's
      * `config/database.php` needs no entry. A deployment that defines one
      * under the same name wins.
      */
     protected function registerDatabaseConnections(): void
     {
         $definitions = require __DIR__.'/../config/database.php';
+        $name = config('gis.connection');
 
-        $names = [
-            'gis' => config('gis.connection'),
-            'bencana' => config('gis.import.bencana.connection'),
-        ];
-
-        foreach ($names as $role => $name) {
-            if ($name === null || config("database.connections.{$name}") !== null) {
-                continue;
-            }
-
-            config(["database.connections.{$name}" => $definitions[$role]]);
+        if ($name !== null && config("database.connections.{$name}") === null) {
+            config(["database.connections.{$name}" => $definitions['gis']]);
         }
     }
 

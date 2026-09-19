@@ -24,7 +24,7 @@ it('keeps raw spatial SQL inside GeometryCast', function () {
     // geometry lands in the wrong hemisphere with no error raised. The defence
     // is that exactly one file may call these, so exactly one file has to get
     // the axis order right.
-    $forbidden = ['ST_GeomFromText', 'ST_AsText', 'ST_AsBinary', 'ST_GeomFromWKB'];
+    $forbidden = ['ST_GeomFromText', 'ST_AsText', 'ST_AsBinary', 'ST_GeomFromWKB', 'ST_GeomFromGeoJSON'];
 
     $offenders = [];
 

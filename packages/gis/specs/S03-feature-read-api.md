@@ -37,10 +37,10 @@ packages/gis/resources/js/data/features.js
 - All arrays 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds without copying.
 - Encoding is content negotiation, never a separate endpoint or a `?format=` parameter.
 - Binary is the default above 2,000 features; GeoJSON below, and for debugging.
-- `zoom` drives two things: the area cull threshold, and which geometry column is returned — below 16 `geom_simple`, 16+ `geom`.
+- ~~`zoom` drives two things: the area cull threshold, and which geometry column is returned — below 16 `geom_simple`, 16+ `geom`.~~ **Superseded.** `geom_simple` and every other form of level of detail were removed in S2; below `edit_min_zoom` the zoom drives coordinate *quantisation* instead, which keeps every vertex and shortens each one. See *Quantised coordinates* below.
 - **The area cull runs server-side and is not optional.** A zoom-12 bbox over Kuantan matches 159,654 features and must return ~12,900. Shipping the other 146,725 so the client can discard them would blow both the transfer and first-render budgets outright. The threshold is derived server-side from `zoom` and viewport latitude, never sent by the client, and the response reports `culled`, `returned` and `areaThresholdM2`.
 - `minArea=0` suppresses the cull for export and attribute queries, where invisibility is irrelevant. It is not the default and the client never sends it for a viewport read.
-- The spatial index and `(layer_id, area_m2)` cannot both be used in one query. Check with `EXPLAIN` which one the planner chose and whether that was the right one — this is the single most likely place for a silent full scan.
+- ~~The spatial index and `(layer_id, area_m2)` cannot both be used in one query.~~ **Superseded.** Neither is used: `ix_layer_read (layer_id, area_m2, minx, maxx, miny, maxy)` serves the whole `WHERE` and the `ORDER BY` with no filesort, and it is **forced**, because MySQL will never choose it once `geom` is in the select list. `ix_layer_area` was dropped as a leftmost prefix of it. The warning about a silent full scan was right, and this is how it was closed — see *The index the read forces* below.
 - **Offset paging is not used.** Over a spatial query it degrades badly and can skip or duplicate rows when data changes mid-scan. The cursor is keyset over `(minx, id)`.
 - Coordinates are longitude-latitude everywhere, no exceptions (§7).
 
@@ -269,7 +269,7 @@ it now applies to both.
 
 ### Results
 
-Measured in Chrome against the imported cadastre, `Gunatanah` at zoom 12 with
+Measured in Chrome against the imported cadastre. The layer named `Gunatanah` here was the single land-use layer of the time; it has since been replaced by the two layers `Gunatanah Semasa` and `Gunatanah Zoning` (specification §12), and the figures below are left as they were measured. `Gunatanah` at zoom 12 with
 the usual quarter-viewport padding — 23,215 features, 233 frames, 9.0 MB.
 
 | | |
@@ -431,7 +431,7 @@ multiply and a subtract. It is the one place the format allocates — a `uint32`
 section cannot be widened in place — so the expanded coordinates travel back
 from the worker as a second transferable buffer.
 
-`geom_simple` is **not** used by this encoding. Simplification drops vertices
+`geom_simple` is **not** used by this encoding — the column no longer exists. Simplification drops vertices
 and changes the drawn shape; quantisation keeps every vertex and shortens each
 one. They are alternatives, and this encoding takes the second.
 

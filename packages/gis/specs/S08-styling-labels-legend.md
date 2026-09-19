@@ -51,7 +51,7 @@ Compare against the S2 baseline at each of the three pinned zooms — this sessi
 ## Tests
 
 - Harness page: each classification method against known datasets, including edge cases (all-equal values, single feature, nulls).
-- Browser: screenshot regression per style mode on the imported data. `gunatanah1` (14 values) is the natural categorized demo; `keluasan` the natural graduated one.
+- Browser: screenshot regression per style mode on the imported data. `gunatanah_kategori` on "Gunatanah Semasa" (14 values) is the natural categorized demo; `keluasan` on "Lot" the natural graduated one.
 - Browser: label collision drops the lower-priority label and never overlaps.
 - Browser: the paint-state warning fires above 64.
 

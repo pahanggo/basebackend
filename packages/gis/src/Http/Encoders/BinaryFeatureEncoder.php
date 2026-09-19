@@ -43,9 +43,10 @@ use RuntimeException;
  *
  * **Quantisation.** With a `coordExponent` the coordinate section is halved:
  * each ordinate becomes a `uint32` holding `round((lng + 180) * 10^e)`, or
- * `round((lat + 90) * 10^e)`. At the default exponent of 7 that is a
- * resolution of 1e-7 degrees — about 1.1 cm, with a worst-case error of half
- * that — and the widest value, longitude at 180, is 3.6e9, inside `uint32`.
+ * `round((lat + 90) * 10^e)`. The exponent is `gis.read.coord_exponent`,
+ * currently 5 — a resolution of 1e-5 degrees, about 1.1 m, with a worst-case
+ * error of half that. Seven is the ceiling: there the widest value, longitude
+ * at 180, is 3.6e9, which is the largest that still fits a `uint32`.
  *
  * The bias is what makes it unsigned, and unsigned is what makes it portable:
  * PHP's `pack()` has no signed little-endian code, only the machine's own byte

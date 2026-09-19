@@ -35,9 +35,9 @@ These were decided when the spec was adapted to this codebase. Do not re-litigat
 - **Pest is the only test runner.** No Vitest, no standalone Playwright. Pure JS units are covered by a Pest browser test over a testing-only harness page.
 - User-facing strings are translated into `lang/ms_MY.json` as elsewhere in the app.
 
-**Data and rendering — measured from `bencana`, not assumed:**
-- v1 data is imported from `bencana.lots` (672k) and `bencana.usages` (746k) by a one-off `gis:import-bencana` command. Not a sync. File import stays v2.
-- `bencana` geometry is SRID 4326 stored in MySQL's native lat-lng axis order; read it with `axis-order=long-lat`. No reprojection needed.
+**Data and rendering — measured from the real cadastre, not assumed:**
+- v1 data is imported from PLANMalaysia's ArcGIS services by a one-off `GunatanahSeeder`. Not a sync. File import stays v2.
+- Geometry is SRID 4326 stored in MySQL's native lat-lng axis order; read it with `axis-order=long-lat`. No reprojection needed.
 - **Area culling is the only LOD mechanism, and simplification is GONE.** Parcels average 6.7 vertices — a quadrilateral cannot be simplified. 41% are under 500 m², so dropping below 4 px² holds the drawn set near 13,000 at every zoom (159,654 candidates at z12 → 12,929 drawn).
 - The cull runs **server-side** in the feature read; never ship 160k features for the client to discard. `gis_features.area_m2` with `(layer_id, area_m2)` index exists for it.
 - One map holds the whole state. Editing is disabled below zoom 16.
@@ -66,9 +66,9 @@ Decided while adapting the spec to this codebase. Do not re-litigate; see `packa
 - **Layer library modal is "Add from library", not "Import"** — import means file import (v2). Lists global layers + layers of maps the user may open, nothing else. `edit` offered only where the user already holds edit rights; the server re-checks on `layer.share` because a modal is not an authorization boundary.
 - Authorization = spatie permission for module access + `gis_map_user` pivot per map. Never a second role system.
 
-**Data and rendering — measured from `bencana`, not assumed**
-- v1 data imported from `bencana.lots` (672k) and `bencana.usages` (746k) by one-off `gis:import-bencana`. Creates the two layers as **global** layers, once per deployment. Not a sync. File import stays v2.
-- `bencana` geometry is SRID 4326 in MySQL's native lat-lng axis order; read with `axis-order=long-lat`. No reprojection.
+**Data and rendering — measured from the real cadastre, not assumed**
+- v1 data imported from PLANMalaysia's ArcGIS services by the one-off `GunatanahSeeder`. Creates every layer as a **global** layer, once per deployment. Not a sync. File import stays v2.
+- Geometry is SRID 4326 in MySQL's native lat-lng axis order; read with `axis-order=long-lat`. No reprojection.
 - **Area culling is the only LOD mechanism, and simplification is GONE.** Parcels average 6.7 vertices — a quadrilateral cannot be simplified. 41% are under 500 m², so dropping below 4 px² holds the drawn set near 13,000 at every zoom (159,654 candidates at z12 → 12,929 drawn).
 - The cull runs **server-side** in the feature read; never ship 160k features for the client to discard. `gis_features.area_m2` + `(layer_id, area_m2)` index exists for it.
 - One map holds the whole state. Editing disabled below zoom 16.
@@ -110,13 +110,15 @@ Settled in S0/S1 and verified by the test suite. These override the earlier "add
 - **Geometry is interpolated, not bound.** MySQL takes no placeholder inside `ST_GeomFromText`'s options argument, so `GeometryCast::literal()` builds the call as a string. Safe only because the WKT comes from `WktWriter` over parsed coordinates and is checked against a character class with no quote in it. Never interpolate a geometry string from anywhere else.
 - `HasFactory::newFactory()` has no return type. A typed `newFactory(): ?Factory` on a base model is a fatal signature conflict, and PHP reports it as a silent exit with no test output. Use `Gis\Models\HasGisFactory`.
 
-## GIS cadastral import: what S1b measured
-- **The source is not clean.** `ST_IsValid` rejects 11,638 of 1,418,216 `bencana` rows (3 lots, 11,635 usages), almost all self-intersections. `gis:import-bencana` skips them and lists their ids in `storage/app/gis-import-rejects-*.txt`. Bring them in once `GeometryService::makeValid` exists (S7).
-- **Every imported feature carries its source row id under the `_src` property.** That is what `--resume` reads, and how the rejected rows are found again. An import that is interrupted and re-run without `--fresh` or `--resume` is refused, because appending instead of resuming corrupts the layer silently — it happened once.
+## GIS cadastral data: what S1b measured
+These are properties of the cadastre and of MySQL, not of any one importer. `gis:import-bencana` and its `bencana` connection are GONE — `GunatanahSeeder` reads the ArcGIS services instead — but the measurements below still hold.
+
+- **The source is not clean.** `ST_IsValid` rejects 11,638 of 1,418,216 cadastral rows, almost all self-intersections. Geometry that fails every predicate it is later used in is worse than a missing row, so a rejected feature is named rather than discovered later. Bring them in once `GeometryService::makeValid` exists (S7).
+- **Every imported feature carries its source row id under the `_src` property.** It is reserved in `PropertySanitizer` so a command cannot forge it, and it is how a rejected row is found again.
 - **The viewport query should not use `ST_Intersects`.** The planner picks `sx_geom` correctly, but filtering `minx/maxx/miny/maxy` plus `area_m2` returns the identical rows 3.5x faster (0.48 s against 1.69 s for 13,974 of 164,109 candidates), because it never evaluates a geodesic predicate. Leave the exact test to the client, which re-culls anyway. The two differ by a ~2 m sliver at the viewport edge, since `ST_Intersects` on 4326 treats envelope edges as geodesics.
-- **The 4 px² cull constant was calibrated to a smaller viewport.** At 1456x840 it yields 13,974 drawn for `lots` and 17,539 for `usages` at zoom 12 — 31,513 together, against a 10,000 design target. 8 px² brings `lots` to 11,699. S2 decides whether the threshold becomes a target count the server solves for.
-- **Three MySQL limits the import works around:** `ST_Envelope` is not implemented for geographic SRSs; there is no `ST_NumPoints` for a polygon (and one row has 2,164 interior rings, so no expression can loop); `ST_Simplify` is Cartesian only and may emit invalid output. The first two go through `ST_SRID(g, 0)` and the WKB layout respectively — both safe because MySQL stores 4326 internally as longitude-latitude.
-- `ST_Area` on SRID 4326 **is** geodesic and returns square metres: it agrees with the source's surveyed `keluasan` to 0.058% on average. That agreement also validates the axis order.
+- **The 4 px² cull constant was calibrated to a smaller viewport.** At 1456x840 it yields 13,974 drawn for lots and 17,539 for land use at zoom 12 — 31,513 together, against a 10,000 design target. 8 px² brings lots to 11,699. S2 decides whether the threshold becomes a target count the server solves for.
+- **Three MySQL limits an import works around:** `ST_Envelope` is not implemented for geographic SRSs; there is no `ST_NumPoints` for a polygon (and one row has 2,164 interior rings, so no expression can loop); `ST_Simplify` is Cartesian only and may emit invalid output. The first two go through `ST_SRID(g, 0)` and the WKB layout respectively — both safe because MySQL stores 4326 internally as longitude-latitude. `FeatureIngest` sidesteps both by computing the bounding box and the vertex count in PHP from the GeoJSON it already has.
+- `ST_Area` on SRID 4326 **is** geodesic and returns square metres: it agrees with the source's surveyed `keluasan`/`luas_hektar` to 0.058% on average. That agreement also validates the axis order.
 
 ## GIS renderer: what S2 measured, and the traps it hit
 - **Never call `Path2D.closePath()` in the feature paint loop.** 16,180 calls on one accumulating path measured 2,151 ms of a 2,177 ms repaint; Chrome charges each call in proportion to the whole path so far. It is not needed: every polygon ring arrives with its first vertex repeated. Fill and stroke were never the cost — they measured 1.3 ms and 0.0 ms for the same path.
@@ -191,3 +193,39 @@ Settled in S5a. Sharing copies nothing — a map copy placing a 734k-feature lay
 - Delete refuses the currently-open map on the client's declared `?openMapId=` — only the client knows, and a policy cannot answer a question about a session.
 - `Http::fake()` called twice MERGES stubs behind the first rather than replacing it, so a second fake never takes effect. Use one stub with a mutable holder object (an arrow function captures by value, so a captured bool will not flip).
 - The `.html(`/`innerHTML` grep in PackageBoundaryTest is blunt enough that naming those accessors in a JS comment trips it. Reword the comment; do not weaken the pattern.
+
+## ArcGIS import: what the PLANMalaysia services actually do
+`GunatanahSeeder` reads nine layers from PLANMalaysia. Measured, not assumed:
+
+- **Page by OBJECTID range, never `resultOffset`.** Deep offsets are catastrophic: three records at offset 2,000,000 on `GTsemasa_06` took 49 s; a 1,000-row OBJECTID window took 3.4 s anywhere in the table. Ranges are also what make the import resumable and concurrent — a window is defined by its bounds alone. Both iPLAN sources are dense (OBJECTID 1..N, no gaps).
+- **Some records cannot be served.** `GTsemasa_06` OBJECTID 1460 answers `{"error":{"code":400,"message":"Failed to execute query."}}` on its own and poisons every window containing it, deterministically. A refused window is bisected to find it; without that, one bad record silently costs 1,000 features and the ledger records the window as done. Only an ArcGIS error document triggers bisection — a transport failure is the retry policy's job.
+- **The service answers errors with HTTP 200.** A successful status proves nothing; check for the `error` key.
+- **A window is a memory budget, not a page size.** One `Sempadan Negeri` feature (Sarawak) is ~19 MB of GeoJSON. 1,000 boundaries will not fit in any limit; the boundary sources override `window` down to 2–10. For the same reason `area_m2` is a second statement (`UPDATE ... SET area_m2 = ST_Area(geom)`) rather than inline in the INSERT — inline binds the same document twice and exhausted 256 MB.
+- **Field names are renamed on ingest** (`nama_neger`→`nama`, `luas_hekta`→`luas_hektar`, `seksyen_na`→`seksyen`). The services carry shapefile ten-character truncations; stored names use one vocabulary across every source, so a boundary feature and a cadastral feature answer the same question with the same key. `attr_schema` describes the stored names.
+- **`ST_GeomFromGeoJSON(CAST(? AS JSON), 2, 4326)` is the bulk-ingest path** and lives in `GeometryCast::geoJsonPlaceholder()` with the other raw spatial calls. No axis-order option and none is needed: GeoJSON is longitude-latitude by RFC 7946 and MySQL reads it that way whatever the SRS declares. Verified — Pahang's outline computes to 35,953 km² against an official 35,965, and `luas_hektar` matches `ST_Area` exactly.
+- **A layer holding features with no ledger is refused, not appended to.** The ledger is the only record of which rows an interrupted import wrote; a layer filled some other way would be silently doubled.
+
+## GIS: the imported data now, and what the boundary layers break
+Nine global layers, 4,276,307 features, all from `GunatanahSeeder`. Measured, not assumed:
+
+| layer | features | avg vertices | max vertices |
+| --- | --- | --- | --- |
+| Lot | 672,132 | 6.5 | — |
+| Gunatanah Semasa | 2,863,522 | ~11 (sampled) | — |
+| Gunatanah Zoning | 738,104 | ~17 (sampled) | — |
+| Sempadan Negeri | 14 | 25,982 | 99,253 |
+| Sempadan Daerah | 93 | 5,257 | 80,653 |
+| Sempadan Mukim | 1,730 | 466 | 36,078 |
+| Sempadan Parlimen / DUN / PBT | 166 / 445 / 101 | 2,750 / 1,538 / 2,181 | 13,974 |
+
+- **The boundary layers invert §4's whole argument.** §4 says features are many, tiny and unsimplifiable quadrilaterals held near a constant drawn count by the area cull. Boundaries are few and enormous, and the cull NEVER drops one — a state is never smaller than a pixel — so a visible boundary layer contributes its whole vertex count to the built path at every zoom (364k vertices for the 14 states). That is one path build and then nothing, because paths are built per zoom and translated per frame. Do not put them in a budget viewport without saying so.
+- **Three boundary features exceed `write.max_vertices_per_feature` (50,000).** They import fine — the cap is a write-path check on commands — and the layers are `locked`, so the lock refuses an edit before the cap is ever reached. Unlocking a boundary layer without raising the cap makes the refusal look like a bug.
+- **The land-use taxonomy is shared**: `gunatanah_kategori` (Semasa) and `gunatanah` (Zoning) both carry the same 14 values. Semasa is three levels deep (`_kategori` / `_subkategori` / `_terperinci`), zoning is one.
+- **The `SCHARMS` boundary services are national, the `iPLAN` ones are Pahang-only.** Narrow a boundary source with its config `where` on `kod_negeri`, never in code.
+
+## GIS read bounds: min_area_px=1 and cap=1,000,000 are probably left over from S3
+`gis.read.min_area_px` is **1** and `gis.read.max_features_per_response` is **1,000,000**. They were 4 and 30,000 until commit `cad8584` (the S3 commit that removed level of detail), which is where "every vertex loaded is painted, at every zoom" was verified — so they look like verification settings that were never restored.
+
+Measured at those values, 1456x840 zoom-12 viewport over Kuantan, `Lot` alone: 25,573 features returned of 169,567 candidates, against §4's 10,000-feature design target. The cap never engages. 4 px² → 15,945; 8 px² → 9,145. Add the land-use layers and it is worse.
+
+Do not silently retune: it changes the §19 budgets, which are a hard gate. Raise it as a decision. Recorded as the one open question in specification §23.
