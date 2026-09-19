@@ -17,11 +17,48 @@ and kept going. They are here because you may disagree.
 
 | # | Question | What I did | Where |
 | --- | --- | --- | --- |
+| 2 | A circle is stored as a **polygon** of 72 segments. MySQL has no circle type and `geom` is one column, so there is nowhere else for it to go — but the centre and radius are then not exactly recoverable. §7's GIS1 type 4 anticipates carrying them in the attribute tail; nothing writes that yet. | Stored as a polygon and raised it here. | S6a |
 | 1 | `gis.read.min_area_px` is 1 and `max_features_per_response` is 1,000,000. At those values a zoom-12 viewport returns ~25,000 features from `Lot` alone against a 10,000 design target. They look like S3 verification settings that were never restored. | Left them alone. Retuning moves the §19 budgets, which are a hard gate. | spec §23 |
+
+I left a map called **Scratch drawing tests** in your list. It is mine, for
+testing — delete it whenever you like, or tell me to.
 
 ---
 
 ## Done
+
+### S6a — Drawing, live readout, validation
+
+Six tools in the toolbar over the canvas: point, line, polygon, rectangle,
+circle, freehand. Every one also takes typed numbers, and both paths end in the
+same functions — a shape drawn and a shape typed are byte-identical, which is
+the only way to be sure they agree.
+
+**The measurement had to be right, not just reasonable.** §11 budgets
+client/server disagreement at 0.1%. Two corrections were needed and both were
+found by testing round trips rather than formulas:
+
+- Area by spherical excess was **0.44% high** against MySQL's `ST_Area`, at
+  every scale, consistently. Projecting each vertex to its *authalic* latitude
+  first is exact; worst case is now 0.006%.
+- Bearing and distance disagreed by **0.15°** because distance was ellipsoidal
+  and bearing was a great circle. Nothing failed — a point placed at "142.7 m
+  on 63°15'" just did not measure back to 63°15'. They come from one solution
+  now.
+
+Verified end to end: a polygon drawn by pointer read out 67.7131 ha while
+drawing and stored 677131.32 m². A typed 250 × 120 m rectangle stored
+30,000.008 m².
+
+Validation sits inside `GeometryInput::parse`, which every write reaches the
+database through, so no write path can skip it. Auto-fixes (close the ring,
+drop duplicate vertices, normalise winding) apply silently; blocks
+(self-intersection, too few corners, out-of-range coordinates) refuse and name
+the cause.
+
+**S6 split**, at the seam its own file predicted. S6b has vertex editing,
+snapping, holes and multi-part, the clipboard, and the conflict-resolution
+panel.
 
 ### S5c — Image overlays
 

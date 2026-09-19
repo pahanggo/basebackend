@@ -864,3 +864,74 @@ hr {
     color: #c8372d;
     font-size: 12px;
 }
+
+// ---- drawing --------------------------------------------------------------
+//
+// The readout and the numeric panel sit under the toolbar, over the canvas.
+// Both are `position: absolute` within the map shell rather than in the
+// sidebar: while drawing, the user's eyes are on the pointer, and a figure
+// three hundred pixels away in a panel is a figure nobody reads.
+
+.gis-readout,
+.gis-numeric {
+    position: absolute;
+    z-index: 1000;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    font-size: 12px;
+}
+
+.gis-readout {
+    // Under the toolbar, which owns the top-right corner.
+    top: calc(56px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    padding: 6px 10px;
+    // Pointer-transparent: it sits where a drawing gesture happens, and a
+    // panel that swallowed a click would eat the vertex the user was placing.
+    pointer-events: none;
+}
+
+.gis-readout-row {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.gis-readout-label {
+    color: #73818f;
+}
+
+.gis-readout-value {
+    // Tabular figures, so a distance ticking up while the pointer moves does
+    // not make the whole row jitter sideways.
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.gis-numeric {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    left: 12px;
+    // Clear of the scale bar and attribution along the bottom edge.
+    bottom: 32px;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    max-width: calc(100% - 16px);
+}
+
+.gis-numeric-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    font-size: 11px;
+    color: #73818f;
+
+    input {
+        width: 92px;
+    }
+}

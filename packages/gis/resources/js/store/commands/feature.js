@@ -15,7 +15,7 @@
  * server echoes the `tempId` beside the id it assigned, and `reconcile()`
  * swaps them.
  */
-export function featureCreate({ tempId, layerId, geom, properties = {} }) {
+export function featureCreate({ tempId, layerId, geom, properties = {}, geomEncoding = 'wkb' }) {
     return {
         op: 'feature.create',
         topics: ['features', `layers:${layerId}`],
@@ -34,7 +34,19 @@ export function featureCreate({ tempId, layerId, geom, properties = {} }) {
         },
 
         serialize() {
-            return { op: 'feature.create', tempId, layerId, geom, properties };
+            // GeoJSON travels as a STRING, like the base64 WKB it is an
+            // alternative to. The server reads whichever the encoding names,
+            // and an object here would arrive as one it cannot parse.
+            return {
+                op: 'feature.create',
+                tempId,
+                layerId,
+                geom: geomEncoding === 'geojson' && typeof geom !== 'string'
+                    ? JSON.stringify(geom)
+                    : geom,
+                geomEncoding,
+                properties,
+            };
         },
     };
 }

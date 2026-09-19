@@ -67,9 +67,12 @@ function authalicLatitude(latitude) {
 }
 
 /**
- * Distance in metres between two lon-lat points, on the ellipsoid.
+ * Distance, initial bearing and final bearing in one solution.
  *
- * Vincenty's inverse formula. It is iterative and it does not always converge —
+ * Vincenty's inverse formula. All three come out of the same iteration, and
+ * that is deliberate: computing the distance here and the bearing from a
+ * great-circle formula elsewhere makes them disagree with each other and with
+ * `destination`. It is iterative and it does not always converge —
  * near-antipodal points are the classic failure — so it gives up after a fixed
  * number of passes and falls back to the spherical answer rather than looping
  * or returning `NaN`. Nothing this tool measures is antipodal, but a fallback
@@ -78,7 +81,7 @@ function authalicLatitude(latitude) {
  * @param {number[]} from [longitude, latitude]
  * @param {number[]} to [longitude, latitude]
  */
-export function distance(from, to) {
+export function inverse(from, to) {
     const L = (to[0] - from[0]) * RAD;
     const U1 = Math.atan((1 - F) * Math.tan(from[1] * RAD));
     const U2 = Math.atan((1 - F) * Math.tan(to[1] * RAD));
@@ -88,6 +91,8 @@ export function distance(from, to) {
     const cosU2 = Math.cos(U2);
 
     let lambda = L;
+    let sinLambda = 0;
+    let cosLambda = 1;
     let sinSigma = 0;
     let cosSigma = 0;
     let sigma = 0;
@@ -95,8 +100,8 @@ export function distance(from, to) {
     let cosSqAlpha = 0;
 
     for (let i = 0; i < 100; i++) {
-        const sinLambda = Math.sin(lambda);
-        const cosLambda = Math.cos(lambda);
+        sinLambda = Math.sin(lambda);
+        cosLambda = Math.cos(lambda);
 
         sinSigma = Math.sqrt(
             (cosU2 * sinLambda) ** 2
@@ -104,7 +109,7 @@ export function distance(from, to) {
         );
 
         if (sinSigma === 0) {
-            return 0;                // coincident points
+            return { distance: 0, initialBearing: 0, finalBearing: 0 };
         }
 
         cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
@@ -132,13 +137,39 @@ export function distance(from, to) {
                 - (BB / 6) * cos2SigmaM * (-3 + 4 * sinSigma ** 2) * (-3 + 4 * cos2SigmaM ** 2)
             ));
 
-            return B * AA * (sigma - deltaSigma);
+            // Both azimuths come out of the same solution, which is the whole
+            // reason they are computed here rather than separately. A
+            // great-circle bearing beside an ellipsoidal distance disagrees
+            // with `destination` by about 0.15 degrees — measured — and a
+            // survey drawing whose sides do not measure back to the numbers
+            // that produced them is not a survey drawing.
+            return {
+                distance: B * AA * (sigma - deltaSigma),
+                initialBearing: (Math.atan2(
+                    cosU2 * sinLambda,
+                    cosU1 * sinU2 - sinU1 * cosU2 * cosLambda,
+                ) / RAD + 360) % 360,
+                finalBearing: (Math.atan2(
+                    cosU1 * sinLambda,
+                    -sinU1 * cosU2 + cosU1 * sinU2 * cosLambda,
+                ) / RAD + 360) % 360,
+            };
         }
     }
 
-    // Did not converge. Spherical is wrong by a fraction of a percent and is
-    // an answer; a loop or a NaN is not.
-    return haversine(from, to);
+    // Did not converge, which Vincenty's inverse famously does not for
+    // near-antipodal points. Spherical is wrong by a fraction of a percent and
+    // is an answer; a loop or a NaN is not.
+    return {
+        distance: haversine(from, to),
+        initialBearing: sphericalBearing(from, to),
+        finalBearing: (sphericalBearing(to, from) + 180) % 360,
+    };
+}
+
+/** Distance in metres between two lon-lat points, on the ellipsoid. */
+export function distance(from, to) {
+    return inverse(from, to).distance;
 }
 
 /** The spherical fallback, and the only place a sphere is used for distance. */
@@ -164,6 +195,21 @@ function haversine(from, to) {
  * goes, so the figure at the far end differs. `finalBearing` is the other end.
  */
 export function bearing(from, to) {
+    return inverse(from, to).initialBearing;
+}
+
+/**
+ * The bearing as it is on arrival.
+ *
+ * Read off the same solution as the initial one rather than derived by
+ * reversing the pair, because on an ellipsoid those are not the same number.
+ */
+export function finalBearing(from, to) {
+    return inverse(from, to).finalBearing;
+}
+
+/** The great-circle bearing, used only where Vincenty has given up. */
+function sphericalBearing(from, to) {
     const phi1 = from[1] * RAD;
     const phi2 = to[1] * RAD;
     const dLambda = (to[0] - from[0]) * RAD;
@@ -173,11 +219,6 @@ export function bearing(from, to) {
         - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
 
     return (Math.atan2(y, x) / RAD + 360) % 360;
-}
-
-/** The bearing as it is on arrival: the back azimuth, turned around. */
-export function finalBearing(from, to) {
-    return (bearing(to, from) + 180) % 360;
 }
 
 /** Total length of a lon-lat path, in metres. */
@@ -239,4 +280,83 @@ export function polygonArea(rings) {
     }
 
     return rings.slice(1).reduce((area, hole) => area - ringArea(hole), ringArea(rings[0]));
+}
+
+/**
+ * The point reached by travelling a distance along a bearing.
+ *
+ * Vincenty's DIRECT formula, the exact inverse of `distance` and `bearing`
+ * above. It has to be exact rather than close: this is what turns "142.7 m on
+ * a bearing of 63°15'" into a vertex, and a survey drawing whose sides do not
+ * measure back to the numbers that produced them is not a survey drawing.
+ *
+ * Unlike the inverse formula this one always converges, so there is no
+ * fallback to justify.
+ *
+ * @param {number[]} from [longitude, latitude]
+ * @param {number} initialBearing degrees clockwise from true north
+ * @param {number} metres
+ * @returns {number[]} [longitude, latitude]
+ */
+export function destination(from, initialBearing, metres) {
+    if (metres === 0) {
+        return [from[0], from[1]];
+    }
+
+    const alpha1 = initialBearing * RAD;
+    const sinAlpha1 = Math.sin(alpha1);
+    const cosAlpha1 = Math.cos(alpha1);
+
+    const tanU1 = (1 - F) * Math.tan(from[1] * RAD);
+    const cosU1 = 1 / Math.sqrt(1 + tanU1 * tanU1);
+    const sinU1 = tanU1 * cosU1;
+
+    const sigma1 = Math.atan2(tanU1, cosAlpha1);
+    const sinAlpha = cosU1 * sinAlpha1;
+    const cosSqAlpha = 1 - sinAlpha * sinAlpha;
+    const uSq = (cosSqAlpha * (A * A - B * B)) / (B * B);
+    const k1 = (Math.sqrt(1 + uSq) - 1) / (Math.sqrt(1 + uSq) + 1);
+    const AA = (1 + (k1 * k1) / 4) / (1 - k1);
+    const BB = k1 * (1 - (3 * k1 * k1) / 8);
+
+    let sigma = metres / (B * AA);
+    let sinSigma = 0;
+    let cosSigma = 0;
+    let cos2SigmaM = 0;
+
+    for (let i = 0; i < 100; i++) {
+        cos2SigmaM = Math.cos(2 * sigma1 + sigma);
+        sinSigma = Math.sin(sigma);
+        cosSigma = Math.cos(sigma);
+
+        const deltaSigma = BB * sinSigma * (cos2SigmaM + (BB / 4) * (
+            cosSigma * (-1 + 2 * cos2SigmaM ** 2)
+            - (BB / 6) * cos2SigmaM * (-3 + 4 * sinSigma ** 2) * (-3 + 4 * cos2SigmaM ** 2)
+        ));
+
+        const previous = sigma;
+
+        sigma = metres / (B * AA) + deltaSigma;
+
+        if (Math.abs(sigma - previous) < 1e-12) {
+            break;
+        }
+    }
+
+    const tmp = sinU1 * sinSigma - cosU1 * cosSigma * cosAlpha1;
+    const latitude = Math.atan2(
+        sinU1 * cosSigma + cosU1 * sinSigma * cosAlpha1,
+        (1 - F) * Math.sqrt(sinAlpha * sinAlpha + tmp * tmp),
+    );
+
+    const lambda = Math.atan2(
+        sinSigma * sinAlpha1,
+        cosU1 * cosSigma - sinU1 * sinSigma * cosAlpha1,
+    );
+
+    const C = (F / 16) * cosSqAlpha * (4 + F * (4 - 3 * cosSqAlpha));
+    const L = lambda - (1 - C) * F * sinAlpha
+        * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM ** 2)));
+
+    return [from[0] + L / RAD, latitude / RAD];
 }

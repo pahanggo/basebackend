@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    distance, bearing, finalBearing, length, ringArea, polygonArea,
+    distance, bearing, finalBearing, length, ringArea, polygonArea, destination, inverse,
 } from '../../resources/js/lib/measure.js';
 
 /** Assert two numbers agree to within a percentage. */
@@ -134,4 +134,52 @@ test('holes are subtracted from the exterior', () => {
     );
 
     assert.equal(polygonArea([]), 0);
+});
+
+// --------------------------------------------------- numeric entry round trip
+
+test('a point placed by bearing and distance measures back to those numbers', () => {
+    // This is what numeric entry does, and the property it lives or dies by: a
+    // survey drawing whose sides do not measure back to the figures that made
+    // them is not a survey drawing.
+    const from = [103.3260, 3.8077];
+    let worstDistance = 0;
+    let worstBearing = 0;
+
+    for (const b of [0, 37, 63.25, 90, 145, 180, 233, 270, 318, 359.5]) {
+        for (const d of [10, 142.7, 1000, 25000]) {
+            const to = destination(from, b, d);
+
+            worstDistance = Math.max(worstDistance, Math.abs(distance(from, to) - d));
+
+            let off = Math.abs(bearing(from, to) - b);
+
+            if (off > 180) {
+                off = 360 - off;
+            }
+
+            worstBearing = Math.max(worstBearing, off);
+        }
+    }
+
+    assert.ok(worstDistance < 1e-4, `distance drifted ${worstDistance} m`);
+    assert.ok(worstBearing < 1e-4, `bearing drifted ${worstBearing} degrees`);
+});
+
+test('bearing and distance come from ONE solution, not two formulas', () => {
+    // They disagreed by 0.15 degrees when the distance was ellipsoidal and the
+    // bearing a great circle. Nothing failed; the drawing was just wrong.
+    const from = [103.30, 3.80];
+    const to = [103.45, 3.95];
+    const solution = inverse(from, to);
+
+    assert.equal(solution.distance, distance(from, to));
+    assert.equal(solution.initialBearing, bearing(from, to));
+    assert.equal(solution.finalBearing, finalBearing(from, to));
+});
+
+test('travelling zero metres stays put', () => {
+    const from = [103.326, 3.8077];
+
+    assert.deepEqual(destination(from, 45, 0), from);
 });

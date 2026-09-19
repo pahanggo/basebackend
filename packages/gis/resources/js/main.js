@@ -35,6 +35,9 @@ import { LayerLibrary } from './ui/layer-library.js';
 import { SublayerPanel } from './ui/sublayer-panel.js';
 import { ImageOverlay, initialCorners } from './map/overlay/image-overlay.js';
 import { CornerHandles } from './map/overlay/corner-handles.js';
+import { DrawSession } from './map/draw/draw-session.js';
+import { Toolbar } from './ui/toolbar.js';
+import { featureCreate } from './store/commands/feature.js';
 import { layerSetSource } from './store/commands/layer.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
@@ -1243,6 +1246,64 @@ class Editor {
         overlay?.setSource({ ...target.sourceConfig, corners: target.corners });
     }
 
+    /**
+     * A drawn shape becomes a feature on the layer being edited.
+     *
+     * **Which layer** is the first question and the tree answers it: the
+     * selected one, if it is a vector layer this map may write to. Drawing
+     * into whichever layer happens to be first would put work somewhere the
+     * user has to go and find.
+     */
+    drawTarget() {
+        const selected = [...(this.tree?.selection ?? [])]
+            .map((id) => this.store.state.placements[id])
+            .filter(Boolean);
+
+        for (const placement of selected) {
+            const layer = this.store.state.layers[placement.layerId];
+
+            if (layer && layer.kind === 'vector' && !layer.locked && placement.access !== 'read') {
+                return layer;
+            }
+        }
+
+        return null;
+    }
+
+    /** Commit a finished geometry, or explain why it cannot be committed. */
+    commitDrawn(geometry) {
+        const layer = this.drawTarget();
+
+        if (!layer) {
+            notify(this.config.strings.drawNeedsLayer);
+
+            return;
+        }
+
+        this.store.commit(featureCreate({
+            tempId: `ftr-${Date.now().toString(36)}`,
+            layerId: layer.id,
+            geom: geometry,
+            geomEncoding: 'geojson',
+            properties: {},
+        }));
+
+        // The drawn feature is not in the renderer's arrays: those come from
+        // the read, and the read is what will bring it back with its server id
+        // and its computed area.
+        this.refreshLayer(layer.id);
+    }
+
+    /** Force one layer to read again, discarding what it holds. */
+    refreshLayer(layerId) {
+        for (const feed of this.feeds) {
+            if (feed.layer.id === layerId) {
+                feed.loaded = null;
+                feed.refresh(this.map);
+            }
+        }
+    }
+
     /** A corner drag finished: one command for the whole gesture. */
     commitOverlay(target, corners) {
         this.store.commit(layerSetSource({
@@ -1515,6 +1576,21 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.toolbar = new Toolbar({
+        container: document.querySelector('#gis-app .gis-toolbar'),
+        strings: config.strings,
+        centre: () => [map.getCenter().lng, map.getCenter().lat],
+        onTool: (tool) => editor.draw.setTool(tool),
+        onNumeric: (geometry) => editor.commitDrawn(geometry),
+    });
+
+    editor.draw = new DrawSession({
+        map,
+        renderer,
+        onCommit: (geometry) => editor.commitDrawn(geometry),
+        onReadout: (readout) => editor.toolbar.showReadout(readout),
+    });
+
     editor.handles = new CornerHandles({
         map,
         renderer,

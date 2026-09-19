@@ -205,6 +205,27 @@ class EditorController extends Controller
             'overlayLocked' => __('Unlock the layer to adjust it'),
             'overlayName' => __('Name this overlay'),
             'overlayFailed' => __('The image could not be uploaded.'),
+
+            // Drawing tools and their readout.
+            'point' => __('Point'),
+            'line' => __('Line'),
+            'polygon' => __('Polygon'),
+            'rectangle' => __('Rectangle'),
+            'circle' => __('Circle'),
+            'freehand' => __('Freehand'),
+            'segment' => __('Segment'),
+            'totalLength' => __('Total'),
+            'area' => __('Area'),
+            'radius' => __('Radius'),
+            'width' => __('Width'),
+            'height' => __('Height'),
+            'rotation' => __('Rotation'),
+            'bearing' => __('Bearing'),
+            'distance' => __('Distance'),
+            'longitude' => __('Longitude'),
+            'latitude' => __('Latitude'),
+            'place' => __('Place'),
+            'drawNeedsLayer' => __('Select a layer you can edit before drawing.'),
         ];
     }
 }
