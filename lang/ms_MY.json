@@ -173,5 +173,13 @@
     "Longitude": "Longitud",
     "Latitude": "Latitud",
     "Place": "Letak",
-    "Select a layer you can edit before drawing.": "Pilih lapisan yang boleh disunting sebelum melukis."
+    "Select a layer you can edit before drawing.": "Pilih lapisan yang boleh disunting sebelum melukis.",
+    "That feature is on a layer you cannot edit.": "Fitur itu berada pada lapisan yang tidak boleh disunting.",
+    "Someone else changed this too": "Orang lain turut mengubah ini",
+    "Your changes are held and nothing has been lost. Choose whose version to keep for each row.": "Perubahan anda disimpan dan tiada apa yang hilang. Pilih versi siapa untuk disimpan bagi setiap baris.",
+    "you had version :yours, the server is at :theirs": "anda pada versi :yours, pelayan pada :theirs",
+    "Keep mine": "Kekalkan milik saya",
+    "Keep theirs": "Kekalkan milik mereka",
+    "Discard all of mine": "Buang semua milik saya",
+    "Apply": "Guna"
 }

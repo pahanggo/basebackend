@@ -27,6 +27,32 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S6b — Vertex editing, snapping, conflict resolution (partly done)
+
+Click a feature with no tool active and its vertices come into play: square
+handles on corners, small hollow ones on midpoints, and dragging a midpoint
+inserts a vertex there. Snap candidates are **ranked** — vertex, then midpoint,
+then nearest-on-edge — because someone aiming at a corner wants the corner even
+when an edge passes a pixel closer. Alt suppresses it.
+
+**The conflict panel closes a hole two sessions old.** The queue has paused on a
+409 since S4 and said so once since S5b; that loses nothing but sends nothing
+either, while the UI keeps showing later changes as applied until a reload
+throws them away. I hit it for real while testing, which is how it stopped
+being theoretical. Verified end to end: a genuine 409, the panel naming both
+versions, "keep mine" re-sent at the server's version and accepted, queue
+resumed.
+
+**Two bugs, both found by driving it rather than reading it.** `hitTest` takes a
+point and was being handed the map. And the guard keeping a closed ring closed
+asked whether the ring was closed *after* moving its first vertex — by which
+time it wasn't — so a square came back from the server a pentagon.
+
+**Still to build in S6b:** marquee selection and whole-feature move/rotate/
+scale, polygon holes and multi-part, the clipboard, snap toggles in the UI, and
+merge as a third conflict resolution (it needs S9's attribute table to show
+what is being merged).
+
 ### S6a — Drawing, live readout, validation
 
 Six tools in the toolbar over the canvas: point, line, polygon, rectangle,

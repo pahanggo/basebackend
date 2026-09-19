@@ -935,3 +935,88 @@ hr {
         width: 92px;
     }
 }
+
+// ---- conflict resolution --------------------------------------------------
+//
+// Modal, unlike every other panel here, and deliberately: the queue is paused
+// while this is open, so anything else the user does is work that will not be
+// sent. Making them deal with it first is kinder than letting them build more
+// on top of a stall.
+
+.gis-conflict {
+    position: fixed;
+    z-index: 1070;
+    top: 50%;
+    left: 50%;
+    width: min(460px, calc(100vw - 32px));
+    max-height: min(70vh, 560px);
+    display: flex;
+    flex-direction: column;
+    transform: translate(-50%, -50%);
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.gis-conflict-head {
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid #e4e7ea;
+}
+
+.gis-conflict-note {
+    margin: 4px 0 0;
+    color: #73818f;
+    font-size: 12px;
+}
+
+.gis-conflict-body {
+    overflow: auto;
+    padding: 4px 14px;
+}
+
+.gis-conflict-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f3f5;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.gis-conflict-entity {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.gis-conflict-versions {
+    color: #73818f;
+    font-size: 11px;
+}
+
+.gis-conflict-choices {
+    display: flex;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.gis-conflict-choice {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.gis-conflict-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid #e4e7ea;
+}

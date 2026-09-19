@@ -37,6 +37,7 @@ import { ImageOverlay, initialCorners } from './map/overlay/image-overlay.js';
 import { CornerHandles } from './map/overlay/corner-handles.js';
 import { DrawSession } from './map/draw/draw-session.js';
 import { Toolbar } from './ui/toolbar.js';
+import { ConflictPanel } from './ui/conflict-panel.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor } from './map/edit/vertex-editor.js';
 import { Snapper } from './map/snap.js';
@@ -395,17 +396,18 @@ function createStore(config, mapId, seq, onSyncPaused = null) {
             reconcile(store.state, body.applied);
             store.emit(['features', 'layers', 'measurements', 'tree']);
         },
-        onConflict: (problem) => {
+        onConflict: (problem, commands) => {
             // The queue pauses and keeps the commands, which is the safe half:
             // nothing is lost. **But it must not do that silently.** A paused
             // queue stops sending everything, so every later change looks
-            // applied, survives until a reload and then is not there — and the
-            // only sign was a line in the console. The resolution panel that
-            // uses `store/conflicts.js` is S6's, alongside the editing that
-            // makes a real conflict likely; until then the user is at least
-            // told, and given the one action that recovers it.
+            // applied, survives until a reload and then is not there — and for
+            // two sessions the only sign was a line in the console.
+            //
+            // The commands travel with the problem because the panel shows a
+            // local-versus-server comparison, and the local side is the batch
+            // that was refused.
             console.warn('gis: version conflict', problem);
-            onSyncPaused?.(problem);
+            onSyncPaused?.(problem, commands);
         },
     });
 
@@ -586,6 +588,11 @@ class Editor {
         // One `ImageOverlay` per visible image placement, keyed by placement.
         this.overlays = new Map();
 
+        this.conflicts = new ConflictPanel({
+            strings: config.strings,
+            onResolved: (resolution) => this.resolveConflicts(resolution),
+        });
+
         this.sublayers = new SublayerPanel({
             apiBase: config.apiBase,
             strings: config.strings,
@@ -677,7 +684,15 @@ class Editor {
      * replayed against a map that has moved on — so the notice says that
      * rather than leaving the user to guess.
      */
-    async reportSyncPaused(problem) {
+    async reportSyncPaused(problem, commands = []) {
+        // The panel IS the report. A notice as well would be two dialogs for
+        // one event, and the notice is the one that cannot be acted on.
+        if (problem?.code === 'version_conflict') {
+            this.conflicts.open(problem, commands);
+
+            return;
+        }
+
         if (this.syncPausedReported) {
             return;
         }
@@ -689,6 +704,45 @@ class Editor {
             text: problem?.detail || this.config.strings.syncPaused,
             icon: 'warning',
         });
+    }
+
+    /**
+     * Take the user's decision and get the queue moving again.
+     *
+     * The rejected batch is dropped from the queue first: whatever survives a
+     * resolution comes back as `send`, re-versioned, and leaving the originals
+     * in place would send them again and conflict again on the same rows.
+     */
+    async resolveConflicts({ send, adopt, resume }) {
+        this.sync.queue.length = 0;
+
+        for (const { conflict, server } of adopt) {
+            // Adopting the server's state is a store operation, not a queue
+            // one: there is nothing to send, and the row is already what the
+            // server says it is.
+            const feature = this.store.state.features[conflict.id];
+
+            if (feature && server.properties) {
+                feature.properties = { ...server.properties };
+                feature.version = conflict.serverVersion;
+            }
+        }
+
+        this.store.emit(['features', 'layers', 'tree']);
+
+        if (send.length > 0) {
+            await this.sendCommands(send);
+        }
+
+        if (resume) {
+            this.syncPausedReported = false;
+            this.sync.resume();
+        }
+
+        // Whatever the resolution was, what is drawn came from a read that
+        // predates it. Re-reading is the only thing that makes the canvas
+        // agree with the database again.
+        await this.treeChanged({ reload: true });
     }
 
     /**
@@ -970,7 +1024,7 @@ class Editor {
             this.config,
             this.bootstrap.id,
             this.seq,
-            (problem) => this.reportSyncPaused(problem),
+            (problem, commands) => this.reportSyncPaused(problem, commands),
         );
 
         this.store = store;

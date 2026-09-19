@@ -138,6 +138,48 @@ cause.
   from what is stored. §7's GIS1 type 4 anticipates carrying them in the
   attribute tail; nothing writes that yet. Raised rather than decided.
 
-## Results — S6b
+## Results — S6b (vertex editing, snapping, conflicts)
 
-_Fill in when complete._
+**Partly done.** Vertex editing, snapping and the conflict-resolution panel are
+built and verified against the real map. What remains is listed below.
+
+| Metric | Result |
+| --- | --- |
+| Commands per vertex drag (12 pointer moves) | 1 |
+| Vertex count after dragging a square's first corner | 5 positions, unchanged |
+| Conflict resolution, "keep mine" | re-sent at the server's version, accepted, queue resumed |
+
+**The conflict panel closes a hole two sessions old.** S4 built the arithmetic
+and S5b made the queue pause and say so once — the safe half, in that nothing
+is lost. But a paused queue stops sending *everything*, and the optimistic UI
+keeps showing later changes as applied, so the map looks right while the work
+sits in memory until a reload throws it away. Until now the only way out was
+that reload. It was hit for real while testing this session, which is how the
+gap stopped being theoretical.
+
+**Two bugs, both found by driving the UI rather than reading it:**
+
+- `hitTest` takes a container point; it was being passed the map, which reached
+  Leaflet as `NaN` and threw inside its own unprojection.
+- The guard that keeps a closed ring closed asked `isClosed` **after** moving
+  vertex zero. By then the last position no longer repeats the first, so the
+  ring read as open, the guard never fired, and the validator closed it by
+  appending — a square came back from the server a pentagon. Closedness is
+  captured before the gesture starts now.
+
+### Still to build
+
+- **Marquee vertex selection, and whole-feature move, rotate and scale.** The
+  single-vertex gestures are the ones an edit session is mostly made of; these
+  are the bulk operations on top.
+- **Polygon holes, multi-part explode and combine.** Winding normalisation is
+  done, server-side, and is the part these depend on.
+- **The clipboard** — copy, cut, paste-in-place, paste-at-cursor, cross-layer.
+- **Per-type snap toggles in the UI.** The `Snapper` takes them and they are
+  tested; nothing exposes them yet, so all three kinds are on and `Alt`
+  suppresses the lot.
+- **Merge as a third conflict resolution.** `store/conflicts.js` implements it
+  per attribute field; the panel offers only keep-mine and keep-theirs, because
+  a per-field merge needs the attribute table from S9 to show what is being
+  merged. Offering a control that cannot explain itself would be worse than
+  not offering it.

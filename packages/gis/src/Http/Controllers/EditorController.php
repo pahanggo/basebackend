@@ -227,6 +227,15 @@ class EditorController extends Controller
             'place' => __('Place'),
             'drawNeedsLayer' => __('Select a layer you can edit before drawing.'),
             'featureNotEditable' => __('That feature is on a layer you cannot edit.'),
+
+            // Resolving a version conflict.
+            'conflictTitle' => __('Someone else changed this too'),
+            'conflictHelp' => __('Your changes are held and nothing has been lost. Choose whose version to keep for each row.'),
+            'conflictVersions' => __('you had version :yours, the server is at :theirs'),
+            'keepMine' => __('Keep mine'),
+            'keepTheirs' => __('Keep theirs'),
+            'keepAllTheirs' => __('Discard all of mine'),
+            'applyResolution' => __('Apply'),
         ];
     }
 }
