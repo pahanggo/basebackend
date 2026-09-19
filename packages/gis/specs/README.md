@@ -23,8 +23,8 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S3](S03-feature-read-api.md) | Feature read API — **done** | S1b, S2 |
 | [S4](S04-store-commands-sync.md) | Store, commands, undo, sync — **done** | S1 |
 | [S5a](S05-map-layer-tree.md) | Map CRUD, sharing, layer library — **done** | S4, S2 |
-| [S5b](S05-map-layer-tree.md) | Layer tree, drag and drop, panes, control panel | S5a |
-| [S5b](S05b-image-overlays.md) | Image overlays | S5 |
+| [S5b](S05-map-layer-tree.md) | Layer tree, drag and drop, panes, control panel — **done** | S5a |
+| [S5c](S05b-image-overlays.md) | Image overlays | S5b |
 | [S6](S06-drawing-editing.md) | Drawing and vertex editing | S4, S2 |
 | [S7](S07-geometry-operations.md) | Geometry operations | S6 |
 | [S8](S08-styling-labels-legend.md) | Styling, labels, legend | S5, S2 |
@@ -37,7 +37,9 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S14](S14-export.md) | Export and print layout | S11 |
 | [S15](S15-share-links.md) | Share links and embed | S14 |
 
-S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count. **S5 did split**, at the seam its own file named: S5a is the data and the authorization, S5b is the view over it. Both halves live in the one file.
+S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count. **S5 did split**, at the seam its own file named: S5a is the data and the authorization, S5b is the view over it. Both halves live in the one file, and both are done.
+
+Image overlays were numbered S5b as well, which made two different sessions share a name and a dependency row. They are **S5c**; the filename is left as it is, because a file rename costs more than it is worth and the table is what anyone reads.
 
 ## Imported data
 

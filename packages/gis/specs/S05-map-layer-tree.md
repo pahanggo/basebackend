@@ -44,13 +44,25 @@ Image overlays (S5b), styling (S8), attribute schema (S9).
 
 ```
 packages/gis/
-  resources/js/ui/{map-browser.js,layer-library.js,layer-tree.js,control-panel.js,virtual-list.js}
-  src/Http/Controllers/Api/{MapController.php,BootstrapController.php}
-  src/Commands/Layer*.php
+  resources/js/ui/{map-browser.js,layer-library.js,layer-tree.js,tree-model.js,
+                   tree-dnd.js,control-panel.js,virtual-list.js,tooltips.js,confirm.js}
+  resources/js/map/panes.js
+  src/Http/Controllers/Api/MapController.php
+  src/Commands/Handlers/Layer*.php
   src/Policies/MapPolicy.php
+  src/Support/MapSlug.php
 ```
 
 `ui/virtual-list.js` is shared with the attribute table in S9. Build it as a general row recycler, not a tree-specific one.
+
+**As built, three files are not in the list above and one in it does not exist.**
+`tree-model.js` holds every piece of tree arithmetic — inheritance, tri-state,
+the cycle rule, where a drop lands — so those have ordinary tests rather than
+being reachable only through the DOM; `tree-dnd.js` is the pointer handling,
+which is long enough to bury the view if it shares a file. `BootstrapController`
+was never needed: `MapController@show` returns the bootstrap, and a second
+controller for one read would have been a second place to keep the shape in
+step.
 
 ## Map control panel constraints
 

@@ -1,6 +1,9 @@
-# S5b — Image overlays
+# S5c — Image overlays
 
-**Depends on:** S5
+> Numbered S5b in an earlier draft, which collided with the layer tree. The
+> filename still says `S05b`; the session is S5c.
+
+**Depends on:** S5b
 **Specification:** §13 (georeferenced image overlay), §7 (image upload), §20 (upload handling)
 **Gate:** an overlay survives upload, placement, corner drag, undo, reload and re-render unchanged; §20 upload rules enforced.
 

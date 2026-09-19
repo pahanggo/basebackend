@@ -8,6 +8,20 @@
 
 Data-driven symbology that stays fast because it resolves to a small number of paint batches. May split in two: styling, then labels and legend.
 
+## Already built
+
+**Fill and line colour are editable from the layer's row menu, shipped in S5b.**
+A layer nobody can recolour is hard to tell from the one beneath it, and the
+tree had the row menu already. They write `layer.setStyle` — whole-object
+replacement, as this session's styles do. Extend that, do not build a second
+path to the same column.
+
+**There is no `fillOpacity` and this session must not add one back.** Layer
+opacity is the single transparency control and the renderer applies it as
+`globalAlpha` per layer. A second alpha in the style multiplied it, which gave
+two controls for one visible property and a slider that could not reach opaque
+(specification §10).
+
 ## In scope
 
 - Style JSON per layer, resolved to a paint batch key at draw time and cached per feature

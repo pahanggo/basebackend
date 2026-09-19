@@ -8,6 +8,19 @@
 
 Draw and edit geometry by pointer *and* by typed numbers. May split in two: drawing, then vertex editing and snapping.
 
+## Where the tools mount
+
+The toolbar over the canvas is empty and waiting. S5b moved everything else out
+of it — choosing a map sits beside the map's name, the sidebar toggle beside
+the way out, isolate with the tree's actions — precisely because none of those
+act on the canvas and these do. It is `#gis-app .gis-toolbar`, currently
+`hidden`.
+
+The conflict-resolution panel is also this session's: S4 built
+`store/conflicts.js` and S5b left the queue pausing and holding its commands on
+a 409, with the user told once. That is the safe half; resolving is the other
+half, and it belongs here, where editing makes a real conflict likely.
+
 ## In scope
 
 - Tools: point, line, polygon, rectangle, circle, freehand

@@ -19,7 +19,7 @@ An earlier draft ran query client-side against the rbush index with a 5,000-cand
 - `where` clauses over attributes, using the generated columns from S9
 - `bufferMetres`, computed by `GeometryService` before the predicate runs
 - `return`: ids, count or features, the last honouring the same `Accept` negotiation as a feature read
-- The query panel in the map control panel
+- The query panel in the map control panel, which is now a section at the foot of the layers sidebar rather than an overlay on the map (specification §8)
 - Client-side short-circuit for trivially small queries, on a `capabilities` threshold
 
 ## Out of scope

@@ -605,14 +605,14 @@ $chrome-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
 // Basemap previews
 // ---------------------------------------------------------------------------
 
-// `minmax(0, 1fr)`, not `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, so a
-// column never shrinks below its content's minimum — and the longest label
-// ("Alidade smooth dark") then made its column wider than the other, giving
-// two previews of one size and two of another.
+// One row of four. `minmax(0, 1fr)`, not `1fr`: a bare `1fr` is
+// `minmax(auto, 1fr)`, so a column never shrinks below its content's minimum —
+// and the longest label then made its column wider than the rest, giving
+// previews of two different sizes.
 .gis-panel-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
 }
 
 // The whole tile is the control; the radio inside it is visually hidden but
@@ -622,7 +622,7 @@ $chrome-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;   // lets the label ellipsis instead of widening the column
     margin: 0;
     padding: 2px;
@@ -663,7 +663,7 @@ $chrome-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
 .gis-panel-tile-label {
     min-width: 0;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.2;
     white-space: nowrap;
     text-overflow: ellipsis;
