@@ -1436,6 +1436,18 @@ class Editor {
             return;
         }
 
+        // **From the renderer, not from the feed.** The hit test walked the
+        // renderer's own layers, so the slot it returned is holding exactly
+        // the geometry the hit indexes into. `feed.entry` is a different
+        // thing: it is nulled for the whole of a non-additive re-read, which
+        // is precisely what committing a vertex edit or an operation starts —
+        // so a click in that window read `null.geometry` and threw.
+        const drawn = this.renderer.layerAt(hit.slot);
+
+        if (!drawn?.geometry) {
+            return;
+        }
+
         this.toolbar?.setOperationsFor(hit, this.config.capabilities);
 
         this.vertices.setTarget({
@@ -1443,7 +1455,7 @@ class Editor {
             feature: hit.feature,
             id: hit.id,
             layerId: feed.layer.id,
-            type: feed.entry.geometry.types[hit.feature],
+            type: drawn.geometry.types[hit.feature],
             // Provisional. The viewport read does not carry a version — it
             // would cost four bytes for every feature on the screen to serve
             // the one being edited — so the real one is fetched below.

@@ -7,6 +7,7 @@ use Gis\Http\Controllers\Api\GeometryOpsController;
 use Gis\Http\Controllers\Api\ImageUploadController;
 use Gis\Http\Controllers\Api\LayerLibraryController;
 use Gis\Http\Controllers\Api\LayerValuesController;
+use Gis\Http\Controllers\Api\QueryController;
 use Gis\Http\Controllers\Api\MapController;
 use Gis\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,12 @@ Route::get('layers/{layer}/features', FeatureReadController::class)->name('layer
 
 // The distinct values of one attribute, for splitting a layer into sublayers.
 Route::get('layers/{layer}/values', LayerValuesController::class)->name('layers.values');
+
+// Spatial and attribute query. A POST because the body carries geometry, not
+// because it writes anything — it returns ids, a count or features.
+Route::post('layers/{layer}/query', QueryController::class)
+    ->middleware('throttle:gis-writes')
+    ->name('layers.query');
 
 Route::post('maps/{map}/commands', CommandController::class)
     ->middleware('throttle:gis-writes')
