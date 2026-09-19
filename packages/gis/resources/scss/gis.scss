@@ -253,7 +253,10 @@
     }
 }
 
-.gis-tree-title {
+// Every foldable section in the sidebar wears this. Two controls that do the
+// same thing looking like different kinds of control is the whole of the
+// problem it solves.
+.gis-section-toggle {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -265,6 +268,11 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #73818f;
+
+    .la {
+        width: 10px;
+        font-size: 13px;
+    }
 
     &:hover {
         color: #23282c;
@@ -450,8 +458,7 @@
 
 .gis-panel-toggle {
     width: 100%;
-    border: 0;
-    border-radius: 0;
+    padding: 10px 12px 6px;
     text-align: left;
 }
 

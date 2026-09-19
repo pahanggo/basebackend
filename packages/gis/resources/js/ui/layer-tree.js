@@ -124,7 +124,7 @@ export class LayerTree {
                 // would be two things to learn.
                 this.sectionToggle = el('button', {
                     type: 'button',
-                    class: 'gis-tree-title',
+                    class: 'gis-section-toggle gis-tree-title',
                     'aria-expanded': 'true',
                     'aria-controls': 'gis-tree-body',
                     onclick: () => {

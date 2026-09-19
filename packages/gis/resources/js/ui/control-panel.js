@@ -62,9 +62,13 @@ export class ControlPanel {
             this.section(strings.goTo, el('div', {}, [this.coordinate, this.coordinateError])),
         ]);
 
+        // The same shape as the layer tree's section toggle above it: a caret
+        // and a label. They do the same thing, so they are the same control.
+        this.caret = el('i', { class: 'la la-caret-down', 'aria-hidden': 'true' });
+
         this.toggle = el('button', {
             type: 'button',
-            class: 'btn btn-sm btn-light gis-panel-toggle',
+            class: 'gis-section-toggle gis-panel-toggle',
             'aria-expanded': 'true',
             title: strings.mapControls,
             'aria-controls': 'gis-panel-body',
@@ -72,7 +76,7 @@ export class ControlPanel {
                 this.setCollapsed(!this.collapsed);
                 this.onCollapse?.(this.collapsed);
             },
-        }, [el('i', { class: 'la la-layer-group', 'aria-hidden': 'true' }), ` ${strings.mapControls}`]);
+        }, [this.caret, el('span', { text: strings.mapControls })]);
 
         this.bodyNode.id = 'gis-panel-body';
         this.collapsed = false;
@@ -208,6 +212,7 @@ export class ControlPanel {
         this.collapsed = collapsed;
         this.bodyNode.hidden = collapsed;
         this.toggle.setAttribute('aria-expanded', String(!collapsed));
+        this.caret.className = `la la-caret-${collapsed ? 'right' : 'down'}`;
         this.root.classList.toggle('is-collapsed', collapsed);
     }
 }
