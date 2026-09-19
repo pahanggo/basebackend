@@ -458,6 +458,7 @@ class Editor {
             onAddLayer: () => this.library.open(),
             onIsolate: (on) => this.setIsolate(on),
             onOpenMaps: () => this.browser.open(),
+            onCollapse: (collapsed) => this.rememberPanels({ layers: !collapsed }, true),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
@@ -599,6 +600,7 @@ class Editor {
     applyPanels(panels = null) {
         this.setSidebarOpen(panels?.sidebar ?? true, { save: false });
         this.setPanelOpen(panels?.controls ?? true, { save: false });
+        this.tree.setSectionCollapsed(!(panels?.layers ?? true));
     }
 
     setSidebarOpen(open, { save = true } = {}) {

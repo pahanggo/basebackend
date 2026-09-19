@@ -194,6 +194,23 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
+
+    // Folded away, it takes only what its header needs and the map controls
+    // below it keep the rest of the column.
+    &.is-collapsed {
+        flex: none;
+    }
+}
+
+.gis-tree-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+
+    &[hidden] {
+        display: none;
+    }
 }
 
 // The map you are in, above the layers it holds. Without it the panel names
@@ -237,11 +254,21 @@
 }
 
 .gis-tree-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    border: 0;
+    background: none;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: #73818f;
+
+    &:hover {
+        color: #23282c;
+    }
 }
 
 .gis-tree-filter {

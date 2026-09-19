@@ -49,7 +49,7 @@ export class LayerTree {
     constructor({
         container, strings, onChanged,
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
-        onIsolate = null, onOpenMaps = null,
+        onIsolate = null, onOpenMaps = null, onCollapse = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -59,6 +59,8 @@ export class LayerTree {
         this.onRestyle = onRestyle;
         this.onOpacityPreview = onOpacityPreview;
         this.onIsolate = onIsolate;
+        this.onCollapse = onCollapse;
+        this.collapsedSection = false;
         this.zoom = zoom;
         this.zoomLimits = zoomLimits;
         this.isolating = false;
@@ -108,11 +110,31 @@ export class LayerTree {
             }, [el('i', { class: 'la la-map', 'aria-hidden': 'true' })]),
         ]);
 
+        this.body = el('div', { class: 'gis-tree-body', id: 'gis-tree-body' }, [
+            this.filterInput,
+            this.scroller,
+        ]);
+
         this.root = el('div', { class: 'gis-tree' }, [
             mapRow,
             el('hr'),
             el('div', { class: 'gis-tree-head' }, [
-                el('span', { class: 'gis-tree-title', text: strings.layers }),
+                // The whole title is the toggle, as it is on the map controls
+                // below — two sections in one column that behave differently
+                // would be two things to learn.
+                this.sectionToggle = el('button', {
+                    type: 'button',
+                    class: 'gis-tree-title',
+                    'aria-expanded': 'true',
+                    'aria-controls': 'gis-tree-body',
+                    onclick: () => {
+                        this.setSectionCollapsed(!this.collapsedSection);
+                        this.onCollapse?.(this.collapsedSection);
+                    },
+                }, [
+                    this.sectionCaret = el('i', { class: 'la la-caret-down', 'aria-hidden': 'true' }),
+                    el('span', { text: strings.layers }),
+                ]),
 
                 // The things you do TO the tree, where the tree is. They were
                 // in the map toolbar, which is for the map.
@@ -145,8 +167,7 @@ export class LayerTree {
                     }, [el('i', { class: 'la la-object-group', 'aria-hidden': 'true' })]),
                 ]),
             ]),
-            this.filterInput,
-            this.scroller,
+            this.body,
         ]);
 
         container.append(this.root);
@@ -163,6 +184,27 @@ export class LayerTree {
         this.scroller.addEventListener('keydown', (event) => this.onKeyDown(event));
 
         this.drag = attachTreeDrag(this);
+    }
+
+    /**
+     * Fold the layer list away, keeping the map's name and the actions.
+     *
+     * The header, its buttons and the map name stay: collapsing the list
+     * should not take away the control that adds to it. Only the filter and
+     * the rows go.
+     */
+    setSectionCollapsed(collapsed) {
+        this.collapsedSection = collapsed;
+        this.body.hidden = collapsed;
+        this.root.classList.toggle('is-collapsed', collapsed);
+        this.sectionToggle.setAttribute('aria-expanded', String(!collapsed));
+        this.sectionCaret.className = `la la-caret-${collapsed ? 'right' : 'down'}`;
+
+        // The recycler sized itself against a container that has just changed
+        // height, so what it thinks is on screen is no longer what is.
+        if (!collapsed) {
+            this.list.refresh();
+        }
     }
 
     /** Point the tree at a store. Called on every map switch. */

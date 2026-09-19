@@ -277,6 +277,7 @@ class MapController extends Controller
             'panels' => ['sometimes', 'array'],
             'panels.sidebar' => ['sometimes', 'boolean'],
             'panels.controls' => ['sometimes', 'boolean'],
+            'panels.layers' => ['sometimes', 'boolean'],
         ]);
 
         // Merged, so a client that knows only where it is looking does not
