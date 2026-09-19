@@ -29,6 +29,34 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S10a — Units, coordinate formats, scale bar
+
+Four coordinate formats that all round-trip to within their own rounding:
+decimal degrees, DMS, UTM and MGRS. Type any of them into the go-to box and it
+lands in the right place; click the coordinate readout and it cycles through
+them, remembering your choice.
+
+The go-to box used to carry its own parser for two of the four, with a note
+that UTM and MGRS "arrive with the measurement work". They have, so it
+delegates now. Its one good rule was kept and moved into the shared module: a
+value beyond ±90 can only be a longitude, which settles a pasted pair's order
+without guessing.
+
+**Units are per quantity, not per system** — a survey office measures distance
+in metres and land in acres in the same breath, so a global toggle would be
+wrong half the time. Rai, rood, nautical miles and chains are there because the
+cadastre is still partly written in them.
+
+**The scale bar measures at the map's centre latitude**, not along the top edge
+as Leaflet's own control does; on a tall viewport away from the equator those
+differ. Two bars sharing one edge, each rounded to 1, 2 or 5 times a power of
+ten. It read one zoom level behind at first — during Leaflet's zoom animation
+`containerPointToLatLng` still answers for the projection the map is leaving.
+
+**Still to build:** the measurement tools themselves (distance, area, bearing,
+feature info) saved as annotations. The table, the commands and all the geodesy
+they need already exist; the tools and their list do not.
+
 ### S9c — Spatial and attribute query
 
 `POST /layers/{layer}/query`: six relations, attribute conditions, an optional

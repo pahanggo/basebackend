@@ -23,6 +23,7 @@ import { reconcile } from './store/commands/index.js';
 import { layerSetClassification } from './store/commands/layer.js';
 import { configureHttp, getJson, patchJson, putJson } from './lib/http.js';
 import { afterKey, between } from './lib/sort-key.js';
+import { formatDms, formatUtm, formatMgrs } from './lib/coordinates.js';
 import { SeqCounter } from './lib/seq.js';
 import { LayerTree } from './ui/layer-tree.js';
 import { ControlPanel } from './ui/control-panel.js';
@@ -41,6 +42,7 @@ import { ConflictPanel } from './ui/conflict-panel.js';
 import { Legend } from './ui/legend.js';
 import { AttributeTable } from './ui/attribute-table.js';
 import { QueryPanel } from './ui/query-panel.js';
+import { ScaleBar } from './ui/scale-bar.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
 import { Snapper } from './map/snap.js';
@@ -1952,13 +1954,73 @@ const READOUT_PLACES = 5;
  * Updated on a frame rather than on every `mousemove`: the browser fires those
  * faster than it paints, and each one is a text write that invalidates layout.
  */
-function trackPointer(map, readout) {
+/** A position in whichever format the readout is showing. */
+function describe(lng, lat, format) {
+    if (format === 'dms') {
+        return formatDms(lng, lat);
+    }
+
+    if (format === 'utm') {
+        return formatUtm(lng, lat);
+    }
+
+    if (format === 'mgrs') {
+        return formatMgrs(lng, lat);
+    }
+
+    return `${lat.toFixed(READOUT_PLACES)}, ${lng.toFixed(READOUT_PLACES)}`;
+}
+
+/** The remembered format, or the default. Storage can throw or be empty. */
+function readStoredFormat(formats) {
+    try {
+        const stored = window.localStorage?.getItem('gis.coordinateFormat');
+
+        return formats.includes(stored) ? stored : formats[0];
+    } catch {
+        return formats[0];
+    }
+}
+
+function trackPointer(map, readout, strings = {}) {
     if (!readout) {
         return;
     }
 
     let pending = null;
     let frame = null;
+
+    // Clicking the readout cycles the format, which is how a user checks a
+    // coordinate against whatever they have on paper without leaving the map.
+    // Remembered per browser, because it is a preference about the reader
+    // rather than about the map — nobody wants to reselect UTM every morning.
+    const formats = ['decimal', 'dms', 'utm', 'mgrs'];
+    let format = readStoredFormat(formats);
+
+    const write = () => {
+        if (!pending) {
+            return;
+        }
+
+        readout.textContent = describe(pending.lng, pending.lat, format);
+        readout.hidden = false;
+    };
+
+    readout.hidden = false;
+    readout.style.cursor = 'pointer';
+    readout.setAttribute('title', strings.coordinateFormat ?? '');
+    readout.addEventListener('click', () => {
+        format = formats[(formats.indexOf(format) + 1) % formats.length];
+
+        try {
+            window.localStorage?.setItem('gis.coordinateFormat', format);
+        } catch {
+            // Private browsing, or storage blocked. The format still cycles
+            // for this session; it simply is not remembered.
+        }
+
+        write();
+    });
 
     map.on('mousemove', (event) => {
         pending = event.latlng;
@@ -1969,8 +2031,7 @@ function trackPointer(map, readout) {
 
         frame = window.requestAnimationFrame(() => {
             frame = null;
-            readout.textContent = `${pending.lat.toFixed(READOUT_PLACES)}, ${pending.lng.toFixed(READOUT_PLACES)}`;
-            readout.hidden = false;
+            write();
         });
     });
 
@@ -2017,6 +2078,8 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.scale = new ScaleBar({ container: document.getElementById('gis-map'), map });
+
     editor.query = new QueryPanel({
         container: document.getElementById('gis-sidebar'),
         strings: config.strings,
@@ -2086,7 +2149,7 @@ async function boot() {
         onCommit: (target, corners) => editor.commitOverlay(target, corners),
     });
 
-    trackPointer(map, document.getElementById('gis-coordinates'));
+    trackPointer(map, document.getElementById('gis-coordinates'), config.strings);
 
     map.on('moveend zoomend', () => {
         editor.refresh();

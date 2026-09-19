@@ -213,5 +213,6 @@
     ":count found, from :candidates examined": ":count dijumpai, daripada :candidates diperiksa",
     "The query could not be run.": "Pertanyaan tidak dapat dijalankan.",
     "Value": "Nilai",
-    ":count found, from :examined in the area": ":count dijumpai, daripada :examined dalam kawasan itu"
+    ":count found, from :examined in the area": ":count dijumpai, daripada :examined dalam kawasan itu",
+    "Click to change the coordinate format": "Klik untuk menukar format koordinat"
 }

@@ -1297,3 +1297,34 @@ hr {
     color: #73818f;
     font-size: 11px;
 }
+
+// ---- scale bar ------------------------------------------------------------
+//
+// Two bars sharing a left edge, SI above imperial, in the bottom-left of the
+// map where a scale has always been.
+
+.gis-scale {
+    position: absolute;
+    z-index: 900;
+    bottom: 10px;
+    left: 12px;
+    pointer-events: none;
+    font-size: 10px;
+    line-height: 1.2;
+    color: #23282c;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+.gis-scale-line {
+    padding: 0 3px;
+    border: 2px solid rgba(35, 40, 44, 0.75);
+    border-top: none;
+    white-space: nowrap;
+
+    // The metric bar sits above and opens upward, so the two share one edge
+    // and read as one ruler rather than two.
+    &.is-metric {
+        border-top: 2px solid rgba(35, 40, 44, 0.75);
+        border-bottom: none;
+    }
+}

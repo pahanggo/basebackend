@@ -53,6 +53,55 @@ Client and server measurement agree within **0.1%** across a latitude sweep from
 - Harness page: coordinate format parse and render round-trip for DD, DMS, UTM and MGRS, including paste detection.
 - Browser: each measurement tool produces a persisted annotation that survives reload.
 
-## Results
+## Results — units, coordinates and the scale bar (S10a)
 
-_Fill in when complete._
+**Partly done.** The arithmetic, the four coordinate formats and the scale bar
+are built. The measurement TOOLS — the ones that save an annotation — are not.
+
+| Format | Round-trip error at Kuantan |
+| --- | --- |
+| Decimal degrees | exact |
+| Degrees, minutes, seconds | 0.62 m (the format rounds to 0.1″, which is 3 m) |
+| UTM | 0.28 m (rounded to whole metres) |
+| MGRS, 5 digits | 1.15 m (rounded down on both axes) |
+| MGRS, 3 digits | within its own 100 m square |
+
+Every format round-trips to within its own rounding, which is the property that
+matters: a user types what is on the paper in front of them, and reading it
+back has to give the same place. All four go through one parser, tried in order
+of how distinctive each shape is, and it refuses rather than guesses.
+
+**The go-to box used to carry its own parser** for decimal and DMS, with a note
+that UTM and MGRS "arrive with the measurement work". They have, so it
+delegates now — two parsers for one box is one too many. Its one good rule was
+kept and moved into the shared module: a value beyond ±90 can only be a
+longitude, which settles the order of a pasted pair without guessing.
+
+**Units are per quantity, not per system.** A survey office measures distance
+in metres and land in acres in the same breath, and a global toggle would be
+wrong half the time. `{ system: 'si', area: 'rai' }` is a supported
+preference, and rai, rood, nautical miles and chains are there because the
+cadastre is still partly written in them.
+
+**The scale bar measures at the map's CENTRE latitude**, which is where the
+reader is looking. Leaflet's own control measures along the top edge of the
+container, and on a tall viewport away from the equator those differ
+noticeably. Two bars sharing one edge, SI above imperial, each rounded to 1, 2
+or 5 times a power of ten — a bar labelled "137 m" is arithmetic the reader has
+to do; one labelled "100 m" is a ruler. Verified at 200 m / 500 ft.
+
+Updating it on `move` alone left it a zoom level behind: during Leaflet's zoom
+animation `containerPointToLatLng` still answers for the projection the map is
+leaving. It listens for the settle as well now.
+
+### Still to build in S10
+
+- **The measurement tools**: distance, area, radius, diameter, bearing and
+  feature info, saved as annotations in `gis_measurements`. The table, the
+  commands (`measurement.create/update/delete`) and all the geodesy they need
+  already exist — what is missing is the tools themselves and the list that
+  manages them.
+- **The units preference, persisted per user.** The module takes preferences
+  and nothing yet stores them; the coordinate readout remembers its format in
+  `localStorage`, which is the right home for a per-reader preference but is
+  not the same as `ui.units` per §11.

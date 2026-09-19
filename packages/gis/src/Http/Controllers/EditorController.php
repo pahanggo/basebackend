@@ -141,6 +141,7 @@ class EditorController extends Controller
             'confirmLeave' => __('Leave the map and go back to the dashboard?'),
             'leaveUnsaved' => __('Some changes have not been saved yet. Leaving now would lose them.'),
             'remove' => __('Remove'),
+            'coordinateFormat' => __('Click to change the coordinate format'),
             'unsyncedTitle' => __('Unsaved changes'),
             'syncPausedTitle' => __('Changes are no longer being saved'),
             'syncPaused' => __('This map was changed elsewhere, so saving has stopped to avoid overwriting it. Reload the page to continue; changes made since will be lost.'),

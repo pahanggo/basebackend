@@ -220,58 +220,11 @@ export class ControlPanel {
 /**
  * Longitude and latitude from the formats section 11 names.
  *
- * Decimal degrees, degrees-minutes-seconds, and either order — a pasted
- * coordinate is far more often `lat, lng` than `lng, lat`, so a pair inside
- * ±90 is read latitude-first and anything with a longitude beyond that is
- * unambiguous. Returns null rather than guessing when it cannot tell.
+ * Delegates to `lib/coordinates.js`, which S10 built: decimal degrees,
+ * degrees-minutes-seconds, UTM and MGRS. This used to carry its own parser for
+ * the first two and a note that the other two "arrive with the measurement
+ * work" — they have, and two parsers for one box is one too many.
  *
- * UTM and MGRS are section 11's job and arrive with the measurement work; this
- * accepts what can be parsed without a projection library.
+ * Kept under this name because it is what this module has always exported.
  */
-export function parseCoordinate(text) {
-    const value = String(text || '').trim();
-
-    if (value === '') {
-        return null;
-    }
-
-    const dms = value.match(
-        /^\s*(\d+(?:\.\d+)?)[°\s]+(\d+(?:\.\d+)?)['′\s]+(\d+(?:\.\d+)?)["″\s]*([NSns])[,\s]+(\d+(?:\.\d+)?)[°\s]+(\d+(?:\.\d+)?)['′\s]+(\d+(?:\.\d+)?)["″\s]*([EWew])\s*$/
-    );
-
-    if (dms) {
-        const lat = toDecimal(dms[1], dms[2], dms[3], dms[4]);
-        const lng = toDecimal(dms[5], dms[6], dms[7], dms[8]);
-
-        return inRange(lng, lat) ? { lng, lat } : null;
-    }
-
-    const pair = value.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)\s*$/);
-
-    if (!pair) {
-        return null;
-    }
-
-    const a = Number(pair[1]);
-    const b = Number(pair[2]);
-
-    // A value beyond ±90 can only be a longitude, which settles the order
-    // without guessing. Otherwise assume latitude first, as every mapping
-    // service and every pasted URL does.
-    if (Math.abs(a) > 90 && Math.abs(b) <= 90) {
-        return inRange(a, b) ? { lng: a, lat: b } : null;
-    }
-
-    return inRange(b, a) ? { lng: b, lat: a } : null;
-}
-
-function toDecimal(degrees, minutes, seconds, hemisphere) {
-    const value = Number(degrees) + Number(minutes) / 60 + Number(seconds) / 3600;
-
-    return /[SsWw]/.test(hemisphere) ? -value : value;
-}
-
-function inRange(lng, lat) {
-    return Number.isFinite(lng) && Number.isFinite(lat)
-        && Math.abs(lng) <= 180 && Math.abs(lat) <= 90;
-}
+export { parse as parseCoordinate } from '../lib/coordinates.js';

@@ -12,13 +12,33 @@ import assert from 'node:assert/strict';
 
 import { parseCoordinate, providerLabel } from '../../resources/js/ui/control-panel.js';
 
+// The parser also reports WHICH format it recognised, which the coordinate
+// readout uses to echo the format back. The position is what these assert.
+function at(text) {
+    const { lng, lat } = parseCoordinate(text) ?? {};
+
+    return { lng, lat };
+}
+
 test('a pasted pair is read latitude first, as every mapping service writes it', () => {
-    assert.deepEqual(parseCoordinate('3.8077, 103.326'), { lng: 103.326, lat: 3.8077 });
-    assert.deepEqual(parseCoordinate('3.8077 103.326'), { lng: 103.326, lat: 3.8077 });
+    assert.deepEqual(at('3.8077, 103.326'), { lng: 103.326, lat: 3.8077 });
+    assert.deepEqual(at('3.8077 103.326'), { lng: 103.326, lat: 3.8077 });
 });
 
 test('a value beyond 90 can only be a longitude, which settles the order without guessing', () => {
-    assert.deepEqual(parseCoordinate('103.326, 3.8077'), { lng: 103.326, lat: 3.8077 });
+    assert.deepEqual(at('103.326, 3.8077'), { lng: 103.326, lat: 3.8077 });
+});
+
+test('the box also takes UTM and MGRS, which S10 added', () => {
+    // It used to carry its own parser for decimal and DMS and a note that the
+    // other two "arrive with the measurement work". They have.
+    const utm = parseCoordinate('48N 314108 421052');
+    const mgrs = parseCoordinate('48N UK 14107 21051');
+
+    assert.equal(utm.format, 'utm');
+    assert.ok(Math.abs(utm.lat - 3.8077) < 1e-4, `${utm.lat}`);
+    assert.equal(mgrs.format, 'mgrs');
+    assert.ok(Math.abs(mgrs.lng - 103.326) < 1e-3, `${mgrs.lng}`);
 });
 
 test('degrees, minutes and seconds with hemispheres', () => {

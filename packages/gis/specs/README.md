@@ -34,7 +34,8 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S9a](S09-attributes-selection-query.md) | Attribute table — **done** | S5, S8a |
 | [S9b](S09-attributes-selection-query.md) | Selection, schema editing, popups | S9a |
 | [S9c](S09b-query.md) | Spatial and attribute query — **done** | S9a |
-| [S10](S10-measurement-units.md) | Measurement and units | S6 |
+| [S10a](S10-measurement-units.md) | Units, coordinate formats, scale bar — **done** | S6a |
+| [S10b](S10-measurement-units.md) | Measurement tools as saved annotations | S10a |
 | [S11](S11-responsive-a11y-performance.md) | Responsive, a11y, performance | all v1 |
 | — | **v1 ships** | |
 | [S12](S12-import-crs.md) | Job protocol, import, CRS, external sources | S11 |
