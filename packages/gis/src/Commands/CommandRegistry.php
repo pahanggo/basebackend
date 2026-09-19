@@ -13,6 +13,8 @@ use Gis\Commands\Handlers\LayerRename;
 use Gis\Commands\Handlers\LayerRestore;
 use Gis\Commands\Handlers\LayerReorder;
 use Gis\Commands\Handlers\LayerSetAccess;
+use Gis\Commands\Handlers\LayerSetClassification;
+use Gis\Commands\Handlers\LayerSetClassState;
 use Gis\Commands\Handlers\LayerSetLocked;
 use Gis\Commands\Handlers\LayerSetOpacity;
 use Gis\Commands\Handlers\LayerSetSource;
@@ -103,6 +105,8 @@ class CommandRegistry
             LayerSetVisible::class,
             LayerSetOpacity::class,
             LayerSetZoomRange::class,
+            LayerSetClassification::class,
+            LayerSetClassState::class,
             LayerReorder::class,
             LayerGroup::class,
             LayerUngroup::class,

@@ -24,12 +24,14 @@ import { el, clear } from '../lib/dom.js';
 import { VirtualList, rowHeight } from './virtual-list.js';
 import {
     flatten, isGroup, groupCheckState, effectiveVisible, childrenOf, descendantsOf, buildIndex,
+    isClassified,
 } from './tree-model.js';
 import {
     layerRename, layerSetVisible, layerSetOpacity, layerSetLocked, layerSetStyle,
     layerSetZoomRange, layerRemoveFromMap, layerGroup, layerUngroup, layerReorder,
-    layerCreate,
+    layerCreate, layerSetClassState,
 } from '../store/commands/layer.js';
+import { classStyle } from '../map/style/classify.js';
 import { between } from '../lib/sort-key.js';
 import { attachTreeDrag } from './tree-dnd.js';
 import { confirmAction } from './confirm.js';
@@ -44,12 +46,16 @@ export class LayerTree {
      * @param {Object} options.strings translated labels, from the bootstrap
      * @param {Function} options.onChanged called when the drawn set may have changed
      * @param {Function} options.onZoomTo called with a layer to fit its extent
+     * @param {Function} options.onClassify called with a row to split its layer
+     * @param {Function} options.onClassPreview called with a placement whose
+     *        class paints changed without a command — an opacity drag
      * @param {Function} options.zoom () => the map's current zoom
      */
     constructor({
         container, strings, onChanged,
         onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
         onIsolate = null, onOpenMaps = null, onCollapse = null, onRenameMap = null,
+        onClassify = null, onClassPreview = null,
         zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
@@ -58,6 +64,11 @@ export class LayerTree {
         this.onZoomTo = onZoomTo;
         this.onRestyle = onRestyle;
         this.onOpacityPreview = onOpacityPreview;
+        // Opening the field picker, and repainting one class mid-drag. Both
+        // belong to the editor: the tree knows what was asked for, not how the
+        // renderer is told.
+        this.onClassify = onClassify;
+        this.onClassPreview = onClassPreview;
         this.onIsolate = onIsolate;
         this.onCollapse = onCollapse;
         this.onRenameMap = onRenameMap;
@@ -333,6 +344,9 @@ export class LayerTree {
     createRow() {
         const twisty = el('button', { type: 'button', class: 'gis-tree-twisty', tabindex: '-1' });
         const check = el('input', { type: 'checkbox', class: 'gis-tree-check' });
+        // Only a sublayer row shows it, but it is built once with the rest of
+        // the pooled node: creating it on demand would allocate per scroll.
+        const swatch = el('span', { class: 'gis-tree-swatch', 'aria-hidden': 'true' });
         const name = el('span', { class: 'gis-tree-name' });
         const badges = el('span', { class: 'gis-tree-badges' });
         const menu = el('button', {
@@ -343,10 +357,10 @@ export class LayerTree {
         }, [el('i', { class: 'la la-ellipsis-h', 'aria-hidden': 'true' })]);
 
         const row = el('div', { class: 'gis-tree-row', role: 'treeitem', tabindex: '-1' }, [
-            twisty, check, name, badges, menu,
+            twisty, check, swatch, name, badges, menu,
         ]);
 
-        row.__parts = { twisty, check, name, badges, menu };
+        row.__parts = { twisty, check, swatch, name, badges, menu };
 
         twisty.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -376,9 +390,31 @@ export class LayerTree {
         return row;
     }
 
-    /** The data row a pooled node currently shows. */
+    /**
+     * The data row a pooled node currently shows.
+     *
+     * The node's own dataset is checked against the row it resolves to, and a
+     * disagreement answers null rather than the row. Nodes are recycled, so an
+     * index that has gone stale does not point at nothing — it points at a
+     * DIFFERENT, perfectly valid row, and a click on a sublayer's checkbox then
+     * silently hides a whole layer somewhere else in the tree. That is a
+     * failure with no error and no obvious symptom, which is worth one
+     * comparison per click to rule out.
+     */
     rowAt(node) {
-        return this.rows[Number(node.dataset.index)] ?? null;
+        const row = this.rows[Number(node.dataset.index)] ?? null;
+
+        if (!row) {
+            return null;
+        }
+
+        const expected = row.kind === 'class' ? row.value : undefined;
+
+        if (node.dataset.classValue !== expected) {
+            return null;
+        }
+
+        return String(row.placement.id) === node.dataset.placementId ? row : null;
     }
 
     renderRow(node, index) {
@@ -394,9 +430,20 @@ export class LayerTree {
         node.dataset.index = String(index);
         node.dataset.placementId = String(row.placement.id);
 
-        const { twisty, check, name, badges, menu } = node.__parts;
+        if (row.kind === 'class') {
+            this.renderClassRow(node, row);
+
+            return;
+        }
+
+        delete node.dataset.classValue;
+        node.classList.remove('is-class');
+
+        const { twisty, check, swatch, name, badges, menu } = node.__parts;
         const group = isGroup(this.store.state, row.placement);
         const mayEdit = this.mayEdit(row);
+
+        swatch.hidden = true;
 
         node.style.setProperty('--gis-depth', String(row.depth));
         node.setAttribute('aria-level', String(row.depth + 1));
@@ -450,6 +497,56 @@ export class LayerTree {
         menu.setAttribute('title', this.strings.layerActions);
     }
 
+    /**
+     * One sublayer: a checkbox, its colour and its label.
+     *
+     * Rendered into the same pooled node as any other row, so it must undo
+     * everything a layer row sets — a recycled node still carries the twisty,
+     * badges and aria state of whatever it showed last.
+     */
+    renderClassRow(node, row) {
+        const { twisty, check, swatch, name, badges, menu } = node.__parts;
+        const entry = row.classEntry;
+
+        node.classList.add('is-class');
+        node.dataset.classValue = row.value;
+        node.style.setProperty('--gis-depth', String(row.depth));
+        node.setAttribute('aria-level', String(row.depth + 1));
+        node.setAttribute('aria-selected', 'false');
+        node.classList.remove('is-selected', 'is-matched');
+        node.removeAttribute('aria-expanded');
+
+        twisty.hidden = true;
+
+        // Dimmed when its own box is clear, and also when the layer above it is
+        // hidden — a sublayer of an invisible layer is not on the map either.
+        const parentVisible = effectiveVisible(this.store.state, row.placement, this.zoom());
+
+        node.classList.toggle('is-dimmed', !parentVisible || entry.visible === false);
+
+        check.checked = entry.visible !== false;
+        check.indeterminate = false;
+        check.setAttribute('aria-label', `${this.strings.visible}: ${row.label}`);
+        check.setAttribute('title', this.strings.visible);
+
+        swatch.hidden = false;
+
+        // Through `classStyle`, never `entry.style?.x` — an unstyled class
+        // arrives as `[]` and every key on it resolves to an array method.
+        const style = classStyle(entry);
+
+        swatch.style.background = style.fill ?? row.layer.style?.fill ?? 'transparent';
+        swatch.style.borderColor = style.stroke ?? row.layer.style?.stroke ?? 'transparent';
+
+        name.textContent = row.label;
+        node.setAttribute('aria-label', `${row.layer.name}: ${row.label}`);
+
+        clear(badges);
+
+        menu.setAttribute('aria-label', `${this.strings.sublayerActions}: ${row.label}`);
+        menu.setAttribute('title', this.strings.sublayerActions);
+    }
+
     badge(icon, label) {
         return el('span', { class: 'gis-tree-badge', title: label, 'aria-label': label, role: 'img' },
             [el('i', { class: `la ${icon}`, 'aria-hidden': 'true' })]);
@@ -484,7 +581,7 @@ export class LayerTree {
     // ---- operations ------------------------------------------------------
 
     toggleCollapsed(row) {
-        if (!row || !row.hasChildren) {
+        if (!row || row.kind === 'class' || !row.hasChildren) {
             return;
         }
 
@@ -514,6 +611,12 @@ export class LayerTree {
      */
     toggleVisible(row) {
         if (!row) {
+            return;
+        }
+
+        if (row.kind === 'class') {
+            this.setClassState(row, { visible: row.classEntry.visible === false });
+
             return;
         }
 
@@ -596,9 +699,15 @@ export class LayerTree {
      * written over it.
      *
      * **Style is layer-level, so this changes the layer in every map that
-     * shows it.** That is by design, not an oversight: a per-map override is a
-     * column on the placement if it turns out to be wanted, and it is not in
-     * v1.
+     * shows it.** That is by design, and it is also why this control is hidden
+     * for a locked layer — which is every imported one.
+     *
+     * This comment used to predict that a per-map override would become a
+     * column on the placement "if it turns out to be wanted". It turned out to
+     * be wanted in S5d: `gis_map_layer.classification` carries a colour per
+     * class, so the cadastre can be recoloured in one map without being
+     * recoloured in all of them. A whole-layer per-map colour still is not a
+     * thing, and splitting the layer is the better answer to wanting one.
      */
     setStyleKey(row, key, value) {
         const style = { ...(row.layer.style ?? {}), [key]: value };
@@ -615,7 +724,9 @@ export class LayerTree {
     }
 
     startRename(row, node) {
-        if (!row || !this.mayEdit(row)) {
+        // A sublayer has no name of its own to change: its label comes from
+        // the value in the data.
+        if (!row || row.kind === 'class' || !this.mayEdit(row)) {
             return;
         }
 
@@ -808,9 +919,14 @@ export class LayerTree {
         this.focusNewest(name);
     }
 
+    /** The text a row shows, whichever kind it is. */
+    rowText(row) {
+        return row.kind === 'class' ? row.label : row.layer.name;
+    }
+
     /** Select the layer just created and open its name for editing. */
     focusNewest(name) {
-        const index = this.rows.findIndex((row) => row.layer.name === name);
+        const index = this.rows.findIndex((row) => row.kind !== 'class' && row.layer.name === name);
 
         if (index === -1) {
             return;
@@ -923,7 +1039,9 @@ export class LayerTree {
     // ---- selection and focus ---------------------------------------------
 
     select(row, event = {}) {
-        if (!row) {
+        // A sublayer is not a placement, so it cannot join a selection that
+        // isolate, group and remove all act on.
+        if (!row || row.kind === 'class') {
             return;
         }
 
@@ -1067,7 +1185,8 @@ export class LayerTree {
         for (let i = 0; i < this.rows.length; i += 1) {
             const index = (from + i) % this.rows.length;
 
-            if (this.rows[index].layer.name.toLowerCase().startsWith(needle)) {
+            // A sublayer row's text is its class label, not a layer name.
+            if (this.rowText(this.rows[index]).toLowerCase().startsWith(needle)) {
                 this.focus(index);
 
                 return;
@@ -1090,6 +1209,12 @@ export class LayerTree {
         }
 
         this.closeMenu();
+
+        if (row.kind === 'class') {
+            this.showMenu(this.classMenuItems(row), anchor);
+
+            return;
+        }
 
         const state = this.store.state;
         const group = isGroup(state, row.placement);
@@ -1123,6 +1248,17 @@ export class LayerTree {
             items.push(this.colourItem(row));
         }
 
+        // Splitting a layer is this map's reading of it, so it is offered
+        // wherever visibility and opacity are — a locked, shared cadastral
+        // layer is exactly the one worth splitting.
+        if (!group && this.onClassify) {
+            items.push(item(
+                isClassified(row.placement) ? this.strings.resplit : this.strings.split,
+                () => this.onClassify(row),
+                'la-layer-group',
+            ));
+        }
+
         items.push(this.opacityItem(row));
         items.push(this.zoomRangeItem(row));
 
@@ -1138,6 +1274,11 @@ export class LayerTree {
         items.push(el('div', { class: 'dropdown-divider' }));
         items.push(item(this.strings.removeFromMap, () => this.removeFromMap(row), 'la-times'));
 
+        this.showMenu(items, anchor);
+    }
+
+    /** Place a built menu under its anchor and arm its dismissal. */
+    showMenu(items, anchor) {
         this.menu = el('div', { class: 'dropdown-menu show gis-tree-menu', role: 'menu' }, items);
 
         const box = anchor.getBoundingClientRect();
@@ -1154,6 +1295,103 @@ export class LayerTree {
         };
 
         window.setTimeout(() => document.addEventListener('pointerdown', this.dismiss), 0);
+    }
+
+    /**
+     * A sublayer's menu: its two colours and its opacity.
+     *
+     * No rename, no lock, no remove. A sublayer is a value in the data, not a
+     * thing this map made — what it is called comes from the features, and it
+     * stops existing when the layer is split differently or not at all.
+     *
+     * Colour is offered regardless of `mayEdit`, unlike a layer's. A layer's
+     * colour is the layer's, shared with every map showing it, so a locked
+     * layer refuses it; a class's colour belongs to this map's classification,
+     * which is this map's alone. That is the same line visibility and opacity
+     * have always been on.
+     */
+    classMenuItems(row) {
+        const entry = row.classEntry;
+        const started = entry.opacity ?? 1;
+
+        const swatch = (key, label, fallback) => {
+            const input = el('input', {
+                type: 'color',
+                class: 'gis-tree-colour',
+                value: normaliseColour(classStyle(entry)[key], row.layer.style?.[key] ?? fallback),
+                'aria-label': `${label}: ${row.label}`,
+            });
+
+            input.addEventListener('change', () => this.setClassState(row, {
+                style: { ...classStyle(entry), [key]: input.value },
+            }));
+
+            return el('label', { class: 'gis-tree-colour-field' }, [
+                el('span', { text: label }),
+                input,
+            ]);
+        };
+
+        const slider = el('input', {
+            type: 'range',
+            min: '0',
+            max: '100',
+            value: String(Math.round(started * 100)),
+            class: 'custom-range gis-tree-opacity',
+            'aria-label': this.strings.opacity,
+        });
+
+        // `input` previews, `change` commits — the same rule the layer's own
+        // slider follows, and for the same reason: a range input fires `input`
+        // per pixel of the drag.
+        slider.addEventListener('input', () => this.previewClassOpacity(row, Number(slider.value) / 100));
+        slider.addEventListener('change', () => {
+            this.previewClassOpacity(row, started);
+            this.setClassState(row, { opacity: Number(slider.value) / 100 });
+        });
+
+        return [
+            el('div', { class: 'dropdown-item-text gis-tree-colours' }, [
+                swatch('fill', this.strings.fillColour, '#f0ad4e'),
+                swatch('stroke', this.strings.lineColour, '#8a6d3b'),
+            ]),
+            el('div', { class: 'dropdown-item-text gis-tree-slider' }, [
+                el('label', { text: this.strings.opacity }),
+                slider,
+            ]),
+        ];
+    }
+
+    /**
+     * Show a class's opacity while the slider moves, recording nothing.
+     *
+     * Mutates the held document in place and asks for a repaint, exactly as
+     * the layer's own preview does. `setClassState` winds it back before
+     * committing, so the command's inverse undoes to where the drag started
+     * rather than to the last previewed frame.
+     */
+    previewClassOpacity(row, opacity) {
+        row.classEntry.opacity = opacity;
+        this.onClassPreview?.(row.placement);
+    }
+
+    /**
+     * Commit one change to one sublayer.
+     *
+     * A patch, never the whole classification: two people dimming two
+     * different categories must not collide, and rewriting all fourteen rows
+     * would guarantee they do.
+     */
+    setClassState(row, patch) {
+        this.store.commit(layerSetClassState({
+            id: row.placement.id,
+            version: row.placement.version,
+            value: row.value,
+            state: patch,
+        }));
+
+        this.rebuild();
+        this.onChanged();
     }
 
     /**

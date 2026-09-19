@@ -78,8 +78,11 @@ function header_(string $body): array
 {
     $fields = unpack('a4magic/vversion/vflags/Vcount/Vrings/Vvertices/Vproperties', $body);
 
-    $offsets = unpack('Vcoords/Vbbox/Vids/Varea/VringStarts/VfeatStarts/Vtypes/VpropertiesAt', substr($body, 24, 32));
-    $tail = unpack('Vtotal/VcoordExponent', substr($body, 56, 8));
+    $offsets = unpack(
+        'Vcoords/Vbbox/Vids/Varea/VringStarts/VfeatStarts/Vtypes/Vclasses/VclassDict/VpropertiesAt',
+        substr($body, 24, 40),
+    );
+    $tail = unpack('Vtotal/VcoordExponent/VclassDictLength/Vreserved', substr($body, 64, 16));
 
     return $fields + $offsets + $tail;
 }

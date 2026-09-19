@@ -14,6 +14,25 @@
 import { POINT, LINE, projectLng, projectLat } from './geometry.js';
 import { cullByArea } from './spatial-index.js';
 
+/**
+ * How a path key packs a geometry type and a paint slot into one number.
+ *
+ * The key of the `paths` map used to be the geometry type alone. A classified
+ * layer needs one path per type per class, because each is filled and stroked
+ * differently, and a `Map` keyed by a small integer is faster to build and walk
+ * than one keyed by a string.
+ *
+ * Nine bits leaves room for all 256 classes plus the "other" bucket, which is
+ * the ceiling the wire format's one-byte class index imposes anyway.
+ */
+const SLOT_BITS = 9;
+const SLOT_MASK = (1 << SLOT_BITS) - 1;
+
+/** An unclassified layer paints everything in slot 0. */
+function pathKey(type, slot) {
+    return (type << SLOT_BITS) | slot;
+}
+
 /** Web Mercator, matching Leaflet's EPSG3857 exactly. */
 function worldSize(zoom) {
     return 256 * (2 ** zoom);
@@ -193,6 +212,72 @@ export const GisRenderer = L.Layer.extend({
         this.schedule();
     },
 
+    /**
+     * How this layer's features map onto paint slots.
+     *
+     * This one DOES rebuild the paths, because it decides which path each
+     * feature goes into: splitting a layer by a different field, or adding a
+     * class, moves features between paths and a `Path2D` cannot give a subpath
+     * back. Bumping the generation is what invalidates the cache.
+     *
+     * Reclassifying is a deliberate act a few times a session. Recolouring one
+     * class is a drag of a slider, and goes through `repaintClasses` instead,
+     * which rebuilds nothing.
+     *
+     * @param {Uint8Array|null} slotOf dictionary index to paint slot, or null
+     *        to stop classifying this layer
+     */
+    reclassifyGeometry(slot, slotOf) {
+        const layer = this._layers[slot];
+
+        if (!layer) {
+            return;
+        }
+
+        layer.slotOf = slotOf;
+        layer.generation += 1;
+        this.schedule();
+    },
+
+    /**
+     * The same map, without invalidating the paths.
+     *
+     * For use WHILE a read is streaming. The dictionary grows as frames arrive,
+     * so the map is replaced before each chunk is appended — and the chunk is
+     * then built with it, while the chunks already appended were built with a
+     * map that agreed about every value they contained. Bumping the generation
+     * here instead would rebuild the whole path on every frame, which measured
+     * at 1.9 s for one read when a previous version of this file did it.
+     */
+    setSlotMap(slot, slotOf) {
+        const layer = this._layers[slot];
+
+        if (layer) {
+            layer.slotOf = slotOf;
+        }
+    },
+
+    /**
+     * The colours, opacity and visibility of each paint slot.
+     *
+     * A repaint and nothing more: the paths are already built and which one a
+     * feature is in has not changed. This is the path a colour swatch, an
+     * opacity drag and a sublayer checkbox all take, and it is why none of
+     * them costs a feature read.
+     *
+     * @param {Array<{style: Object, opacity: number, visible: boolean}>|null} paints
+     */
+    repaintClasses(slot, paints) {
+        const layer = this._layers[slot];
+
+        if (!layer) {
+            return;
+        }
+
+        layer.paints = paints;
+        this.schedule();
+    },
+
     /** Swap one layer's working set, keeping its position in draw order. */
     replaceGeometry(slot, layer) {
         const previous = this._layers[slot];
@@ -205,6 +290,13 @@ export const GisRenderer = L.Layer.extend({
             // time its working set was swapped.
             order: previous?.order ?? this._layers.length,
             opacity: previous?.opacity ?? 1,
+            // Kept for the same reason. These say how the layer PAINTS, and
+            // swapping which features it holds does not change that — but the
+            // working set is swapped after every eviction, which is after every
+            // pan that reads. Dropping them here made a classified layer revert
+            // to its base colour the moment the map moved.
+            slotOf: previous?.slotOf ?? null,
+            paints: previous?.paints ?? null,
             ...layer,
         };
 
@@ -411,7 +503,7 @@ export const GisRenderer = L.Layer.extend({
 
             context.setTransform(this._ratio, 0, 0, this._ratio, dx * this._ratio, dy * this._ratio);
 
-            this._paintPaths(context, cache.paths, layer.style, layer.opacity ?? 1);
+            this._paintPaths(context, cache.paths, layer.style, layer.opacity ?? 1, layer.paints ?? null);
         }
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
@@ -480,17 +572,25 @@ export const GisRenderer = L.Layer.extend({
      */
     _buildPaths(layer, kept, scale, originX, originY, zoom, paths = new Map()) {
         const { coords, ringStarts, featStarts, types } = layer.geometry;
+        const classes = layer.slotOf ? layer.geometry.classes : null;
+        const slotOf = classes ? layer.slotOf : null;
         let vertices = 0;
 
         for (let k = 0; k < kept.length; k++) {
             const f = kept[k];
             const type = types[f];
 
-            let path = paths.get(type);
+            // One path per geometry type per paint slot. The same vertices go
+            // into more paths when a layer is classified, never more vertices,
+            // so the build costs what it always did — and a category can then
+            // be recoloured or hidden by touching the paint table alone.
+            const key = pathKey(type, slotOf ? slotOf[classes[f]] : 0);
+
+            let path = paths.get(key);
 
             if (path === undefined) {
                 path = new Path2D();
-                paths.set(type, path);
+                paths.set(key, path);
             }
 
             for (let r = featStarts[f]; r < featStarts[f + 1]; r++) {
@@ -552,20 +652,36 @@ export const GisRenderer = L.Layer.extend({
      * @param {Object} [layerStyle] the layer's `style`, or undefined for the defaults
      * @param {number} [opacity] the layer's effective opacity, 0 to 1
      */
-    _paintPaths(context, paths, layerStyle = null, opacity = 1) {
-        for (const [type, path] of paths) {
-            const style = layerStyle
-                ? { ...this.options.styles[type], ...layerStyle }
+    _paintPaths(context, paths, layerStyle = null, opacity = 1, paints = null) {
+        for (const [key, path] of paths) {
+            const type = key >> SLOT_BITS;
+            const paint = paints ? paints[key & SLOT_MASK] : null;
+
+            // A hidden class is skipped rather than painted transparent: alpha
+            // zero still costs a fill over every one of its features.
+            if (paint && !paint.visible) {
+                continue;
+            }
+
+            const own = paint ? paint.style : layerStyle;
+            const style = own
+                ? { ...this.options.styles[type], ...own }
                 : this.options.styles[type];
 
+            // The class's own alpha times the layer's. Opacity has always
+            // multiplied down the tree — a group through a layer — and a class
+            // is one more level of that chain, not the second alpha over one
+            // object that section 10 forbids.
+            const alpha = paint ? opacity * paint.opacity : opacity;
+
             if (style.fill) {
-                context.globalAlpha = opacity;
+                context.globalAlpha = alpha;
                 context.fillStyle = style.fill;
                 context.fill(path, 'evenodd');
             }
 
             if (style.stroke) {
-                context.globalAlpha = opacity;
+                context.globalAlpha = alpha;
                 context.strokeStyle = style.stroke;
                 context.lineWidth = style.weight;
                 context.stroke(path);

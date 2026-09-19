@@ -11,10 +11,16 @@ use Gis\Models\Layer;
 /**
  * `layer.setStyle` — the whole style object, replaced.
  *
- * Classification and label configuration live inside that object, so both are
- * written by this one op rather than by `setClassification` and `setLabels`
- * (specification section 7). S8 fills the object out; this session only has to
- * store and version it.
+ * Label configuration lives inside that object, so it is written by this one
+ * op rather than by a `setLabels` of its own (specification section 7). S8
+ * fills that part out.
+ *
+ * **Classification does not live here**, though this docblock said it did
+ * until S5d. It is placement state, written by `layer.setClassification`,
+ * because `authorize()` below refuses a locked layer and every imported layer
+ * is locked — so the only layers worth classifying were the only ones this op
+ * could not reach. Splitting a shared layer is also this map's reading of it,
+ * not a change to the layer (specification section 6).
  *
  * Replacement rather than patch, unlike feature properties: a style is a
  * document the style panel owns whole, and a half-applied style — a graduated

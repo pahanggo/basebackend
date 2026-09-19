@@ -16,9 +16,11 @@ import { SpatialIndex } from './map/spatial-index.js';
 import { projectLng, projectLat } from './map/geometry.js';
 import { fetchFeatures } from './data/features.js';
 import { FeatureAccumulator } from './data/accumulator.js';
+import { isUsable, slotMap, paintTable } from './map/style/classify.js';
 import { Store } from './store/store.js';
 import { SyncQueue } from './store/sync.js';
 import { reconcile } from './store/commands/index.js';
+import { layerSetClassification } from './store/commands/layer.js';
 import { configureHttp, getJson, patchJson, putJson } from './lib/http.js';
 import { afterKey } from './lib/sort-key.js';
 import { SeqCounter } from './lib/seq.js';
@@ -30,6 +32,7 @@ import { effectiveVisible, effectiveOpacity, buildIndex, childrenOf } from './ui
 import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
 import { LayerLibrary } from './ui/layer-library.js';
+import { SublayerPanel } from './ui/sublayer-panel.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
 function readBootstrap() {
@@ -50,13 +53,18 @@ function readBootstrap() {
  * nobody is waiting for any more.
  */
 class LayerFeed {
-    constructor(renderer, config, layer, activity, order = 0, opacity = 1) {
+    constructor(renderer, config, layer, activity, order = 0, opacity = 1, classification = null) {
         this.renderer = renderer;
         this.config = config;
         this.layer = layer;
         this.activity = activity;
         this.order = order;
         this.opacity = opacity;
+
+        // How this map splits the layer into sublayers, or null. It decides
+        // one thing about the read — whether to ask for a class column — and
+        // everything else it decides is paint.
+        this.classification = classification;
         this.slot = null;
         this.controller = null;
         this.loaded = null;
@@ -86,6 +94,86 @@ class LayerFeed {
         this.entry = null;
         this.loaded = null;
         this.accumulator = null;
+    }
+
+    /** The attribute the read must report per feature, or null. */
+    classifyField() {
+        return isUsable(this.classification) ? this.classification.field : null;
+    }
+
+    /**
+     * Point the renderer at the right paint slots for what is held.
+     *
+     * Called after every streamed chunk, because the dictionary grows as frames
+     * arrive and a value first seen in frame nine has no slot until then.
+     * Deliberately does NOT invalidate the built paths: the chunk about to be
+     * appended is built with this map, and the chunks already appended were
+     * built with a map that agreed about every value they contained.
+     */
+    syncSlots() {
+        if (this.slot === null || this.accumulator === null) {
+            return;
+        }
+
+        this.renderer.setSlotMap(
+            this.slot,
+            isUsable(this.classification)
+                ? slotMap(this.classification, this.accumulator.dictionary)
+                : null,
+        );
+    }
+
+    /** The colours, opacity and visibility of each class. A repaint, no more. */
+    syncPaints() {
+        if (this.slot === null) {
+            return;
+        }
+
+        this.renderer.repaintClasses(
+            this.slot,
+            isUsable(this.classification)
+                ? paintTable(this.classification, this.layer.style)
+                : null,
+        );
+    }
+
+    /**
+     * Take a new classification for this layer.
+     *
+     * Three outcomes, cheapest first. A change to colours, opacity or a
+     * checkbox is a repaint. A change to which classes exist moves features
+     * between paths, so the paths are rebuilt — but nothing is re-read. Only a
+     * change of FIELD needs the server again, because the class column is what
+     * the read computed.
+     *
+     * @returns {boolean} whether the layer must be read again
+     */
+    setClassification(next) {
+        const before = this.classifyField();
+
+        this.classification = next;
+
+        const refetch = this.classifyField() !== before;
+
+        if (refetch) {
+            // The held features carry the old field's classes. Forcing the
+            // next refresh to be non-additive is what replaces them.
+            this.loaded = null;
+        } else if (this.slot !== null && this.accumulator !== null) {
+            // Which classes exist may have changed, so features move between
+            // paths and the paths must be built again — but the features
+            // themselves are already here.
+            this.renderer.reclassifyGeometry(
+                this.slot,
+                isUsable(this.classification)
+                    ? slotMap(this.classification, this.accumulator.dictionary)
+                    : null,
+            );
+        }
+
+        this.syncPaints();
+
+        return refetch;
     }
 
     /**
@@ -172,6 +260,7 @@ class LayerFeed {
                 held: additive
                     ? [this.loaded.west, this.loaded.south, this.loaded.east, this.loaded.north]
                     : null,
+                classify: this.classifyField(),
                 onChunk: ({ geometry, from, to }) => {
                     if (this.entry === null) {
                         this.entry = { geometry, index: new SpatialIndex(geometry), visible: true, style: this.layer.style };
@@ -182,9 +271,16 @@ class LayerFeed {
                             this.renderer.replaceGeometry(this.slot, this.entry);
                         }
 
+                        // Before the first paths are built, not after: the
+                        // build reads the slot map to decide which path each
+                        // feature belongs in.
+                        this.syncSlots();
+                        this.syncPaints();
+
                         return;
                     }
 
+                    this.syncSlots();
                     this.entry.index.append(from, to);
                     this.renderer.appendGeometry(this.slot, { from, to });
                 },
@@ -349,6 +445,7 @@ function hydrate(store, bootstrap) {
             opacity: entry.opacity,
             minZoom: entry.minZoom,
             maxZoom: entry.maxZoom,
+            classification: entry.classification ?? null,
             access: entry.access,
             version: entry.placementVersion,
         };
@@ -374,6 +471,9 @@ function visibleVectorLayers(store, { zoom = null, isolated = null } = {}) {
         .map((placement) => ({
             layer: store.state.layers[placement.layerId],
             placement,
+            // This map's split of the layer. On the placement, so two maps may
+            // read the same shared layer differently.
+            classification: placement.classification ?? null,
             // Multiplied down the chain, so a group at 50% halves what is
             // under it — the renderer applies the product, not the layer's
             // own figure.
@@ -448,6 +548,12 @@ class Editor {
             onPlace: (layerId, access) => this.place(layerId, access),
         });
 
+        this.sublayers = new SublayerPanel({
+            apiBase: config.apiBase,
+            strings: config.strings,
+            onApply: (row, classification) => this.classifyLayer(row, classification),
+        });
+
         this.tree = new LayerTree({
             container: document.getElementById('gis-sidebar'),
             strings: config.strings,
@@ -460,10 +566,12 @@ class Editor {
             onOpenMaps: () => this.browser.open(),
             onCollapse: (collapsed) => this.rememberPanels({ layers: !collapsed }, true),
             onRenameMap: (name) => this.renameMap(name),
+            onClassify: (row) => this.sublayers.open(row),
 
             // A repaint per frame and nothing else: no command, no request,
             // no reconcile of the drawn set.
             onOpacityPreview: () => this.applyOpacities(),
+            onClassPreview: (placement) => this.repaintClasses(placement),
             onChanged: (options) => this.treeChanged(options),
         });
 
@@ -549,6 +657,38 @@ class Editor {
      * fill and stroke differ. Going through `rebuildFeeds` instead would send
      * a multi-megabyte read over a click on a colour swatch.
      */
+    /**
+     * Split a layer into sublayers, or stop splitting it.
+     *
+     * One command and then the ordinary reconcile: `rebuildFeeds` hands the new
+     * document to the feed, which decides for itself whether this costs a
+     * repaint, a path rebuild or — only when the field changed — a re-read.
+     */
+    classifyLayer(row, classification) {
+        this.store.commit(layerSetClassification({
+            id: row.placement.id,
+            version: row.placement.version,
+            classification,
+        }));
+
+        this.tree.rebuild();
+        this.treeChanged();
+    }
+
+    /**
+     * Repaint one layer's classes after a preview, with no command behind it.
+     *
+     * The slider's `input` handler, so it runs per frame of a drag: it must
+     * reach the canvas without touching the store, the queue or the drawn set.
+     */
+    repaintClasses(placement) {
+        for (const feed of this.feeds) {
+            if (feed.layer.id === placement.layerId) {
+                feed.syncPaints();
+            }
+        }
+    }
+
     restyleLayer(layerId, style) {
         for (const feed of this.feeds) {
             if (feed.layer.id === layerId && feed.slot !== null) {
@@ -875,7 +1015,7 @@ class Editor {
         const existing = new Map(this.feeds.map((feed) => [feed.layer.id, feed]));
         const next = [];
 
-        wanted.forEach(({ layer, opacity }, order) => {
+        wanted.forEach(({ layer, opacity, classification }, order) => {
             const feed = existing.get(layer.id);
 
             if (feed) {
@@ -893,12 +1033,18 @@ class Editor {
                     this.renderer.setOpacity(feed.slot, opacity);
                 }
 
+                // Decides for itself how much this costs: a repaint, a path
+                // rebuild, or — only when the FIELD changed — a re-read.
+                feed.setClassification(classification);
+
                 next.push(feed);
 
                 return;
             }
 
-            next.push(new LayerFeed(this.renderer, this.config, layer, this.activity, order, opacity));
+            next.push(new LayerFeed(
+                this.renderer, this.config, layer, this.activity, order, opacity, classification,
+            ));
         });
 
         for (const gone of existing.values()) {

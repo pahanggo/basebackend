@@ -518,6 +518,7 @@ CREATE TABLE gis_map_layer (             -- placement: where the layer SITS, per
   opacity       FLOAT NOT NULL DEFAULT 1,
   min_zoom      TINYINT NULL,
   max_zoom      TINYINT NULL,
+  classification JSON NULL,             -- how THIS map splits the layer into sublayers
   access        ENUM('owner','edit','read') NOT NULL DEFAULT 'owner',
   version       INT UNSIGNED NOT NULL DEFAULT 1,
   created_at    TIMESTAMP, updated_at TIMESTAMP,
@@ -562,7 +563,9 @@ CREATE TABLE gis_map_user (
 
 A layer can appear in more than one map. That is the mechanism behind shared layers (section 8), and it is why identity and placement are separate tables rather than one.
 
-The split falls out of asking which columns would have to differ between two maps showing the same layer. Position in the tree, visibility, opacity and zoom range all would — they describe where a layer sits in *this* map. Name, kind, style, schema, extent and feature count would not — they describe the layer itself, wherever it appears.
+The split falls out of asking which columns would have to differ between two maps showing the same layer. Position in the tree, visibility, opacity, zoom range and classification all would — they describe where a layer sits in *this* map and how this map reads it. Name, kind, style, schema, extent and feature count would not — they describe the layer itself, wherever it appears.
+
+**`classification` is on the placement, and this specification said otherwise until S5d.** It used to put classification inside the layer's `style`, written by `layer.setStyle`. That could not work, for two reasons found the moment it was built. A style write goes through `MapAccess::mayEditLayer`, which refuses a **locked** layer — and every imported layer is locked, precisely because 4.3 million features nobody owns must not be edited by whoever opens them, so the only layers with anything to classify were the only ones the design could not reach. And a style is layer-level, so splitting the shared cadastre by category in one map would have split it in every map that shows it. A classification is a *reading* of a layer, not a property of one: the same land use is coloured by category in a planning map and by district in an administrative one, and both are correct at once.
 
 This matters most for the data that motivated it. The import brings 3.6 million cadastral and land-use features into three layers, "Lot", "Gunatanah Semasa" and "Gunatanah Zoning" (section 12). Those exist **once**, with `owner_map_id` NULL, and every map places them read-only. Without the split, a second map over the same cadastre would mean a second copy of 4.3 million rows.
 
@@ -632,6 +635,7 @@ All routes are under `/api/geo`, registered by the package's service provider wi
 | PATCH | `/maps/{map}` | Rename and view state, versioned |
 | DELETE | `/maps/{map}` | Soft delete, restorable for 30 days, owner only |
 | GET | `/layers/{layer}/features` | Binary or GeoJSON feature read by bbox |
+| GET | `/layers/{layer}/values` | The distinct values of one attribute, for splitting a layer into sublayers |
 | POST | `/maps/{map}/commands` | All mutations, atomic and idempotent |
 | GET | `/maps/{map}/commands` | Replay: the batches applied since a given map version |
 | POST | `/geometry/ops` | Constructive geometry above the client vertex limit |
@@ -640,7 +644,7 @@ All routes are under `/api/geo`, registered by the package's service provider wi
 | POST | `/images` | Multipart upload of an overlay image; returns path and natural dimensions |
 | GET | `/app/static-map` | Existing endpoint; see section 13. Tiles are not served by this API |
 
-The v1 surface is twelve endpoints, the thirteenth row being an existing endpoint outside this API. `POST /geometry/ops` (section 9) ships in v1 because `brick/geo` with GEOS is an approved dependency, and `POST /images` is the one multipart write in v1, serving overlay images and marker SVGs (sections 10 and 13). Import, export, share and the job protocol are deferred to v2; their contracts are specified below, marked *(v2)*, so the v1 implementation can be built without foreclosing them.
+The v1 surface is thirteen endpoints, the fourteenth row being an existing endpoint outside this API. `POST /geometry/ops` (section 9) ships in v1 because `brick/geo` with GEOS is an approved dependency, and `POST /images` is the one multipart write in v1, serving overlay images and marker SVGs (sections 10 and 13). Import, export, share and the job protocol are deferred to v2; their contracts are specified below, marked *(v2)*, so the v1 implementation can be built without foreclosing them.
 
 The constraint that makes this safe is that **every v2 endpoint above either creates commands or reads features** — none introduces a new write path. Import ultimately produces `feature.create` commands; export reads features. Deferring them removes work without changing the shape of what ships.
 
@@ -775,33 +779,41 @@ Accept: application/vnd.gis.features+gis1-stream
 | `ids` | Explicit id list, bypasses bbox |
 | `cursor` | Continuation from a previous partial response |
 | `minArea` | Overrides the zoom-derived cull threshold in m². `0` suppresses the cull entirely, for export and attribute queries. Not sent for a viewport read |
+| `classify` | An attribute to report per feature, as a one-byte class index and a dictionary, so a layer can be drawn as sublayers (section 10). Must appear in the layer's `attr_schema`, which is what keeps an arbitrary JSON path out of the query. Measured on the land-use layer at zoom 12: 15.33 MB without it, 15.49 MB with, 41.39 MB with `fields=1` |
 
 #### Binary encoding
 
 The default above 2,000 features. A header plus buffers mapping directly onto the renderer's typed arrays:
 
 ```
- 0  char[4]   magic 'GIS1'
- 4  uint16    version
- 6  uint16    flags   bit 0 = an attribute tail follows
-                      bit 1 = coordinates are quantised
- 8  uint32    featureCount
-12  uint32    ringCount
-16  uint32    vertexCount
-20  uint32    propertiesLength
-24  uint32[8] section offsets, in the order below
-56  uint32    totalLength
-60  uint32    coordExponent, 0 when coordinates are float64
-64  float64   coords, interleaved longitude and latitude
-              ...or uint32, when the quantisation flag is set
+ 0  char[4]    magic 'GIS1'
+ 4  uint16     version, currently 3
+ 6  uint16     flags   bit 0 = an attribute tail follows
+                       bit 1 = coordinates are quantised
+                       bit 2 = a class index and dictionary follow
+ 8  uint32     featureCount
+12  uint32     ringCount
+16  uint32     vertexCount
+20  uint32     propertiesLength
+24  uint32[10] section offsets, in the order below
+64  uint32     totalLength
+68  uint32     coordExponent, 0 when coordinates are float64
+72  uint32     classDictLength
+76  uint32     reserved
+80  float64    coords, interleaved longitude and latitude
+               ...or uint32, when the quantisation flag is set
     float64   bbox, 4 per feature
     float64   ids
     float64   area in m²
     uint32    ringStarts, ringCount + 1 with a sentinel
     uint32    featStarts, featureCount + 1 with a sentinel
     uint8     types   1 point, 2 line, 3 polygon, 4 circle
+    uint8     classes, one per feature, only when classify= was sent
+    char[]    class dictionary, JSON array of strings, with the same flag
     char[]    attribute tail, JSON, only when fields= was sent
 ```
+
+**The class dictionary is per document and its index is local to that document.** A streamed response is a sequence of complete documents, so no single dictionary can span them — each header is written before the next chunk has been read. Each frame therefore names the values it used and numbers them from zero, and the client renumbers them into the one dictionary it keeps per layer. The client holds raw values rather than resolved classes, which is what makes recolouring, hiding or re-splitting a category a repaint rather than a re-read.
 
 All float sections are 8-byte aligned so `new Float64Array(buf, offset, len)` succeeds without copying. Circles carry their centre in `coords` and their radius in the attribute tail.
 
@@ -905,11 +917,13 @@ Batches cap at 500 commands (`capabilities.maxBatch`); a larger batch is rejecte
 | `layer.delete` | `id`, `version` | **Layer.** Soft delete, restorable 30 days. Owning map only |
 | `layer.restore` | `id` | **Layer.** Within the 30-day window. **Administrators only** |
 | `layer.setLocked` | `id`, `version`, `locked` | **Layer.** Blocks editing everywhere |
-| `layer.setStyle` | `id`, `version`, `style` | **Layer.** Whole style object replaced, classification and labels included |
+| `layer.setStyle` | `id`, `version`, `style` | **Layer.** Whole style object replaced, labels included. **Not classification** — see `layer.setClassification` below |
 | `layer.reorder` | `id`, `version`, `parentId`, `sortKey` | **Placement.** One row written, no sibling renumber |
 | `layer.setVisible` | `id`, `version`, `visible` | **Placement.** |
 | `layer.setOpacity` | `id`, `version`, `opacity` | **Placement.** 0 to 1; multiplies down the tree |
 | `layer.setZoomRange` | `id`, `version`, `minZoom`, `maxZoom` | **Placement.** |
+| `layer.setClassification` | `id`, `version`, `classification` | **Placement.** Splits the layer into sublayers by one attribute, or clears the split with `null`. Whole replacement |
+| `layer.setClassState` | `id`, `version`, `value`, and any of `label`, `visible`, `opacity`, `style` | **Placement.** One sublayer's row controls. A patch of one class, addressed by value; `other` names the fallback bucket |
 | `layer.group` | `tempId`, `placementIds`, `parentId`, `sortKey`, `name` | **Placement.** Wraps nodes in a new group |
 | `layer.ungroup` | `id`, `version` | **Placement.** Dissolves a group, reparenting children |
 | `layer.share` | `layerId`, `mapId`, `access`, `parentId`, `sortKey` | Places an existing layer in a map. Copies nothing. `access: edit` is refused unless the user already holds edit rights on that layer |
@@ -934,7 +948,7 @@ Batches cap at 500 commands (`capabilities.maxBatch`); a larger batch is rejecte
 Two kinds of client-side editing collapse into single ops here, deliberately:
 
 - **Geometry editing.** Moving, inserting or deleting a vertex, transforming a feature and applying a boolean operation are distinct gestures with distinct undo entries, but each produces one `feature.update` carrying the resulting geometry. The server has no reason to know which gesture produced it, and giving it five near-identical ops would mean five validation paths.
-- **Styling.** Classification and label configuration live inside the style object, so both are written by `layer.setStyle`, which replaces it whole.
+- **Styling.** Label configuration lives inside the style object, so it is written by `layer.setStyle`, which replaces it whole. **Classification does not**, and did until S5d: it is placement state, written by `layer.setClassification`, for the reasons section 6 gives.
 
 Geometry is WKB base64 by default, GeoJSON when `geom=geojson` is sent in the content type. WKB is preferred: smaller, and it removes a second place where coordinate precision could be silently truncated.
 
@@ -1403,12 +1417,22 @@ Rasterisation needs Imagick with SVG support in the deployment. Where it is unav
 | Mode | Configuration |
 | --- | --- |
 | Single | One style for all features |
-| Categorized | Field + one style per distinct value, with an "other" fallback |
+| Categorized | Field + one style per distinct value, with an "other" fallback. **Built in S5d**, where each value also becomes a toggleable sublayer row in the tree |
 | Graduated | Numeric field, class count, method: equal interval, quantile, natural breaks (Jenks), standard deviation, manual |
 | Rule-based | Ordered list of filter expressions, first match wins |
 | Heatmap | Point density, radius, gradient, weight field |
 
 Classification runs client-side on the loaded feature set, with a warning when the visible set is a subset of the layer. Colour ramps include ColorBrewer sequential, diverging and qualitative sets, with a colour-blind-safe filter in the picker.
+
+### Sublayers
+
+A categorized layer shows one row per class beneath it in the layer tree, each with its own checkbox, opacity and fill and line colours. The classification lives on the **placement** (section 6), so it is offered wherever visibility and opacity are — including on a locked, shared layer, which is the case that motivated it.
+
+**The values are discovered, not assumed.** `GET /layers/{layer}/values` returns the distinct values of one attribute, bounded at 256. The bound is what makes it terminate: there is no index inside `properties` and there cannot be a useful one, so this is a scan. Measured on the 2.2-million-row land-use layer, `gunatanah_kategori` takes 1.8 s — 13 values, plus two features carrying none; the national taxonomy has 14 and the last had not yet been imported, which is exactly why the list is discovered rather than configured — the whole scan, because a handful of values means no early exit, while `upi` (672,132 values, a unique key) answers in **0.00 s**, because the 257th distinct value arrives within the first few hundred rows and the scan stops there. The pathological field is the cheap one. No counts are returned: a `COUNT(*)` needs `GROUP BY`, `GROUP BY` cannot stop early, and grouping the cadastre by `upi` exhausts a 256 MB limit.
+
+**A class's opacity is not a second alpha.** Opacity has always multiplied down the tree — a group at 0.5 holding a layer at 0.5 paints at 0.25 — and a class is one more level of that same chain, the only control over its own level. What is forbidden is `style.fillOpacity`: a *second* control over one object, which is a different thing that happens to look the same.
+
+**Splitting a layer costs a repaint, not a read.** Each feature carries a one-byte class index (section 7) and the client holds the raw value, so hiding a category, recolouring one or changing the opacity of one is a repaint of paths already built. Only changing the *field* needs the server again, because the class column is what the read computed. Measured: a sublayer toggle to painted is 15–22 ms and costs zero feature reads.
 
 Graduated and categorized styles resolve to a small number of distinct paint states, which is what keeps canvas batching effective. A rule-based style that produces more than 64 distinct paint states raises a performance warning.
 
@@ -1964,7 +1988,9 @@ What belongs here is the client-side shape that section 7 does not describe: **g
 | `moveVertex`, `insertVertex`, `deleteVertex` | `feature.update` with the resulting geometry |
 | `transform` (move, rotate, scale) | `feature.update`, one per affected feature |
 | `booleanOp` (buffer, union, difference, …) | `feature.update`, or `feature.create` plus `feature.delete` where the operation replaces |
-| `setClassification`, `setLabels` | `layer.setStyle`, which replaces the style object whole |
+| `setLabels` | `layer.setStyle`, which replaces the style object whole |
+| `setClassification` | `layer.setClassification` — a PLACEMENT command, because a locked layer refuses a style write and every imported layer is locked (section 6) |
+| A sublayer's checkbox, opacity or colour | `layer.setClassState`, one class at a time so two people dimming two categories do not collide |
 
 The undo stack holds the gesture; the queue sends the op. That is the only place the two vocabularies differ, and it differs in granularity rather than in meaning.
 
@@ -2144,6 +2170,8 @@ Budgets are therefore measured on the development machine and compared against t
 | Vertex drag frame time | < 8 ms |
 | Overlay corner drag frame time | < 8 ms, including the homography solve |
 | Layer visibility toggle to painted | < 50 ms |
+| Sublayer visibility toggle to painted | < 50 ms, and zero feature reads |
+| Distinct paint states per layer | ≤ 64, warned above |
 | Imported layer to first render, zoom 12 | < 3 s |
 | Attribute table sort, 10,000 rows | < 200 ms |
 | Tree expand, 2,000 nodes | < 50 ms |

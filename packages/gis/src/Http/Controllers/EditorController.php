@@ -186,6 +186,18 @@ class EditorController extends Controller
             'fillColour' => __('Fill'),
             'lineColour' => __('Line'),
             'toggleLayers' => __('Show or hide the layers panel'),
+
+            // Sublayers: splitting a layer by one of its attributes.
+            'split' => __('Split into sublayers'),
+            'resplit' => __('Change how this is split'),
+            'stopSplitting' => __('Stop splitting this layer'),
+            'sublayerActions' => __('Sublayer actions'),
+            'otherClass' => __('Everything else'),
+            'noAttributes' => __('This layer has no attributes to split by.'),
+            'noValues' => __('No features carry a value for that attribute.'),
+            'tooManyValues' => __('That attribute has more than :max different values, which is too many to split by.'),
+            'valuesFailed' => __('The values could not be read. Try again.'),
+            'close' => __('Close'),
         ];
     }
 }

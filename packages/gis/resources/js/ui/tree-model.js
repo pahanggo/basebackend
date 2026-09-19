@@ -190,7 +190,12 @@ export function groupCheckState(state, placement, index = null) {
  * the tree filter an endpoint would give two controls the same work
  * (specification section 8).
  *
- * @returns {Array<{placement: Object, layer: Object, depth: number, hasChildren: boolean, matched: boolean}>}
+ * A classified layer also emits one row per class, below it. Those rows are a
+ * third kind, after group and leaf: they are not placements, nothing may be
+ * dropped on them and they cannot be dragged. `kind` tells them apart, and
+ * every consumer that reaches for `row.layer.name` must check it.
+ *
+ * @returns {Array<{kind: string, placement: Object, layer: Object, depth: number, hasChildren: boolean, matched: boolean}>}
  */
 export function flatten(state, { collapsed = new Set(), filter = '', index = null } = {}) {
     const idx = index ?? buildIndex(state);
@@ -212,17 +217,39 @@ export function flatten(state, { collapsed = new Set(), filter = '', index = nul
 
             const children = childrenOf(state, placement.id, idx);
 
+            const classes = classRowsOf(placement);
+
             rows.push({
+                kind: 'node',
                 placement,
                 layer,
                 depth,
-                hasChildren: children.length > 0,
+                hasChildren: children.length > 0 || classes.length > 0,
                 matched: needle !== '' && layer.name.toLowerCase().includes(needle),
             });
 
+            const open = !collapsed.has(placement.id) || keep;
+
+            // Sublayers sit directly under their layer and are always leaves.
+            if (open && classes.length > 0) {
+                for (const entry of classes) {
+                    rows.push({
+                        kind: 'class',
+                        placement,
+                        layer,
+                        depth: depth + 1,
+                        hasChildren: false,
+                        matched: false,
+                        value: entry.value,
+                        label: entry.label || entry.value,
+                        classEntry: entry,
+                    });
+                }
+            }
+
             // A filter expands what it matches into: hiding a match inside a
             // collapsed group would report a hit the user cannot reach.
-            if (children.length > 0 && (!collapsed.has(placement.id) || keep)) {
+            if (children.length > 0 && open) {
                 walk(placement.id, depth + 1);
             }
         }
@@ -231,6 +258,31 @@ export function flatten(state, { collapsed = new Set(), filter = '', index = nul
     walk(null, 0);
 
     return rows;
+}
+
+/**
+ * A placement's sublayer rows, in the classification's own order.
+ *
+ * The "other" bucket is appended only once something has been classified, and
+ * it is a row like any other so that the features no class claims can be dimmed
+ * or hidden rather than being invisible state.
+ */
+export function classRowsOf(placement) {
+    const classification = placement?.classification;
+
+    if (!classification || !Array.isArray(classification.classes) || classification.classes.length === 0) {
+        return [];
+    }
+
+    return [
+        ...classification.classes,
+        { ...(classification.other ?? {}), value: 'other', isOther: true },
+    ];
+}
+
+/** Is this layer split into sublayers in this map? */
+export function isClassified(placement) {
+    return classRowsOf(placement).length > 0;
 }
 
 function matchingWithAncestors(state, needle) {

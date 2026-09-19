@@ -56,6 +56,7 @@ function ensureWorker() {
                 ? viewGis1(event.data.buffer, event.data.layout, event.data.coordsBuffer)
                 : fromTransfer(event.data),
             properties: event.data.properties || null,
+            classDict: event.data.classDict || null,
             cull: event.data.cull,
         });
     };
@@ -95,6 +96,9 @@ export function parseInWorker(buffer, { binary = false } = {}) {
  *        caller already has, so a pan asks only for what is new
  * @param {FeatureAccumulator|null} options.into append into this rather than
  *        starting a fresh set, which is what makes a pan additive
+ * @param {string|null} options.classify an attribute to report per feature, so
+ *        a layer can be split into sublayers. One byte each, against the whole
+ *        attribute document's two thirds of the payload
  */
 export async function fetchFeatures({
     apiBase,
@@ -107,6 +111,7 @@ export async function fetchFeatures({
     onChunk = null,
     held = null,
     into = null,
+    classify = null,
 }) {
     const params = new URLSearchParams({
         bbox: bbox.map((n) => n.toFixed(6)).join(','),
@@ -119,6 +124,10 @@ export async function fetchFeatures({
 
     if (held !== null) {
         params.set('held', held.map((n) => n.toFixed(6)).join(','));
+    }
+
+    if (classify) {
+        params.set('classify', classify);
     }
 
     // Content negotiation, not a `?format=` parameter: the two encodings are
@@ -176,7 +185,7 @@ async function readStream(response, started, onChunk, into = null) {
         parseMs += performance.now() - parseStarted;
         chunks++;
 
-        const range = accumulator.append(parsed.geometry, parsed.properties);
+        const range = accumulator.append(parsed.geometry, parsed.properties, parsed.classDict);
 
         if (firstChunkMs === null) {
             firstChunkMs = performance.now() - started;
@@ -186,6 +195,7 @@ async function readStream(response, started, onChunk, into = null) {
             onChunk({
                 geometry: accumulator.geometry,
                 properties: accumulator.properties,
+                dictionary: accumulator.dictionary,
                 first: chunks === 1,
                 ...range,
             });

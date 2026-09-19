@@ -15,26 +15,42 @@ use RuntimeException;
  * Layout. All integers little-endian, every float section 8-byte aligned so a
  * typed array can view it without copying:
  *
- *     0   char[4]   magic 'GIS1'
- *     4   uint16    version
- *     6   uint16    flags, bit 0 = an attribute tail follows
- *                          bit 1 = coordinates are quantised (see below)
- *     8   uint32    featureCount
- *     12  uint32    ringCount
- *     16  uint32    vertexCount
- *     20  uint32    propertiesLength
- *     24  uint32[8] section offsets, in the order below
- *     56  uint32    totalLength
- *     60  uint32    coordExponent, 0 when coordinates are float64
- *     64  float64   coords, interleaved longitude and latitude
- *         uint32    ...or quantised, when bit 1 is set
- *         float64   bbox, 4 per feature
- *         float64   ids
- *         float64   area in square metres
- *         uint32    ringStarts, ringCount + 1 with a sentinel
- *         uint32    featStarts, featureCount + 1 with a sentinel
- *         uint8     types
- *         char[]    attribute tail, JSON, only when asked for
+ *     0    char[4]    magic 'GIS1'
+ *     4    uint16     version
+ *     6    uint16     flags, bit 0 = an attribute tail follows
+ *                            bit 1 = coordinates are quantised (see below)
+ *                            bit 2 = a class index and dictionary follow
+ *     8    uint32     featureCount
+ *     12   uint32     ringCount
+ *     16   uint32     vertexCount
+ *     20   uint32     propertiesLength
+ *     24   uint32[10] section offsets, in the order below
+ *     64   uint32     totalLength
+ *     68   uint32     coordExponent, 0 when coordinates are float64
+ *     72   uint32     classDictLength
+ *     76   uint32     reserved
+ *     80   float64    coords, interleaved longitude and latitude
+ *          uint32     ...or quantised, when bit 1 is set
+ *          float64    bbox, 4 per feature
+ *          float64    ids
+ *          float64    area in square metres
+ *          uint32     ringStarts, ringCount + 1 with a sentinel
+ *          uint32     featStarts, featureCount + 1 with a sentinel
+ *          uint8      types
+ *          uint8      classes, one per feature, only when bit 2 is set
+ *          char[]     class dictionary, JSON array of strings, with bit 2
+ *          char[]     attribute tail, JSON, only when asked for
+ *
+ * **The class dictionary is per document, and the index is local to it.** A
+ * streamed response is a sequence of complete documents, so there is no point
+ * at which a dictionary spanning all of them could be written — the header is
+ * built before the next chunk has been read. Each frame therefore names the
+ * values it actually used and numbers them from zero, and the client maps
+ * those strings onto the dictionary it accumulates as it appends.
+ *
+ * That indirection is not overhead, it is the feature: the client holds raw
+ * values rather than resolved classes, so re-colouring, hiding or re-splitting
+ * a category costs a repaint and never a re-read.
  *
  * Coordinates are copied out of MySQL's WKB **as bytes**. WKB stores each
  * ordinate as a little-endian double, which is exactly what a `Float64Array`
@@ -62,11 +78,12 @@ final class BinaryFeatureEncoder
     public const MAGIC = 'GIS1';
 
     /**
-     * Bumped for quantisation. A version 1 reader must fail on a version 2
-     * document rather than read a `uint32` coordinate section as float64,
-     * which would produce coordinates rather than an error.
+     * 2 added quantisation, 3 the class sections. A reader must fail on a
+     * version it does not know rather than read a `uint32` coordinate section
+     * as float64 or a shifted header as offsets — both of which would produce
+     * plausible coordinates rather than an error.
      */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /** An attribute tail follows the index arrays. */
     public const FLAG_PROPERTIES = 1;
@@ -74,12 +91,15 @@ final class BinaryFeatureEncoder
     /** Coordinates are biased `uint32` at `coordExponent`, not float64. */
     public const FLAG_QUANTISED = 2;
 
+    /** A per-feature class index and the dictionary it indexes follow. */
+    public const FLAG_CLASSES = 4;
+
     /** Added before scaling, so every ordinate is non-negative. */
     public const LNG_BIAS = 180;
 
     public const LAT_BIAS = 90;
 
-    public const HEADER_BYTES = 64;
+    public const HEADER_BYTES = 80;
 
     public const POINT = 1;
 
@@ -96,6 +116,17 @@ final class BinaryFeatureEncoder
     private array $featStarts = [];
 
     private string $types = '';
+
+    /** One `uint8` per feature, indexing `$classDict`. */
+    private string $classes = '';
+
+    /** @var array<int, string> the distinct class values this document used */
+    private array $classDict = [];
+
+    /** @var array<string, int> value to its position in `$classDict` */
+    private array $classLookup = [];
+
+    private bool $classified = false;
 
     private string $bbox = '';
 
@@ -123,7 +154,7 @@ final class BinaryFeatureEncoder
      *                        is what `GeometryCast::selectBinary()` asks for
      * @param  array{0: float, 1: float, 2: float, 3: float}  $bounds  minx, miny, maxx, maxy
      */
-    public function add(string $wkb, float $id, float $areaM2, array $bounds, mixed $attributes = null): void
+    public function add(string $wkb, float $id, float $areaM2, array $bounds, mixed $attributes = null, ?string $class = null): void
     {
         $this->featStarts[] = $this->rings;
         $this->types .= chr($this->walk($wkb, 0));
@@ -136,12 +167,58 @@ final class BinaryFeatureEncoder
             $this->properties[] = $attributes;
         }
 
+        if ($this->classified) {
+            $this->classes .= chr($this->classSlot($class));
+        }
+
         $this->features++;
     }
 
     public function count(): int
     {
         return $this->features;
+    }
+
+    /**
+     * Emit a class index per feature, indexing a dictionary this document
+     * carries.
+     *
+     * Called before the first `add()`. It is a mode rather than an inference
+     * from the values, because a viewport whose features all share one category
+     * must still say which, and a classified layer with nothing in view must
+     * still produce a document the client reads the same way.
+     */
+    public function classify(): void
+    {
+        $this->classified = true;
+    }
+
+    /**
+     * This value's place in the document's dictionary, adding it if new.
+     *
+     * Null and the empty string share slot `OTHER`, because both mean the same
+     * thing to a reader: a feature the classification does not name. The cap
+     * exists because the index is a byte — the dictionary cannot outgrow it,
+     * and a field with more than 255 values in one viewport was refused as a
+     * classification long before it reached here.
+     */
+    private function classSlot(?string $value): int
+    {
+        if ($value === null || $value === '') {
+            return \Gis\Support\Classification::OTHER;
+        }
+
+        if (isset($this->classLookup[$value])) {
+            return $this->classLookup[$value];
+        }
+
+        if (count($this->classDict) >= \Gis\Support\Classification::OTHER) {
+            return \Gis\Support\Classification::OTHER;
+        }
+
+        $this->classDict[] = $value;
+
+        return $this->classLookup[$value] = count($this->classDict) - 1;
     }
 
     /**
@@ -253,6 +330,10 @@ final class BinaryFeatureEncoder
         $hasProperties = $this->properties !== [];
         $tail = $hasProperties ? json_encode($this->properties, JSON_THROW_ON_ERROR) : '';
 
+        $dictionary = $this->classified
+            ? json_encode($this->classDict, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
+            : '';
+
         $coords = $this->coordExponent === null
             ? $this->coords
             : $this->quantise($this->coords, $this->coordExponent);
@@ -275,21 +356,26 @@ final class BinaryFeatureEncoder
         $offset += strlen($featStarts);
         $typesOffset = $offset;
         $offset += strlen($this->types);
+        $classesOffset = $offset;
+        $offset += strlen($this->classes);
 
-        // The tail is the only section with no alignment requirement, so it
-        // absorbs the padding rather than imposing it.
+        // The three text sections have no alignment requirement, so they sit
+        // last and absorb the padding rather than imposing it.
+        $classDictOffset = $offset;
+        $offset += strlen($dictionary);
         $propertiesOffset = $offset;
         $total = $offset + strlen($tail);
 
         $header = self::MAGIC
             .pack('v', self::VERSION)
             .pack('v', ($hasProperties ? self::FLAG_PROPERTIES : 0)
-                | ($this->coordExponent === null ? 0 : self::FLAG_QUANTISED))
+                | ($this->coordExponent === null ? 0 : self::FLAG_QUANTISED)
+                | ($this->classified ? self::FLAG_CLASSES : 0))
             .pack('V', $this->features)
             .pack('V', $this->rings)
             .pack('V', $this->vertices)
             .pack('V', strlen($tail))
-            .pack('V8',
+            .pack('V10',
                 $coordsOffset,
                 $bboxOffset,
                 $idsOffset,
@@ -297,10 +383,14 @@ final class BinaryFeatureEncoder
                 $ringStartsOffset,
                 $featStartsOffset,
                 $typesOffset,
+                $classesOffset,
+                $classDictOffset,
                 $propertiesOffset,
             )
             .pack('V', $total)
-            .pack('V', $this->coordExponent ?? 0);
+            .pack('V', $this->coordExponent ?? 0)
+            .pack('V', strlen($dictionary))
+            .pack('V', 0);
 
         if (strlen($header) !== self::HEADER_BYTES) {
             throw new RuntimeException('GIS1 header is '.strlen($header).' bytes, expected '.self::HEADER_BYTES.'.');
@@ -314,6 +404,8 @@ final class BinaryFeatureEncoder
             .$ringStarts
             .$featStarts
             .$this->types
+            .$this->classes
+            .$dictionary
             .$tail;
     }
 

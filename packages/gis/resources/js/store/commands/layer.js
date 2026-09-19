@@ -354,3 +354,115 @@ export function layerCreate({ tempId, name, kind = 'vector', style = {}, parentI
         },
     };
 }
+
+/**
+ * PLACEMENT. Split this layer into sublayers, or stop.
+ *
+ * **A placement command, not a layer one, and the reason is the data.** Style
+ * is layer-level and `layer.setStyle` refuses a locked layer — and every
+ * imported layer is locked, so a classification kept in the style could never
+ * be applied to the only layers that have anything to classify. It is also the
+ * right shape: how a map reads a shared layer is that map's business, the same
+ * as visibility and opacity.
+ *
+ * Whole replacement, like `layer.setStyle`: a document naming a field with no
+ * classes paints nothing. One class's colours go through `layerSetClassState`.
+ */
+export function layerSetClassification({ id, version, classification, previous = null }) {
+    return {
+        op: 'layer.setClassification',
+        topics: ['layers', 'tree', `placements:${id}`, 'style'],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const was = previous ?? placement?.classification ?? null;
+
+            if (placement) {
+                placement.classification = classification;
+                placement.version += 1;
+            }
+
+            return layerSetClassification({
+                id,
+                version: (placement?.version ?? version) + 1,
+                classification: was,
+                previous: classification,
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.setClassification', id, version, classification };
+        },
+    };
+}
+
+/**
+ * PLACEMENT. One sublayer's checkbox, slider or colours.
+ *
+ * A patch of one class rather than a rewrite of the document, so dimming one
+ * category does not collide with somebody hiding another.
+ *
+ * Addressed by `value`, never by position: reordering the classes would
+ * otherwise send a command in flight to whichever category moved into its slot.
+ */
+export function layerSetClassState({ id, version, value, state: patch, previous = null }) {
+    return {
+        op: 'layer.setClassState',
+        topics: ['layers', 'tree', `placements:${id}`, 'style'],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const current = classAt(placement?.classification, value);
+            const was = previous ?? pick(current, Object.keys(patch));
+
+            if (placement && current) {
+                Object.assign(current, patch);
+                placement.version += 1;
+            }
+
+            return layerSetClassState({
+                id,
+                version: (placement?.version ?? version) + 1,
+                value,
+                state: was,
+                previous: pick(current, Object.keys(patch)),
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.setClassState', id, version, value, ...patch };
+        },
+    };
+}
+
+/**
+ * One class of a classification, by value.
+ *
+ * `other` names the bucket for values no class claims. A class whose own value
+ * is the string `other` is found first, because the list is searched before the
+ * bucket — the same order the server uses.
+ */
+export function classAt(classification, value) {
+    if (!classification) {
+        return null;
+    }
+
+    const found = (classification.classes ?? []).find((entry) => entry.value === value);
+
+    if (found) {
+        return found;
+    }
+
+    return value === 'other' ? (classification.other ??= {}) : null;
+}
+
+/** The named keys of an object, for recording what a patch is about to cover. */
+function pick(source, keys) {
+    const out = {};
+
+    for (const key of keys) {
+        out[key] = source ? source[key] : undefined;
+    }
+
+    return out;
+}

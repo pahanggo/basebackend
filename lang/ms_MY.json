@@ -139,5 +139,14 @@
     "Leave the map and go back to the dashboard?": "Keluar dari peta dan kembali ke papan pemuka?",
     "Some changes have not been saved yet. Leaving now would lose them.": "Ada perubahan yang belum disimpan. Keluar sekarang akan menghilangkannya.",
     "Rename this map": "Namakan semula peta ini",
-    "The map could not be renamed.": "Peta tidak dapat dinamakan semula."
+    "The map could not be renamed.": "Peta tidak dapat dinamakan semula.",
+    "Split into sublayers": "Pecahkan kepada sublapisan",
+    "Change how this is split": "Ubah cara pecahan",
+    "Stop splitting this layer": "Berhenti memecahkan lapisan ini",
+    "Sublayer actions": "Tindakan sublapisan",
+    "Everything else": "Lain-lain",
+    "This layer has no attributes to split by.": "Lapisan ini tiada atribut untuk dipecahkan.",
+    "No features carry a value for that attribute.": "Tiada fitur mempunyai nilai bagi atribut itu.",
+    "That attribute has more than :max different values, which is too many to split by.": "Atribut itu mempunyai lebih daripada :max nilai berbeza, terlalu banyak untuk dipecahkan.",
+    "The values could not be read. Try again.": "Nilai tidak dapat dibaca. Cuba lagi."
 }

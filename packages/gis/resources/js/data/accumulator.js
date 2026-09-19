@@ -15,6 +15,15 @@
  * how much is real — the alternative is a copy of everything on every frame.
  */
 
+/**
+ * The class index meaning "not one of the dictionary's values".
+ *
+ * Mirrors `Gis\Support\Classification::OTHER`. A byte per feature is what
+ * makes the class free on the wire, and this is the one value of it that is
+ * not a position.
+ */
+export const OTHER = 255;
+
 /** @returns {Float64Array|Uint32Array|Uint8Array} the same array, or a bigger one holding its contents */
 function grown(array, needed) {
     if (array.length >= needed) {
@@ -47,8 +56,54 @@ export class FeatureAccumulator {
         };
 
         this.properties = null;
+
+        /**
+         * The class values held, and where each one sits.
+         *
+         * `geometry.classes` indexes THIS array, not the wire's. Each streamed
+         * frame numbers its own dictionary from zero — it has to, because a
+         * frame is encoded before the next one has been read — so every append
+         * renumbers the frame's indices into this one, which is stable for the
+         * life of the accumulator.
+         *
+         * Raw values, never resolved classes. What a value paints as is a
+         * question the classification answers, and it changes every time
+         * someone picks a colour; storing the answer here would mean a re-read
+         * per recolour. Storing the value means a repaint.
+         */
+        this.dictionary = [];
+        this.dictionaryIndex = new Map();
+
         this.vertices = 0;
         this.rings = 0;
+    }
+
+    /**
+     * A frame's class indices, renumbered into this accumulator's dictionary.
+     *
+     * `OTHER` passes through untouched: it is not a dictionary position, it is
+     * the absence of one.
+     */
+    mapClasses(classDict) {
+        const mapped = new Uint8Array(classDict.length);
+
+        for (let i = 0; i < classDict.length; i++) {
+            const value = classDict[i];
+            let at = this.dictionaryIndex.get(value);
+
+            if (at === undefined) {
+                at = this.dictionary.length >= OTHER ? OTHER : this.dictionary.length;
+
+                if (at !== OTHER) {
+                    this.dictionary.push(value);
+                    this.dictionaryIndex.set(value, at);
+                }
+            }
+
+            mapped[i] = at;
+        }
+
+        return mapped;
     }
 
     /**
@@ -62,9 +117,10 @@ export class FeatureAccumulator {
      *
      * @param {Object} chunk decoded geometry for up to `stream_chunk` features
      * @param {Array<Object>|null} properties the chunk's attribute tail
+     * @param {Array<string>|null} classDict the chunk's class dictionary
      * @returns {{from: number, to: number}} the range of feature indices added
      */
-    append(chunk, properties = null) {
+    append(chunk, properties = null, classDict = null) {
         const g = this.geometry;
         const from = g.count;
         const to = from + chunk.count;
@@ -83,6 +139,18 @@ export class FeatureAccumulator {
 
         g.types = grown(g.types, to);
         g.types.set(chunk.types.subarray(0, chunk.count), from);
+
+        if (classDict !== null && chunk.classes) {
+            const mapped = this.mapClasses(classDict);
+
+            g.classes = grown(g.classes ?? new Uint8Array(0), to);
+
+            for (let f = 0; f < chunk.count; f++) {
+                const local = chunk.classes[f];
+
+                g.classes[from + f] = local === OTHER ? OTHER : mapped[local];
+            }
+        }
 
         const chunkRings = chunk.featStarts[chunk.count];
 
@@ -162,6 +230,15 @@ export class FeatureAccumulator {
             types: new Uint8Array(survivors.length),
         };
 
+        // Every array here is rebuilt, so one that is forgotten does not shrink
+        // — it keeps its old contents at their old positions and silently means
+        // something else from the first eviction onwards. That is why the class
+        // index lives inside `geometry` beside `types` rather than alongside it
+        // as `properties` does.
+        if (g.classes) {
+            next.classes = new Uint8Array(survivors.length);
+        }
+
         let ringOut = 0;
         let vertexOut = 0;
 
@@ -176,6 +253,10 @@ export class FeatureAccumulator {
             next.ids[i] = g.ids[f];
             next.area[i] = g.area[f];
             next.types[i] = g.types[f];
+
+            if (next.classes) {
+                next.classes[i] = g.classes[f];
+            }
             next.bbox.set(g.bbox.subarray(f * 4, f * 4 + 4), i * 4);
 
             for (let r = firstRing; r < lastRing; r++) {

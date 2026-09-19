@@ -81,6 +81,10 @@ class MapBootstrap
                 'opacity' => $placement->opacity,
                 'minZoom' => $placement->min_zoom,
                 'maxZoom' => $placement->max_zoom,
+                // How this map splits the layer into sublayers, or null. On the
+                // placement rather than in `style` because a style write
+                // refuses a locked layer, and every imported layer is locked.
+                'classification' => $placement->classification,
                 'locked' => $layer->locked,
                 'access' => $placement->access,
                 'shared' => (int) $shareCounts->get($layer->id, 1) > 1,

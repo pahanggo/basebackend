@@ -760,3 +760,107 @@ hr {
     font-size: 15px;
     font-weight: 600;
 }
+
+// ---- sublayers ------------------------------------------------------------
+//
+// A sublayer row is one value of the attribute a layer is split by. It sits in
+// the same pooled node as any other row and at the same fixed height — the
+// virtual list measures nothing, so a taller row here would misplace every drop
+// indicator in the tree.
+
+.gis-tree-swatch {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+}
+
+.gis-tree-row.is-class {
+    .gis-tree-name {
+        color: #4a5560;
+    }
+
+    // No drop affordance, because nothing may be dropped here.
+    cursor: default;
+}
+
+.gis-sublayer {
+    position: fixed;
+    z-index: 1060;
+    top: 50%;
+    left: 50%;
+    width: min(320px, calc(100vw - 32px));
+    max-height: min(420px, calc(100vh - 32px));
+    overflow: auto;
+    transform: translate(-50%, -50%);
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.gis-sublayer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e4e7ea;
+    font-size: 13px;
+}
+
+.gis-sublayer-close {
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: #73818f;
+    line-height: 1;
+}
+
+.gis-sublayer-body {
+    padding: 8px 12px 12px;
+}
+
+.gis-sublayer-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.gis-sublayer-field {
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 3px;
+    background: none;
+    font-size: 13px;
+    text-align: left;
+
+    &:hover {
+        background: #f0f3f5;
+    }
+
+    &.is-current {
+        background: #e4e7ea;
+        font-weight: 600;
+    }
+
+    // Counting the distinct values of an attribute is a scan: 1.8 s on the
+    // 2.2-million-row land-use layer. A button that looks unpressed would be
+    // pressed again, and that is a second scan.
+    &.is-busy::after {
+        content: '…';
+        margin-left: 6px;
+    }
+}
+
+.gis-sublayer-note {
+    margin: 8px 0 0;
+    color: #73818f;
+    font-size: 12px;
+}
+
+.gis-sublayer-clear {
+    padding-left: 0;
+    color: #c8372d;
+    font-size: 12px;
+}

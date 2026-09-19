@@ -110,7 +110,7 @@ class CommandContext
     {
         $server = ['updatedAt' => $row->getAttribute('updated_at')?->toIso8601String()];
 
-        foreach (['geom', 'properties', 'name', 'style', 'label'] as $field) {
+        foreach (['geom', 'properties', 'name', 'style', 'label', 'classification'] as $field) {
             if (! array_key_exists($field, $row->getAttributes())) {
                 continue;
             }

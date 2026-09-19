@@ -67,7 +67,9 @@ export function attachTreeDrag(tree) {
 
         const row = tree.rowAt(node);
 
-        if (!row) {
+        // A sublayer is not a placement: it has no sort key, no parent and
+        // nothing to reorder. It rides wherever its layer goes.
+        if (!row || row.kind === 'class') {
             return;
         }
 
@@ -175,6 +177,15 @@ export function attachTreeDrag(tree) {
         }
 
         const row = tree.rows[index];
+
+        // Nothing may be dropped onto a sublayer either — it is not a position
+        // in the tree, so "above", "below" and "into" all mean nothing there.
+        if (!row || row.kind === 'class') {
+            drag.drop = null;
+
+            return;
+        }
+
         const group = isGroup(tree.store.state, row.placement);
         const position = dropPosition(tree.list.fractionAt(clientY), group);
         const resolved = resolveDrop(tree.store.state, drag.placementId, row.placement.id, position);

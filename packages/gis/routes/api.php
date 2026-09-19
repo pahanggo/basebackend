@@ -4,6 +4,7 @@ use Gis\Http\Controllers\Api\CommandController;
 use Gis\Http\Controllers\Api\CommandReplayController;
 use Gis\Http\Controllers\Api\FeatureReadController;
 use Gis\Http\Controllers\Api\LayerLibraryController;
+use Gis\Http\Controllers\Api\LayerValuesController;
 use Gis\Http\Controllers\Api\MapController;
 use Gis\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,9 @@ Route::put('maps/{map}/view', [MapController::class, 'view'])->middleware('throt
 
 Route::get('layers', LayerLibraryController::class)->name('layers.index');
 Route::get('layers/{layer}/features', FeatureReadController::class)->name('layers.features');
+
+// The distinct values of one attribute, for splitting a layer into sublayers.
+Route::get('layers/{layer}/values', LayerValuesController::class)->name('layers.values');
 
 Route::post('maps/{map}/commands', CommandController::class)
     ->middleware('throttle:gis-writes')

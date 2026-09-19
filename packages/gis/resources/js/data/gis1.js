@@ -3,7 +3,7 @@
  *
  * Every array here is a **view** onto the response buffer, not a copy. That is
  * the whole point of the format: a 20,000-feature GeoJSON response costs 151 ms
- * to parse into the same arrays, and this costs the time to read a 64-byte
+ * to parse into the same arrays, and this costs the time to read an 80-byte
  * header.
  *
  * The one pass over the data is the projection: coordinates arrive as longitude
@@ -16,9 +16,10 @@
 import { projectLng, projectLat } from '../map/geometry.js';
 
 const MAGIC = 0x31534947;          // 'GIS1' read as a little-endian uint32
-const VERSION = 2;
+const VERSION = 3;
 const FLAG_PROPERTIES = 1;
 const FLAG_QUANTISED = 2;
+const FLAG_CLASSES = 4;
 const LNG_BIAS = 180;
 const LAT_BIAS = 90;
 
@@ -85,8 +86,11 @@ export function decodeGis1(buffer) {
     const ringStartsOffset = view.getUint32(40, true);
     const featStartsOffset = view.getUint32(44, true);
     const typesOffset = view.getUint32(48, true);
-    const propertiesOffset = view.getUint32(52, true);
-    const coordExponent = view.getUint32(60, true);
+    const classesOffset = view.getUint32(52, true);
+    const classDictOffset = view.getUint32(56, true);
+    const propertiesOffset = view.getUint32(60, true);
+    const coordExponent = view.getUint32(68, true);
+    const classDictLength = view.getUint32(72, true);
 
     const quantised = (flags & FLAG_QUANTISED) === FLAG_QUANTISED;
     const coords = quantised
@@ -119,6 +123,20 @@ export function decodeGis1(buffer) {
         types: new Uint8Array(buffer, typesOffset, count),
     };
 
+    // The class index is local to THIS document, because a streamed response is
+    // a sequence of documents and no one of them can see the others. The
+    // dictionary that goes with it is what lets the accumulator renumber each
+    // frame into the one dictionary it keeps for the layer.
+    const classified = (flags & FLAG_CLASSES) === FLAG_CLASSES;
+
+    if (classified) {
+        geometry.classes = new Uint8Array(buffer, classesOffset, count);
+    }
+
+    const classDict = classified && classDictLength > 0
+        ? JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, classDictOffset, classDictLength)))
+        : (classified ? [] : null);
+
     const layout = {
         count,
         ringCount,
@@ -131,13 +149,15 @@ export function decodeGis1(buffer) {
         ringStartsOffset,
         featStartsOffset,
         typesOffset,
+        classesOffset,
+        classified,
     };
 
     const properties = (flags & FLAG_PROPERTIES) === FLAG_PROPERTIES && propertiesLength > 0
         ? JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, propertiesOffset, propertiesLength)))
         : null;
 
-    return { geometry, properties, layout };
+    return { geometry, properties, classDict, layout };
 }
 
 /**
@@ -164,5 +184,8 @@ export function viewGis1(buffer, layout, coordsBuffer = null) {
         ringStarts: new Uint32Array(buffer, layout.ringStartsOffset, layout.ringCount + 1),
         featStarts: new Uint32Array(buffer, layout.featStartsOffset, layout.count + 1),
         types: new Uint8Array(buffer, layout.typesOffset, layout.count),
+        ...(layout.classified
+            ? { classes: new Uint8Array(buffer, layout.classesOffset, layout.count) }
+            : {}),
     };
 }

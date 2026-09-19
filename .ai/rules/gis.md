@@ -258,3 +258,21 @@ Settled in S5b, after three performance bugs that all looked like UI bugs.
 - **Layer opacity is `globalAlpha` in the paint loop, not a pane opacity.** A Leaflet pane can only fade a TOP-LEVEL tree node, because every vector layer shares one feature canvas — so a slider on a nested layer did nothing whatsoever. Groups, tiles and image overlays still fade through their pane.
 - **A continuous control repaints on `input` and commits on `change`.** A range input fires `input` per pixel; committing there was a command, a round trip and a full reconcile per pixel. Wind the local value back to where the drag started before committing, or the command's inverse undoes to the preview rather than to where the layer was.
 - **A paused sync queue must be surfaced.** A 409 pauses the queue and it then sends nothing at all — while the optimistic UI keeps showing every later change as applied, until a reload loses them. The only sign used to be a `console.warn`.
+
+## GIS sublayers: classification is placement state, and why
+Settled in S5d. A layer splits into sublayers by one feature property; the document lives on `gis_map_layer.classification`, NOT in `gis_layers.style`.
+
+- **The specification said style until S5d and was wrong.** `layer.setStyle` goes through `MapAccess::mayEditLayer`, which refuses a locked layer — and all nine imported layers are locked. The only layers worth classifying were the only ones that design could not reach. It is also a *reading* of a layer, not a property of one: two maps may split the same shared cadastre by category and by district at once.
+- Two ops, both PLACEMENT-scoped and authorised like `setVisible`/`setOpacity`: `layer.setClassification` (whole replacement, or null to clear) and `layer.setClassState` (patch one class, addressed by VALUE not index, `other` names the fallback bucket).
+- **A class's opacity is not a second alpha.** Opacity already multiplies down the tree; a class is one more level of that chain. `style.fillOpacity` stays forbidden — it was a second control over ONE object. Do not remove one for resembling the other.
+- **Filter on the client, never in the read.** No index exists inside `properties` and `ix_layer_read` has no room; a per-class server filter would scan once per visible class and break the `held`/append pan optimisation. Measured: toggling a class costs 0 feature reads and paints in 15–22 ms.
+- Ship one narrow value per feature, never `properties`. Zoom 12 over Kuantan on the land-use layer: 15.33 MB plain, 15.49 MB with `classify=`, 41.39 MB with `fields=1`.
+
+## GIS traps found in S5d: five failures that raise no error
+All four cost real debugging time and none threw.
+
+- **Anything `replaceGeometry` does not carry over is reset on every pan that reads.** It rebuilds the slot entry from a literal and is called by `evict()`, which runs after every read that dropped a feature. It already had to be taught `order` and `opacity`; S5d added `slotOf` and `paints`, after a classified layer reverted to its base colour the moment the map moved. `tests/js/renderer-slots.test.mjs` guards it — add a case there for any new per-slot field.
+- **`FeatureAccumulator.compact()` rebuilds every typed array and silently drops what it does not know about.** Per-feature data belongs INSIDE `geometry`, beside `types`, never as a sibling array like `properties` — which is still not compacted and would desynchronise on the first eviction.
+- **PHP encodes an empty map as `[]`, and `[].fill` is `Array.prototype.fill`.** So `entry.style?.fill ?? fallback` yields a FUNCTION, the fallback never runs, and assigning it to a CSS property gives an empty string. Read class styles through `classStyle()` only. Any `?.` into a PHP-sourced "object" has this hazard.
+- **A JSON path binds as an ordinary placeholder**: `JSON_EXTRACT(properties, ?)` takes one perfectly well, unlike the geometry constructor's options argument. Never interpolate a property name into SQL. Naming `ST_GeomFromText` etc. in a *comment* trips PackageBoundaryTest's grep — reword the comment, never weaken the pattern.
+- Bounded distinct discovery: `SELECT DISTINCT ... LIMIT n+1` makes the pathological field the FAST one (a unique key stops at the 257th value, 0.00 s) while `GROUP BY` for counts cannot stop early and exhausts 256 MB on the same field.

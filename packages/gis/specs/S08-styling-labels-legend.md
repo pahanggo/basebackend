@@ -22,10 +22,29 @@ opacity is the single transparency control and the renderer applies it as
 two controls for one visible property and a slider that could not reach opaque
 (specification §10).
 
+**Categorized styling shipped in S5d, as sublayers.** A layer splits by one
+attribute, every distinct value becomes a toggleable row in the tree with its
+own opacity and colours, and the renderer batches one path per geometry type
+per class. Do not build a second categorized mode beside it — extend
+`map/style/classify.js` and the `classification` document.
+
+Three things about it constrain this session:
+
+- **The classification is PLACEMENT state, not part of the style object**, which
+  is what the specification used to say. A style write refuses a locked layer
+  and every imported layer is locked, so the only layers worth classifying were
+  the only ones that design could not reach (specification §6). The graduated
+  and rule-based modes have the same problem and want the same home.
+- **A class's opacity multiplies the layer's**, as one more level of the chain
+  that already runs group → layer. That is not the `fillOpacity` above; do not
+  remove it for resembling it.
+- **The paint loop keys paths by geometry type AND paint slot.** A new mode
+  supplies a different slot map and paint table, and needs no renderer change.
+
 ## In scope
 
 - Style JSON per layer, resolved to a paint batch key at draw time and cached per feature
-- Modes: single, categorized, graduated, rule-based, heatmap
+- Modes: single, graduated, rule-based, heatmap — **categorized is done** (S5d)
 - Classification methods: equal interval, quantile, natural breaks (Jenks), standard deviation, manual
 - ColorBrewer ramps with a colour-blind-safe filter
 - Built-in sprite sheet, plus **custom SVG marker upload** through `POST /images` with `purpose=marker`
@@ -65,7 +84,7 @@ Compare against the S2 baseline at each of the three pinned zooms — this sessi
 ## Tests
 
 - Harness page: each classification method against known datasets, including edge cases (all-equal values, single feature, nulls).
-- Browser: screenshot regression per style mode on the imported data. `gunatanah_kategori` on "Gunatanah Semasa" (14 values) is the natural categorized demo; `keluasan` on "Lot" the natural graduated one.
+- Browser: screenshot regression per style mode on the imported data. `keluasan` on "Lot" is the natural graduated demo; the categorized one, `gunatanah_kategori` on "Gunatanah Semasa", is already covered by S5d.
 - Browser: label collision drops the lower-priority label and never overlaps.
 - Browser: the paint-state warning fires above 64.
 

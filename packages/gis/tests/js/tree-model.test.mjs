@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 import {
     childrenOf, descendantsOf, wouldCycle, effectiveVisible, effectiveOpacity,
-    groupCheckState, flatten, resolveDrop, dropPosition,
+    groupCheckState, flatten, resolveDrop, dropPosition, classRowsOf, isClassified,
 } from '../../resources/js/ui/tree-model.js';
 
 /**
@@ -189,4 +189,83 @@ test('descendants are found at any depth', () => {
 
     assert.deepEqual(descendantsOf(state, 1).map((p) => p.id), [2, 3]);
     assert.deepEqual(descendantsOf(state, 2).map((p) => p.id), []);
+});
+
+// --------------------------------------------------------------- sublayers
+
+/** The land-use classification, as the tree would hold it. */
+function classified(state, placementId = 3) {
+    state.placements[placementId].classification = {
+        field: 'gunatanah_kategori',
+        classes: [
+            { value: 'Perumahan', label: 'Perumahan', visible: true, opacity: 1, style: {} },
+            { value: 'Pertanian', label: '', visible: false, opacity: 0.5, style: {} },
+        ],
+        other: { label: 'Lain-lain', visible: true, opacity: 1, style: {} },
+    };
+
+    return state;
+}
+
+test('an unclassified layer has no sublayer rows', () => {
+    const state = fixture();
+
+    assert.deepEqual(classRowsOf(state.placements[3]), []);
+    assert.equal(isClassified(state.placements[3]), false);
+});
+
+test('a classified layer lists its classes and then the other bucket', () => {
+    const state = classified(fixture());
+    const rows = classRowsOf(state.placements[3]);
+
+    assert.deepEqual(rows.map((r) => r.value), ['Perumahan', 'Pertanian', 'other']);
+    assert.equal(rows[2].isOther, true);
+});
+
+test('flatten puts sublayer rows directly under their layer, one level deeper', () => {
+    const state = classified(fixture());
+    const rows = flatten(state);
+
+    const at = rows.findIndex((r) => r.kind === 'node' && r.placement.id === 3);
+
+    assert.equal(rows[at].depth, 1);
+    assert.equal(rows[at].hasChildren, true, 'the layer must offer a twisty');
+
+    // Its three sublayers follow it immediately, and the next real node comes
+    // after them rather than between.
+    assert.deepEqual(rows.slice(at + 1, at + 4).map((r) => [r.kind, r.value, r.depth]), [
+        ['class', 'Perumahan', 2],
+        ['class', 'Pertanian', 2],
+        ['class', 'other', 2],
+    ]);
+
+    assert.equal(rows[at + 4].kind, 'node');
+    assert.equal(rows[at + 4].placement.id, 4);
+});
+
+test('a sublayer row falls back to its value when it has no label', () => {
+    const state = classified(fixture());
+    const rows = flatten(state).filter((r) => r.kind === 'class');
+
+    assert.equal(rows[0].label, 'Perumahan');
+    assert.equal(rows[1].label, 'Pertanian', 'an empty label is not a blank row');
+    assert.equal(rows[2].label, 'Lain-lain');
+});
+
+test('collapsing a classified layer hides its sublayers', () => {
+    const state = classified(fixture());
+    const rows = flatten(state, { collapsed: new Set([3]) });
+
+    assert.equal(rows.filter((r) => r.kind === 'class').length, 0);
+});
+
+test('sublayer rows never claim to be droppable placements', () => {
+    // They carry their layer's placement so the row can command it, which is
+    // exactly why a drop target must be chosen by `kind` and not by the
+    // presence of `placement`.
+    const state = classified(fixture());
+    const row = flatten(state).find((r) => r.kind === 'class');
+
+    assert.equal(row.placement.id, 3);
+    assert.equal(row.hasChildren, false);
 });

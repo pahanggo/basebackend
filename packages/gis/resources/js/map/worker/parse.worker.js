@@ -33,6 +33,10 @@ self.onmessage = (event) => {
                 coordsBuffer: decoded.layout.quantised ? decoded.geometry.coords.buffer : null,
                 layout: decoded.layout,
                 properties: decoded.properties,
+                // Plain strings, so they clone rather than transfer. A frame's
+                // dictionary is at most 255 short values; the accumulator needs
+                // it to renumber the frame's indices into its own.
+                classDict: decoded.classDict,
                 cull: null,
             }
             : {
@@ -46,6 +50,7 @@ self.onmessage = (event) => {
                 bbox: geometry.bbox.buffer,
                 ids: geometry.ids.buffer,
                 area: geometry.area.buffer,
+                classDict: null,
                 cull: collection ? collection.cull || null : null,
             };
 

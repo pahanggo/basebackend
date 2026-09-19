@@ -13,7 +13,10 @@
  */
 
 export { featureCreate, featureUpdate, featureDelete, moveVertex } from './feature.js';
-export { layerRename, layerSetStyle, layerSetVisible, layerReorder } from './layer.js';
+export {
+    layerRename, layerSetStyle, layerSetVisible, layerReorder,
+    layerSetClassification, layerSetClassState, classAt,
+} from './layer.js';
 export { measurementCreate, measurementUpdate, measurementDelete } from './measurement.js';
 
 /**
