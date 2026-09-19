@@ -12,7 +12,7 @@ One file per session. Each is an execution plan: what to build, what not to, and
 
 ## Order
 
-v1 ships after S11. Sessions are sequential unless the file says otherwise.
+v1 ships after S11b. Sessions are sequential unless the file says otherwise.
 
 | # | Session | Depends on |
 | --- | --- | --- |
@@ -36,10 +36,11 @@ v1 ships after S11. Sessions are sequential unless the file says otherwise.
 | [S9c](S09b-query.md) | Spatial and attribute query — **done** | S9a |
 | [S10a](S10-measurement-units.md) | Units, coordinate formats, scale bar — **done** | S6a |
 | [S10b](S10-measurement-units.md) | Measurement tools as saved annotations | S10a |
-| [S11](S11-responsive-a11y-performance.md) | Responsive, a11y, performance | all v1 |
+| [S11a](S11-responsive-a11y-performance.md) | Performance overlay, responsive and a11y pass — **done** | all v1 |
+| [S11b](S11-responsive-a11y-performance.md) | Mobile editing, command palette, degradation | S11a |
 | — | **v1 ships** | |
-| [S12](S12-import-crs.md) | Job protocol, import, CRS, external sources | S11 |
-| [S14](S14-export.md) | Export and print layout | S11 |
+| [S12](S12-import-crs.md) | Job protocol, import, CRS, external sources | S11a |
+| [S14](S14-export.md) | Export and print layout | S11a |
 | [S15](S15-share-links.md) | Share links and embed | S14 |
 
 S5, S6, S8 and S9 are each large enough that they may split in two when reached. That is expected; the gate is what matters, not the session count. **S5 did split**, at the seam its own file named: S5a is the data and the authorization, S5b is the view over it. Both halves live in the one file, and both are done.

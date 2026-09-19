@@ -63,6 +63,66 @@ packages/gis/resources/scss/    responsive rules
 
 Before declaring v1 done, revisit §23 open question 7: a drawing-and-measuring tool whose output cannot leave the browser is useful for annotating and inspecting, less so for producing anything. If v1 has real users rather than being a staged build toward v2, that is worth confirming now.
 
-## Results
+## Results — the performance overlay and a first pass (S11a)
 
-_Fill in when complete._
+**Partly done.** The instrumentation is built and the responsive and
+accessibility rules are in. The mobile EDITING adaptations — the ones that need
+new gestures rather than new layout — are not.
+
+**The overlay ships in production behind `Ctrl+Shift+P`**, not only in
+development, because the reports that matter come from real deployments with
+real data. A budget met on a developer's machine over a fixture is a claim
+about the fixture.
+
+It reads two sources because they answer different questions. The renderer's
+counters say what the last frame cost — candidates, drawn, vertices, build and
+paint. `PerformanceObserver` says what the whole page did, including work this
+module knows nothing about; a frame that never ran reports nothing, so the
+frame counter alone cannot see a blocked main thread. Long tasks are recorded
+whether or not the panel is open, because the point is to catch the ones nobody
+was watching for, and each one is logged with what the user was doing — "a
+240 ms task" is not actionable and "a 240 ms task while the polygon tool was
+active with 40,000 features drawn" is.
+
+The budgets live in one exported table, so the overlay's highlighting and any
+later gate cannot disagree about what "over" means. The frame arithmetic is
+pure and has its own tests: a rate computed over the wrong span reads as a
+perfectly plausible number, and the whole point of the panel is that its
+numbers can be trusted.
+
+**Measuring it in this session's browser was not possible**, and the reason is
+worth recording: the automated tab runs backgrounded, `document.hidden` is
+true, and Chrome throttles `requestAnimationFrame` to nothing — measured at
+zero callbacks in 1.5 seconds. The overlay renders correctly and every counter
+reads zero, which looks exactly like a broken panel. Anyone measuring here must
+use a foreground window.
+
+### Responsive and accessibility
+
+- Below 720 px the sidebar becomes an overlay drawer rather than a column, the
+  attribute table a 62% sheet rather than a 40% dock, and the legend starts
+  smaller — fourteen land-use categories is most of a phone screen.
+- Coarse pointers get 44 px targets on every control that had a mouse-sized
+  one, rather than only where it was remembered.
+- `:focus-visible` is restyled and never removed. A focus ring that is
+  invisible is a keyboard user locked out.
+- `prefers-reduced-motion` drops the transitions; they are decoration, and the
+  information is in the position rather than the travel.
+- `prefers-contrast: more` gives the readout and the legend a solid backing,
+  because both sit over a map whose colours are not ours.
+
+### Still to build in S11
+
+- **Mobile editing**: the magnifier, crosshair-and-confirm placement,
+  long-press to edit, and thumb-reachable undo. These are new gestures rather
+  than new layout, and they want a real device rather than a narrowed window.
+- **The attribute table as a card list** on a phone. It is a sheet at a
+  sensible height now, but still a table.
+- **The command palette** and the full keyboard-shortcut pass.
+- **A measured accessibility audit.** The rules above are the obvious pass;
+  nothing has yet been run through an auditing tool or a screen reader, and
+  saying otherwise would be claiming a check that was not made.
+- **The degradation thresholds** from §19: automatic clustering above 20,000
+  drawn, the warning banner above 40,000, stepping the area threshold up after
+  two seconds over 33 ms. The overlay now flags all three, which is the
+  measurement half; acting on them is the other.

@@ -1328,3 +1328,131 @@ hr {
         border-bottom: none;
     }
 }
+
+// ---- performance overlay --------------------------------------------------
+//
+// Ships in production behind Ctrl+Shift+P: the reports that matter come from
+// real deployments with real data, and a budget met over a fixture on a
+// developer's machine is a claim about the fixture.
+
+.gis-perf {
+    position: absolute;
+    z-index: 1100;
+    top: 64px;
+    left: 12px;
+    min-width: 168px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(20, 24, 28, 0.88);
+    color: #e8eef3;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    pointer-events: none;
+}
+
+.gis-perf-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+
+    // Over a budget from section 19. Colour AND weight, so it is not the only
+    // channel carrying the difference.
+    &.is-over {
+        color: #ff9f8a;
+        font-weight: 700;
+    }
+}
+
+.gis-perf-value {
+    font-variant-numeric: tabular-nums;
+}
+
+// ---- responsive and accessibility ----------------------------------------
+//
+// Section 17 and 18. Everything above is laid out for a desk; below a phone
+// width the panels stop being docks and become sheets, because a 280 px
+// sidebar beside a 320 px viewport leaves no map.
+
+@media (max-width: 720px) {
+    // The sidebar becomes an overlay drawer rather than a column, so the map
+    // keeps the whole width and the tree slides over it.
+    .gis-map {
+        inset: 0;
+    }
+
+    .gis-sidebar {
+        width: min(86vw, 320px);
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+        transition: transform 0.18s ease;
+
+        &.is-closed {
+            transform: translateX(-100%);
+        }
+    }
+
+    // The attribute table becomes a bottom sheet at a comfortable detent
+    // rather than a 40% dock, which on a phone is neither list nor map.
+    .gis-table {
+        height: 62%;
+    }
+
+    // A legend of fourteen categories is most of a phone screen, so it starts
+    // out of the way and the user opens it.
+    .gis-legend {
+        max-height: 38%;
+        max-width: calc(100% - 24px);
+    }
+
+    // The numeric entry panel wraps to two rows rather than scrolling
+    // sideways, which is unreachable one-handed.
+    .gis-numeric {
+        right: 12px;
+        gap: 4px;
+
+        .gis-numeric-field input {
+            width: 72px;
+        }
+    }
+}
+
+// Coarse pointers need a bigger target than a mouse, everywhere rather than
+// only where it was remembered (section 17).
+@media (pointer: coarse) {
+    .gis-tree-menu-btn,
+    .gis-table-close,
+    .gis-legend-toggle,
+    .gis-sublayer-close,
+    .gis-query-drop {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+// **Focus is never removed, only restyled.** A focus ring that is invisible is
+// a keyboard user locked out, and `:focus-visible` means a pointer user does
+// not see it on a click (section 18).
+.gis-app :focus-visible {
+    outline: 2px solid #2b6cb0;
+    outline-offset: 1px;
+}
+
+// Respect a stated preference for less motion. The transitions here are
+// decoration; the information is in the position, not the travel.
+@media (prefers-reduced-motion: reduce) {
+    .gis-sidebar,
+    .gis-legend-toggle .la {
+        transition: none;
+    }
+}
+
+// The drawing readout and the performance overlay are informational, and both
+// sit over a map whose colours are not ours. A solid backing keeps them
+// legible over satellite imagery as well as over a pale street map.
+@media (prefers-contrast: more) {
+    .gis-readout,
+    .gis-legend {
+        background: #fff;
+        border: 1px solid #23282c;
+    }
+}

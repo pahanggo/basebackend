@@ -29,6 +29,61 @@ testing — delete it whenever you like, or tell me to.
 
 ## Done
 
+### S11a — Performance overlay, responsive and accessibility pass
+
+**`Ctrl+Shift+P` opens a live performance panel**, in production and not only in
+development. Every budget in §19 was written against real data on a real
+deployment, and a number measured over a fixture on my machine is a claim about
+the fixture. Nine rows: frame rate, the worst frame in the last second,
+candidates examined, features drawn, vertices, build and paint milliseconds,
+heap, and the count of long tasks. Anything over its budget turns red.
+
+It reads two sources because they answer different questions. The renderer's own
+counters say what the last frame cost; `PerformanceObserver` says what the whole
+page did, including work this module knows nothing about. That second one
+matters more than it sounds: a frame that never ran reports nothing, so a frame
+counter alone cannot see a blocked main thread — it just reads a low number and
+says nothing about why. Long tasks over 50 ms are recorded whether or not the
+panel is open, each with what you were doing at the time. "A 240 ms task" is not
+actionable; "a 240 ms task while the polygon tool was active with 40,000
+features drawn" is.
+
+The budget numbers live in one exported table, so the panel's colouring and any
+later automated gate cannot drift apart about what "over" means. The frame
+arithmetic is pure and separately tested, because a rate computed over the wrong
+span reads as a perfectly plausible number and the entire point of the panel is
+that you can trust what it says.
+
+**Responsive and accessibility.** Below 720 px the sidebar becomes a drawer over
+the map rather than a column beside it, the attribute table a 62% sheet, and the
+legend starts smaller — fourteen land-use categories is most of a phone screen.
+Coarse pointers get 44 px targets everywhere, not only where it was remembered.
+`:focus-visible` is restyled and never removed; an invisible focus ring locks a
+keyboard user out entirely. Reduced motion drops the transitions, which are
+decoration — the information is in the position, not the travel. High contrast
+gives the coordinate readout and the legend a solid backing, because both sit
+over a map whose colours are not ours.
+
+**A measurement trap worth knowing about**, which cost me time twice: an
+automated browser tab runs backgrounded, `document.hidden` is true, and Chrome
+throttles `requestAnimationFrame` to nothing — I measured zero callbacks in 1.5
+seconds. The overlay renders correctly and every live counter reads zero, which
+looks exactly like a broken panel. The numbers have to be read in a foreground
+window, so §19 is **not** yet verified against real data; the instrument is
+built, the reading is not taken.
+
+**Still to build in S11:** mobile editing — the magnifier, crosshair-and-confirm
+placement, long-press to edit, thumb-reachable undo. Those are new gestures
+rather than new layout and want a real device rather than a narrowed window. Also
+the attribute table as a card list on a phone, the command palette, and the §19
+degradation thresholds: cluster above 20,000 drawn, warn above 40,000, step the
+area threshold up after two seconds over 33 ms. The overlay flags all three now,
+which is the measuring half; acting on them is the other half.
+
+**I have not run an accessibility audit.** The rules above are the obvious pass.
+Nothing has been through an auditing tool or a screen reader, and calling it
+accessible on that basis would be claiming a check I did not make.
+
 ### S10a — Units, coordinate formats, scale bar
 
 Four coordinate formats that all round-trip to within their own rounding:

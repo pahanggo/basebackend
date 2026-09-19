@@ -43,6 +43,7 @@ import { Legend } from './ui/legend.js';
 import { AttributeTable } from './ui/attribute-table.js';
 import { QueryPanel } from './ui/query-panel.js';
 import { ScaleBar } from './ui/scale-bar.js';
+import { PerformanceOverlay } from './ui/performance-overlay.js';
 import { featureCreate, featureUpdate } from './store/commands/feature.js';
 import { VertexEditor, geometryOf } from './map/edit/vertex-editor.js';
 import { Snapper } from './map/snap.js';
@@ -2078,6 +2079,18 @@ async function boot() {
 
     // The corner handles need the renderer's edit canvas, so they are built
     // after it and handed to the editor rather than constructed inside it.
+    editor.performance = new PerformanceOverlay({
+        container: document.getElementById('gis-map'),
+        renderer,
+        // What the user was doing, so a long task in a report is actionable.
+        context: () => ({
+            tool: editor.draw?.tool ?? null,
+            zoom: map.getZoom(),
+            drawn: renderer.stats?.().drawn ?? 0,
+            layers: editor.feeds?.length ?? 0,
+        }),
+    });
+
     editor.scale = new ScaleBar({ container: document.getElementById('gis-map'), map });
 
     editor.query = new QueryPanel({
