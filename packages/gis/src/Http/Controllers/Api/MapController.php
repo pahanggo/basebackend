@@ -235,7 +235,8 @@ class MapController extends Controller
     }
 
     /**
-     * Where the map opens next time: centre, zoom, basemap, overlays.
+     * Where the map opens next time: centre, zoom, basemap, overlays and
+     * which panels are open.
      *
      * **Deliberately not `update()`, and deliberately unversioned.** Two
      * reasons, and both matter.
@@ -267,6 +268,14 @@ class MapController extends Controller
             'basemap' => ['sometimes', 'string', 'max:64'],
             'overlays' => ['sometimes', 'array'],
             'overlays.*' => ['string', 'max:64'],
+
+            // Which panels are open. Chrome rather than geography, but it is
+            // the same question the rest of this payload answers — how the map
+            // should look when it is opened again — and keeping it here means
+            // one unversioned write rather than a second store beside it.
+            'panels' => ['sometimes', 'array'],
+            'panels.sidebar' => ['sometimes', 'boolean'],
+            'panels.controls' => ['sometimes', 'boolean'],
         ]);
 
         // Merged, so a client that knows only where it is looking does not

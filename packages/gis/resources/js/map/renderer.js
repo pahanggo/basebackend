@@ -27,6 +27,9 @@ export const GisRenderer = L.Layer.extend({
         // check against its real viewport.
         minAreaPx: 4,
 
+        // The fallback for a layer that carries no style of its own, keyed by
+        // geometry type. A layer's own `style` overrides these per layer —
+        // see `_paintPaths`.
         styles: {
             1: { stroke: '#2b6cb0', weight: 4, fill: null },
             2: { stroke: '#2b6cb0', weight: 2, fill: null },
@@ -97,6 +100,25 @@ export const GisRenderer = L.Layer.extend({
         this.schedule();
 
         return this._layers.length - 1;
+    },
+
+    /**
+     * Change how a layer is painted, without touching what it holds.
+     *
+     * A colour change must not refetch: the features are already here, the
+     * `Path2D` objects are already built, and the only thing that differs is
+     * the fill and stroke used to paint them. Rebuilding the layer instead
+     * would send a multi-megabyte read over a click on a colour swatch.
+     */
+    restyleGeometry(slot, style) {
+        const layer = this._layers[slot];
+
+        if (!layer) {
+            return;
+        }
+
+        layer.style = style;
+        this.schedule();
     },
 
     /** Swap one layer's working set, keeping its position in draw order. */
@@ -301,7 +323,7 @@ export const GisRenderer = L.Layer.extend({
 
             context.setTransform(this._ratio, 0, 0, this._ratio, dx * this._ratio, dy * this._ratio);
 
-            this._paintPaths(context, cache.paths);
+            this._paintPaths(context, cache.paths, layer.style);
         }
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
@@ -425,10 +447,21 @@ export const GisRenderer = L.Layer.extend({
         return { paths, vertices };
     },
 
-    /** One fill and one stroke per style, never per feature. */
-    _paintPaths(context, paths) {
+    /**
+     * One fill and one stroke per geometry type, never per feature.
+     *
+     * The layer's own style wins over the per-type default, key by key, so a
+     * layer that sets only a fill colour keeps the default stroke width rather
+     * than losing it. A null fill or stroke is a deliberate "do not paint
+     * this", which is why the merge cannot simply drop nulls.
+     *
+     * @param {Object} [layerStyle] the layer's `style`, or undefined for the defaults
+     */
+    _paintPaths(context, paths, layerStyle = null) {
         for (const [type, path] of paths) {
-            const style = this.options.styles[type];
+            const style = layerStyle
+                ? { ...this.options.styles[type], ...layerStyle }
+                : this.options.styles[type];
 
             if (style.fill) {
                 context.globalAlpha = style.fillOpacity ?? 1;

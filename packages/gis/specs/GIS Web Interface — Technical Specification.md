@@ -1207,9 +1207,13 @@ Global layers are the common case. "Lot", the two land-use layers and the six bo
 
 ### Visibility inheritance
 
-A group's checkbox is tri-state: checked, unchecked, or indeterminate when descendants differ. Toggling a group does not overwrite descendant flags — it sets an inherited override, so unchecking and rechecking a group restores the previous per-child state rather than turning everything on.
+A group's checkbox is tri-state: checked, unchecked, or indeterminate when descendants differ. **Toggling a group writes its descendants' flags as well as its own.**
 
-Effective visibility is `own.visible AND all ancestors visible AND zoom within range`. Opacity multiplies down the chain.
+An earlier version of this section said the opposite: set only the group's flag, let inheritance do the rest, and rechecking a group would restore the previous per-child state. It was built that way and it reads as broken. The children stay ticked while the map shows nothing, so the one control that looks like "turn this lot off" appears to half work, and the tri-state box means something different here from everywhere else in the application.
+
+The cost is real and is accepted rather than hidden: rechecking a group turns all of its children on, including ones that were off before. Restoring the previous state would need that state stored somewhere, and a hidden per-group memory that survives a reload is a larger thing than the problem it solves.
+
+Effective visibility is still `own.visible AND all ancestors visible AND zoom within range` — inheritance has not gone, and a layer inside a hidden group is still not drawn whatever its own flag says. What changed is only what the checkbox writes.
 
 ### Drag and drop
 

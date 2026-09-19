@@ -123,6 +123,9 @@ class EditorController extends Controller
             'baseData' => __('Base data'),
             'addReadOnly' => __('Add read-only'),
             'addEditable' => __('Add editable'),
+            'cancel' => __('Cancel'),
+            'remove' => __('Remove'),
+            'unsyncedTitle' => __('Unsaved changes'),
             'unsyncedChanges' => __('There are unsaved changes that could not be sent. Switching maps now would lose them.'),
 
             // The layer tree.
@@ -142,6 +145,10 @@ class EditorController extends Controller
             'minZoom' => __('Minimum zoom'),
             'maxZoom' => __('Maximum zoom'),
             'zoomToLayer' => __('Zoom to layer'),
+            'addLayer' => __('Add a layer'),
+            'newLayer' => __('New empty layer'),
+            'untitledLayer' => __('Untitled layer'),
+            'untitledGroup' => __('Untitled group'),
             'groupSelected' => __('Group selected layers'),
             'newGroup' => __('New group'),
             'ungroup' => __('Ungroup'),
@@ -157,6 +164,11 @@ class EditorController extends Controller
             'goToPlaceholder' => __('Latitude, longitude'),
             'coordinateInvalid' => __('That is not a coordinate this can read.'),
             'isolate' => __('Isolate selected'),
+            'isolateHint' => __('Show only the selected layers'),
+            'moreBasemaps' => __('More basemaps'),
+            'fillColour' => __('Fill'),
+            'lineColour' => __('Line'),
+            'toggleLayers' => __('Show or hide the layers panel'),
         ];
     }
 }

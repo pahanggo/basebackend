@@ -105,6 +105,41 @@ export class SyncQueue {
         }, this.debounceMs);
     }
 
+    /**
+     * Wait until everything queued has been confirmed by the server.
+     *
+     * **`flush()` is not enough on its own**, and the difference is a bug you
+     * only see occasionally: `flush()` returns immediately when a batch is
+     * already on the wire, so a caller that awaited it and then re-read the
+     * map could read a server that had not seen its command yet. The new layer
+     * was created, the read raced it, and the tree came back without it —
+     * until the next reload.
+     *
+     * Polled rather than promise-chained because a batch may be retried with
+     * backoff while this waits, so there is no single promise to hold.
+     *
+     * @returns {Promise<boolean>} false if the queue did not drain in time
+     */
+    async drain(timeoutMs = 15000) {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            if (!this.inFlight && this.queue.length === 0) {
+                return true;
+            }
+
+            if (!this.inFlight && !this.paused) {
+                await this.flush();
+
+                continue;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+
+        return false;
+    }
+
     /** Stop sending. The queue keeps accepting; nothing leaves until resumed. */
     pause() {
         this.paused = true;

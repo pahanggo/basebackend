@@ -193,6 +193,12 @@ side, since that is where the merge lives.
 
 ### Decisions that differ from the plan
 
+- **A group's checkbox cascades to its descendants**, which is the opposite of
+  what §8 originally specified. Setting only the group's flag and relying on
+  inheritance left the children ticked while the map showed nothing, and the
+  control that looks like "turn this lot off" appeared to half work. The
+  specification has been changed to match, with the cost stated there:
+  rechecking a group now turns everything under it on.
 - **Opacity is applied at the pane, not per vector layer.** A group, a tile
   layer and an image overlay all fade correctly, because each top-level node
   owns a Leaflet pane and a pane has a CSS opacity. A single vector layer

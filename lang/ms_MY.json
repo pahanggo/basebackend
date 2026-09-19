@@ -120,5 +120,20 @@
     "Go to coordinate": "Pergi ke koordinat",
     "Latitude, longitude": "Latitud, longitud",
     "That is not a coordinate this can read.": "Itu bukan koordinat yang boleh dibaca.",
-    "Isolate selected": "Asingkan pilihan"
+    "Isolate selected": "Asingkan pilihan",
+    "More basemaps": "Peta asas lain",
+    "Fill": "Isian",
+    "Line": "Garisan",
+    "Show or hide the layers panel": "Tunjuk atau sembunyi panel lapisan",
+    "Satellite": "Satelit",
+    "Grayscale": "Kelabu",
+    "Dark": "Gelap",
+    "Terrain": "Rupa bumi",
+    "Show only the selected layers": "Tunjuk lapisan dipilih sahaja",
+    "Add a layer": "Tambah lapisan",
+    "New empty layer": "Lapisan kosong baharu",
+    "Untitled layer": "Lapisan tanpa nama",
+    "Untitled group": "Kumpulan tanpa nama",
+    "Cancel": "Batal",
+    "Unsaved changes": "Perubahan belum disimpan"
 }

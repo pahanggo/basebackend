@@ -335,6 +335,23 @@ return [
         // will not load.
         'default' => env('GIS_DEFAULT_BASEMAP', 'google-roadmap'),
 
+        // The four offered as previewed tiles in the control panel. Twenty
+        // radio buttons is a list to read; four pictures is a choice to make.
+        // Anything the service offers that is not here stays reachable through
+        // the plain list underneath, so a provider is never hidden — only
+        // ranked below the ones most people want.
+        //
+        // Service id on the left, the name a user reads on the right. The ids
+        // are the tile service's and carry its vendors and its typos; the
+        // labels are ours and are translated. `alidade-smooth-dark` means
+        // nothing to anyone who has not read Stadia's catalogue.
+        'featured' => [
+            'satelite' => 'Satellite',
+            'grayscale' => 'Grayscale',
+            'alidade-smooth-dark' => 'Dark',
+            'stamen-terrain' => 'Terrain',
+        ],
+
         // Overlays are classified by prefix, so a new one needs no code change.
         'overlay_prefix' => 'owm-',
     ],

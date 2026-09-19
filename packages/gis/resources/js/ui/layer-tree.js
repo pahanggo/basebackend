@@ -26,11 +26,13 @@ import {
     flatten, isGroup, groupCheckState, effectiveVisible, childrenOf, descendantsOf, buildIndex,
 } from './tree-model.js';
 import {
-    layerRename, layerSetVisible, layerSetOpacity, layerSetLocked,
+    layerRename, layerSetVisible, layerSetOpacity, layerSetLocked, layerSetStyle,
     layerSetZoomRange, layerRemoveFromMap, layerGroup, layerUngroup, layerReorder,
+    layerCreate,
 } from '../store/commands/layer.js';
 import { between } from '../lib/sort-key.js';
 import { attachTreeDrag } from './tree-dnd.js';
+import { confirmAction } from './confirm.js';
 
 /** How long a typeahead buffer survives between keystrokes. */
 const TYPEAHEAD_MS = 800;
@@ -44,11 +46,15 @@ export class LayerTree {
      * @param {Function} options.onZoomTo called with a layer to fit its extent
      * @param {Function} options.zoom () => the map's current zoom
      */
-    constructor({ container, strings, onChanged, onZoomTo = null, zoom = () => null }) {
+    constructor({
+        container, strings, onChanged,
+        onZoomTo = null, onRestyle = null, onAddLayer = null, zoom = () => null,
+    }) {
         this.container = container;
         this.strings = strings;
         this.onChanged = onChanged;
         this.onZoomTo = onZoomTo;
+        this.onRestyle = onRestyle;
         this.zoom = zoom;
 
         this.store = null;
@@ -80,16 +86,32 @@ export class LayerTree {
         this.list.viewport.setAttribute('aria-label', strings.layers);
         this.list.viewport.setAttribute('aria-multiselectable', 'true');
 
+        this.mapName = el('h2', { class: 'gis-tree-mapname' });
+
         this.root = el('div', { class: 'gis-tree' }, [
+            this.mapName,
             el('div', { class: 'gis-tree-head' }, [
                 el('span', { class: 'gis-tree-title', text: strings.layers }),
-                el('button', {
-                    type: 'button',
-                    class: 'btn btn-sm btn-light gis-tree-group-btn',
-                    title: strings.groupSelected,
-                    'aria-label': strings.groupSelected,
-                    onclick: () => this.groupSelection(),
-                }, [el('i', { class: 'la la-object-group', 'aria-hidden': 'true' })]),
+
+                // The things you do TO the tree, where the tree is. They were
+                // in the map toolbar, which is for the map.
+                el('div', { class: 'gis-tree-actions btn-group btn-group-sm' }, [
+                    el('button', {
+                        type: 'button',
+                        class: 'btn btn-light',
+                        title: strings.addLayer,
+                        'aria-label': strings.addLayer,
+                        'aria-haspopup': 'true',
+                        onclick: (event) => this.openAddMenu(event.currentTarget, onAddLayer),
+                    }, [el('i', { class: 'la la-plus', 'aria-hidden': 'true' })]),
+                    el('button', {
+                        type: 'button',
+                        class: 'btn btn-light gis-tree-group-btn',
+                        title: strings.groupSelected,
+                        'aria-label': strings.groupSelected,
+                        onclick: () => this.groupSelection(),
+                    }, [el('i', { class: 'la la-object-group', 'aria-hidden': 'true' })]),
+                ]),
             ]),
             this.filterInput,
             this.scroller,
@@ -123,6 +145,7 @@ export class LayerTree {
         this.selection.clear();
         this.collapsed.clear();
         this.focused = null;
+        this.mapName.textContent = store.state.map.name ?? '';
         this.rebuild();
     }
 
@@ -234,7 +257,11 @@ export class LayerTree {
             node.setAttribute('aria-expanded', String(!this.collapsed.has(row.placement.id)));
             twisty.hidden = false;
             twisty.className = `gis-tree-twisty la ${this.collapsed.has(row.placement.id) ? 'la-caret-right' : 'la-caret-down'}`;
-            twisty.setAttribute('aria-label', this.collapsed.has(row.placement.id) ? this.strings.expand : this.strings.collapse);
+
+            const label = this.collapsed.has(row.placement.id) ? this.strings.expand : this.strings.collapse;
+
+            twisty.setAttribute('aria-label', label);
+            twisty.setAttribute('title', label);
         } else {
             node.removeAttribute('aria-expanded');
             twisty.hidden = true;
@@ -245,6 +272,7 @@ export class LayerTree {
         check.checked = state === true;
         check.indeterminate = state === null;
         check.setAttribute('aria-label', `${this.strings.visible}: ${row.layer.name}`);
+        check.setAttribute('title', this.strings.visible);
 
         name.textContent = row.layer.name;
         node.setAttribute('aria-label', row.layer.name);
@@ -264,6 +292,7 @@ export class LayerTree {
         }
 
         menu.setAttribute('aria-label', `${this.strings.layerActions}: ${row.layer.name}`);
+        menu.setAttribute('title', this.strings.layerActions);
     }
 
     badge(icon, label) {
@@ -274,12 +303,27 @@ export class LayerTree {
     /**
      * Whether this map may change the layer itself.
      *
-     * The placement's access and the layer's lock, both of which the server
+     * The placement's access AND the layer's lock, both of which the server
      * re-checks. Visibility and opacity are deliberately not gated on it: they
      * are this map's view of the layer, not a change to the layer.
      */
     mayEdit(row) {
-        return row.placement.access !== 'read' && !row.layer.locked;
+        return this.mayManage(row) && !row.layer.locked;
+    }
+
+    /**
+     * Whether this map may manage the placement, lock included.
+     *
+     * **The lock is not part of this test, and that is the whole point.** A
+     * locked layer refuses every edit — including, if this were `mayEdit`, the
+     * control that unlocks it, which would make the lock permanent for anyone
+     * without database access. The server draws the same distinction
+     * deliberately (`LayerSetLocked::authorize`), and the two have to agree or
+     * the UI offers something the server refuses, or hides something it would
+     * have allowed.
+     */
+    mayManage(row) {
+        return row.placement.access !== 'read';
     }
 
     // ---- operations ------------------------------------------------------
@@ -299,25 +343,42 @@ export class LayerTree {
     }
 
     /**
-     * Toggle a node, and a group's descendants with it.
+     * Toggle a node, and everything under it.
      *
-     * Toggling a group off does **not** clear its children's own flags — it
-     * sets the group's, and inheritance does the rest. That is what makes
-     * rechecking restore the previous per-child state rather than turning
-     * everything on (specification section 8).
+     * **A group's checkbox writes its descendants' flags too.** The
+     * specification originally set only the group's flag and let inheritance
+     * do the rest, so that rechecking a group restored the previous per-child
+     * state. In use that reads as broken: the children stay ticked while the
+     * map shows nothing, and the one control that looks like "turn this lot
+     * off" only half does.
+     *
+     * The cost is stated rather than hidden: rechecking a group now turns all
+     * of its children on, including ones that were off before. That is the
+     * trade the visible behaviour is worth, and it is what a tri-state
+     * checkbox means everywhere else.
      */
     toggleVisible(row) {
         if (!row) {
             return;
         }
 
-        const placement = row.placement;
+        const visible = isGroup(this.store.state, row.placement)
+            ? groupCheckState(this.store.state, row.placement, this.index) !== true
+            : !row.placement.visible;
 
-        this.store.commit(layerSetVisible({
-            id: placement.id,
-            version: placement.version,
-            visible: !placement.visible,
-        }));
+        const targets = [row.placement, ...descendantsOf(this.store.state, row.placement.id, this.index)];
+
+        for (const placement of targets) {
+            if (placement.visible === visible) {
+                continue;
+            }
+
+            this.store.commit(layerSetVisible({
+                id: placement.id,
+                version: placement.version,
+                visible,
+            }));
+        }
 
         this.rebuild();
         this.onChanged();
@@ -331,6 +392,33 @@ export class LayerTree {
         }));
 
         this.onChanged();
+    }
+
+    /**
+     * Fill and line colour.
+     *
+     * `layer.setStyle` replaces the whole style object rather than patching a
+     * key, because a half-applied style — a graduated ramp with no field —
+     * renders nothing. So the current style is spread and the one changed key
+     * written over it.
+     *
+     * **Style is layer-level, so this changes the layer in every map that
+     * shows it.** That is by design, not an oversight: a per-map override is a
+     * column on the placement if it turns out to be wanted, and it is not in
+     * v1.
+     */
+    setStyleKey(row, key, value) {
+        const style = { ...(row.layer.style ?? {}), [key]: value };
+
+        this.store.commit(layerSetStyle({
+            id: row.layer.id,
+            version: row.layer.version,
+            style,
+        }));
+
+        // Repainted in place. The features are already loaded and their paths
+        // already built; only the colour differs.
+        this.onRestyle?.(row.layer.id, style);
     }
 
     startRename(row, node) {
@@ -446,6 +534,106 @@ export class LayerTree {
         this.onChanged();
     }
 
+    /**
+     * Make a layer, or place one that already exists.
+     *
+     * Two different operations behind one button, because they answer the same
+     * question — "I want another layer here" — and separating them into two
+     * icons would ask the user to know the difference before they have made
+     * the choice. "Add from library" deliberately does not say "import":
+     * import means reading a file, and is v2.
+     */
+    openAddMenu(anchor, onAddLayer) {
+        this.closeMenu();
+
+        const item = (label, handler, icon) => el('button', {
+            type: 'button',
+            class: 'dropdown-item',
+            onclick: () => {
+                this.closeMenu();
+                handler();
+            },
+        }, [el('i', { class: `la ${icon}`, 'aria-hidden': 'true' }), ` ${label}`]);
+
+        this.menu = el('div', { class: 'dropdown-menu show gis-tree-menu', role: 'menu' }, [
+            item(this.strings.newLayer, () => this.createLayer('vector'), 'la-draw-polygon'),
+            item(this.strings.newGroup, () => this.createLayer('group'), 'la-folder'),
+            el('div', { class: 'dropdown-divider' }),
+            item(this.strings.addFromLibrary, () => onAddLayer?.(), 'la-book'),
+        ]);
+
+        const box = anchor.getBoundingClientRect();
+
+        this.menu.style.top = `${box.bottom}px`;
+        this.menu.style.left = `${box.left}px`;
+
+        document.body.append(this.menu);
+
+        this.dismiss = (event) => {
+            if (!this.menu.contains(event.target)) {
+                this.closeMenu();
+            }
+        };
+
+        window.setTimeout(() => document.addEventListener('pointerdown', this.dismiss), 0);
+    }
+
+    /**
+     * An empty layer or group, owned by this map.
+     *
+     * It lands at the TOP of the tree, not the bottom: a layer you have just
+     * made is the one you are about to draw in, and the top of the tree is the
+     * top of the map.
+     *
+     * **It is created with a default name and then renamed inline**, rather
+     * than asking for a name first. `window.prompt` blocks the page, cannot be
+     * styled or translated beyond its label, and on a phone it is a system
+     * sheet over the map. Renaming in place is also how every other rename in
+     * this tree works, so it is one interaction rather than two.
+     *
+     * @param {'vector'|'group'} kind
+     */
+    async createLayer(kind = 'vector') {
+        const first = childrenOf(this.store.state, null, this.index)[0] ?? null;
+        const name = kind === 'group' ? this.strings.untitledGroup : this.strings.untitledLayer;
+
+        this.store.commit(layerCreate({
+            tempId: `lyr-${Date.now().toString(36)}`,
+            name,
+            kind,
+            style: kind === 'group'
+                ? {}
+                : { stroke: '#2b6cb0', weight: 2, fill: '#63b3ed', fillOpacity: 0.2 },
+            parentId: null,
+            sortKey: between(null, first ? first.sortKey : null),
+        }));
+
+        // The layer and its placement both come back with server-assigned ids,
+        // so the tree is re-read rather than guessed at.
+        await this.onChanged({ reload: true });
+
+        this.focusNewest(name);
+    }
+
+    /** Select the layer just created and open its name for editing. */
+    focusNewest(name) {
+        const index = this.rows.findIndex((row) => row.layer.name === name);
+
+        if (index === -1) {
+            return;
+        }
+
+        this.selection.clear();
+        this.selection.add(this.rows[index].placement.id);
+        this.focus(index);
+
+        const node = this.list.pool.find((pooled) => Number(pooled.dataset.index) === index);
+
+        if (node) {
+            this.startRename(this.rows[index], node);
+        }
+    }
+
     groupSelection() {
         const ids = [...this.selection];
 
@@ -478,8 +666,15 @@ export class LayerTree {
         this.onChanged({ reload: true });
     }
 
-    removeFromMap(row) {
-        if (!window.confirm(this.strings.confirmRemove.replace(':name', row.layer.name))) {
+    async removeFromMap(row) {
+        const confirmed = await confirmAction({
+            title: this.strings.removeFromMap,
+            text: this.strings.confirmRemove.replace(':name', row.layer.name),
+            confirmLabel: this.strings.remove,
+            cancelLabel: this.strings.cancel,
+        });
+
+        if (!confirmed) {
             return;
         }
 
@@ -715,12 +910,16 @@ export class LayerTree {
             items.push(item(this.strings.zoomToLayer, () => this.onZoomTo(row.layer), 'la-search-plus'));
         }
 
+        if (mayEdit && !group) {
+            items.push(this.colourItem(row));
+        }
+
         items.push(this.opacityItem(row));
         items.push(this.zoomRangeItem(row));
 
-        if (mayEdit) {
+        if (this.mayManage(row)) {
             items.push(item(row.layer.locked ? this.strings.unlock : this.strings.lock,
-                () => this.toggleLock(row), 'la-lock'));
+                () => this.toggleLock(row), row.layer.locked ? 'la-unlock' : 'la-lock'));
         }
 
         if (group) {
@@ -746,6 +945,41 @@ export class LayerTree {
         };
 
         window.setTimeout(() => document.addEventListener('pointerdown', this.dismiss), 0);
+    }
+
+    /**
+     * Two native colour inputs.
+     *
+     * Native, because the platform's picker is keyboard operable, screen
+     * reader labelled and familiar, and a hand-rolled swatch grid is three of
+     * those things at best. `change` rather than `input`: a colour picker
+     * fires continuously while the user drags through a gradient, and every
+     * one of those would be a command on the wire and a step in the undo
+     * stack.
+     */
+    colourItem(row) {
+        const style = row.layer.style ?? {};
+
+        const swatch = (key, label, fallback) => {
+            const input = el('input', {
+                type: 'color',
+                class: 'gis-tree-colour',
+                value: normaliseColour(style[key], fallback),
+                'aria-label': `${label}: ${row.layer.name}`,
+            });
+
+            input.addEventListener('change', () => this.setStyleKey(row, key, input.value));
+
+            return el('label', { class: 'gis-tree-colour-field' }, [
+                el('span', { text: label }),
+                input,
+            ]);
+        };
+
+        return el('div', { class: 'dropdown-item-text gis-tree-colours' }, [
+            swatch('fill', this.strings.fillColour, '#f0ad4e'),
+            swatch('stroke', this.strings.lineColour, '#8a6d3b'),
+        ]);
     }
 
     opacityItem(row) {
@@ -816,4 +1050,26 @@ export class LayerTree {
 
         return ids;
     }
+}
+
+/**
+ * A colour a native `<input type="color">` will accept.
+ *
+ * The input takes `#rrggbb` and nothing else — it silently falls back to black
+ * for a named colour, a short hex or `null`, which would then be written back
+ * as a real style the next time the field fires. Anything it cannot take is
+ * replaced by the layer's default rather than by black.
+ */
+function normaliseColour(value, fallback) {
+    if (typeof value !== 'string') {
+        return fallback;
+    }
+
+    const short = value.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+
+    if (short) {
+        return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
+    }
+
+    return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : fallback;
 }

@@ -142,8 +142,19 @@ class MapBootstrap
     {
         $providers = (new BasemapProviders)->all();
 
+        // Only the featured ids the service actually offers: one removed
+        // upstream must not leave a preview tile that 404s.
+        $featured = [];
+
+        foreach ((array) config('gis.basemaps.featured') as $id => $label) {
+            if (in_array($id, $providers['basemaps'], true)) {
+                $featured[] = ['id' => $id, 'label' => __($label)];
+            }
+        }
+
         return [
             ...$providers,
+            'featured' => $featured,
             'default' => config('gis.basemaps.default'),
             'urlTemplate' => config('services.map_tiles.url'),
             'attribution' => config('services.map_tiles.attribution'),

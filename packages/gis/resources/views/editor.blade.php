@@ -25,23 +25,26 @@
 
         <div id="gis-map" class="gis-map"></div>
 
-        <a href="{{ backpack_url('dashboard') }}" class="gis-back" title="{{ __('Back to dashboard') }}">
-            <i class="la la-arrow-left"></i>
-            <span>{{ __('Back to dashboard') }}</span>
-        </a>
+        {{-- Top-left: the panel toggle first, then the way out. Both act on
+             the chrome rather than on the map, so they sit together. --}}
+        <div class="gis-topleft">
+            <button type="button" id="gis-toggle-sidebar" class="btn btn-light gis-panel-btn"
+                    aria-expanded="true" aria-controls="gis-sidebar"
+                    title="{{ __('Show or hide the layers panel') }}">
+                <i class="la la-layer-group" aria-hidden="true"></i>
+                <span class="sr-only">{{ __('Show or hide the layers panel') }}</span>
+            </button>
+
+            <a href="{{ backpack_url('dashboard') }}" class="gis-back" title="{{ __('Back to dashboard') }}">
+                <i class="la la-arrow-left" aria-hidden="true"></i>
+                <span>{{ __('Back to dashboard') }}</span>
+            </a>
+        </div>
 
         {{-- The toolbar the drawing tools mount into (S6). --}}
         <div class="gis-toolbar btn-group btn-group-sm" role="toolbar">
-            <button type="button" id="gis-toggle-sidebar" class="btn btn-light"
-                    aria-expanded="true" aria-controls="gis-sidebar">
-                <i class="la la-bars"></i>
-                <span class="sr-only">{{ __('Layers') }}</span>
-            </button>
             <button type="button" id="gis-open-maps" class="btn btn-light">
                 <i class="la la-map"></i> {{ __('Maps') }}
-            </button>
-            <button type="button" id="gis-add-layer" class="btn btn-light">
-                <i class="la la-plus"></i> {{ __('Add from library') }}
             </button>
         </div>
 

@@ -331,3 +331,26 @@ export function layerUngroup({ id, version }) {
         },
     };
 }
+
+/**
+ * A new, empty layer owned by this map.
+ *
+ * Like `layer.group`, both the layer and its placement come back with
+ * server-assigned ids, so this has no meaningful local `apply` and the tree is
+ * re-read once the batch confirms. Guessing an id here would put the client's
+ * tree and the server's out of step in a way only a reload would fix.
+ */
+export function layerCreate({ tempId, name, kind = 'vector', style = {}, parentId = null, sortKey }) {
+    return {
+        op: 'layer.create',
+        topics: ['layers', 'tree'],
+
+        apply() {
+            return layerCreate({ tempId, name, kind, style, parentId, sortKey });
+        },
+
+        serialize() {
+            return { op: 'layer.create', tempId, name, kind, style, parentId, sortKey };
+        },
+    };
+}

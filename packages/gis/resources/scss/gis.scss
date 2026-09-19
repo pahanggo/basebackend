@@ -36,11 +36,33 @@
     background: #e9edf0;
 }
 
-// Sits above Leaflet's own panes and controls, clear of the notch on phones.
-.gis-back {
+// Sits above Leaflet's own panes and controls, clear of the notch on phones —
+// and clear of the layers panel, which owns the left edge. Overlapping it put
+// the link underneath and made both unreadable.
+.gis-topleft {
     position: absolute;
     top: calc(12px + env(safe-area-inset-top));
-    left: calc(12px + env(safe-area-inset-left));
+    left: calc(12px + env(safe-area-inset-left) + var(--gis-sidebar-width, 280px));
+    z-index: 1000;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.gis-panel-btn {
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+
+    &.active {
+        background: #e4eef7;
+    }
+
+    @media (pointer: coarse) {
+        min-height: 44px;
+    }
+}
+
+.gis-back {
+    position: relative;
     z-index: 1000;
     display: inline-flex;
     align-items: center;
@@ -174,11 +196,31 @@
     min-height: 0;
 }
 
+// The map you are in, above the layers it holds. Without it the panel names
+// a category and never the thing itself.
+.gis-tree-mapname {
+    margin: 0;
+    padding: 12px 12px 4px;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: #23282c;
+}
+
 .gis-tree-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px 6px;
+    gap: 8px;
+    padding: 2px 12px 6px;
+}
+
+.gis-tree-actions .btn {
+    padding: 2px 8px;
+    line-height: 1.2;
 }
 
 .gis-tree-title {
@@ -447,6 +489,10 @@
         inset: 0;
     }
 
+    .gis-topleft {
+        left: calc(12px + env(safe-area-inset-left));
+    }
+
     .gis-panel {
         width: auto;
         left: calc(12px + env(safe-area-inset-left));
@@ -456,4 +502,122 @@
     .gis-panel-body {
         max-height: 50vh;
     }
+}
+
+// Closing the panel gives the left edge back, as it does to the map.
+.gis-app:has(.gis-sidebar.is-closed) .gis-topleft {
+    left: calc(12px + env(safe-area-inset-left));
+}
+
+// ---------------------------------------------------------------------------
+// Basemap previews
+// ---------------------------------------------------------------------------
+
+// `minmax(0, 1fr)`, not `1fr`. A bare `1fr` is `minmax(auto, 1fr)`, so a
+// column never shrinks below its content's minimum — and the longest label
+// ("Alidade smooth dark") then made its column wider than the other, giving
+// two previews of one size and two of another.
+.gis-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+// The whole tile is the control; the radio inside it is visually hidden but
+// still focusable, so the keyboard and a screen reader get a real radiogroup
+// rather than a grid of pictures.
+.gis-panel-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;   // lets the label ellipsis instead of widening the column
+    margin: 0;
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+        border-color: #c8ced3;
+    }
+
+    &.is-selected {
+        border-color: #20a8d8;
+    }
+
+    // The focus ring follows the hidden radio, or keyboard users see nothing.
+    &:focus-within {
+        outline: 2px solid #20a8d8;
+        outline-offset: 2px;
+    }
+}
+
+.gis-panel-preview {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: #e9edf0;
+    object-fit: cover;
+
+    // A tile that failed to load is a grey square, not a broken-image icon.
+    &.is-missing {
+        display: block;
+    }
+}
+
+.gis-panel-tile-label {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: center;
+    color: #4a4f55;
+}
+
+.gis-panel-more {
+    padding: 4px 0 0;
+    font-size: 12px;
+}
+
+.gis-panel-basemaps[hidden] {
+    display: none;
+}
+
+// ---------------------------------------------------------------------------
+// Layer colours
+// ---------------------------------------------------------------------------
+
+.gis-tree-colours {
+    display: flex;
+    gap: 12px;
+}
+
+.gis-tree-colour-field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 11px;
+    color: #73818f;
+}
+
+.gis-tree-colour {
+    width: 32px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #c8ced3;
+    border-radius: 3px;
+    background: none;
+    cursor: pointer;
+}
+
+// The toolbar's panel toggle reads as pressed while the panel is open.
+.gis-toolbar .btn.active {
+    background: #e4eef7;
 }

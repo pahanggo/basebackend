@@ -14,6 +14,7 @@
 import { el, clear, relativeTime } from '../lib/dom.js';
 import { getJson, postJson, deleteJson } from '../lib/http.js';
 import { Modal } from './modal.js';
+import { confirmAction } from './confirm.js';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -268,7 +269,14 @@ export class MapBrowser {
     }
 
     async remove(map) {
-        if (!window.confirm(this.strings.confirmDelete.replace(':name', map.name))) {
+        const confirmed = await confirmAction({
+            title: this.strings.delete,
+            text: this.strings.confirmDelete.replace(':name', map.name),
+            confirmLabel: this.strings.delete,
+            cancelLabel: this.strings.cancel,
+        });
+
+        if (!confirmed) {
             return;
         }
 

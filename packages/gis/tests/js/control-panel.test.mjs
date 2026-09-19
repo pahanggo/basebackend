@@ -39,6 +39,8 @@ test('it returns null rather than guessing at something it cannot read', () => {
 });
 
 test('a provider slug reads acceptably without a translation entry', () => {
+    // The featured four carry names from config and are translated; this is
+    // the fallback for everything else the service offers.
     // The tile service is free to add a provider; a new one must not appear as
     // a raw slug, and must not fail to appear at all.
     assert.equal(providerLabel('mapbox-satellite-streets'), 'Mapbox satellite streets');

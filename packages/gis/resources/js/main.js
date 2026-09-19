@@ -24,6 +24,8 @@ import { afterKey } from './lib/sort-key.js';
 import { SeqCounter } from './lib/seq.js';
 import { LayerTree } from './ui/layer-tree.js';
 import { ControlPanel } from './ui/control-panel.js';
+import { enableTooltips } from './ui/tooltips.js';
+import { notify } from './ui/confirm.js';
 import { effectiveVisible, buildIndex, childrenOf } from './ui/tree-model.js';
 import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
@@ -149,7 +151,7 @@ class LayerFeed {
                     : null,
                 onChunk: ({ geometry, from, to }) => {
                     if (this.entry === null) {
-                        this.entry = { geometry, index: new SpatialIndex(geometry), visible: true };
+                        this.entry = { geometry, index: new SpatialIndex(geometry), visible: true, style: this.layer.style };
 
                         if (this.slot === null) {
                             this.slot = this.renderer.addGeometry(this.entry);
@@ -414,6 +416,8 @@ class Editor {
             strings: config.strings,
             zoom: () => this.map.getZoom(),
             onZoomTo: (layer) => this.zoomToLayer(layer),
+            onRestyle: (layerId, style) => this.restyleLayer(layerId, style),
+            onAddLayer: () => this.library.open(),
             onChanged: (options) => this.treeChanged(options),
         });
 
@@ -424,6 +428,8 @@ class Editor {
             onOverlays: (ids) => this.setOverlays(ids),
             onGoTo: (point) => this.goTo(point),
             onIsolate: (on) => this.setIsolate(on),
+            onCollapse: (collapsed) => this.setPanelOpen(!collapsed),
+            previewTile: () => this.previewTile(),
         });
 
         // Client-only and not persisted. Restoring brings back the previous
@@ -431,6 +437,22 @@ class Editor {
         // it is a filter over the draw set and never a write.
         this.isolated = null;
         this.overlayLayers = new Map();
+    }
+
+    /**
+     * Repaint one layer in a new colour, without refetching it.
+     *
+     * The features are already loaded and their paths already built; only the
+     * fill and stroke differ. Going through `rebuildFeeds` instead would send
+     * a multi-megabyte read over a click on a colour swatch.
+     */
+    restyleLayer(layerId, style) {
+        for (const feed of this.feeds) {
+            if (feed.layer.id === layerId && feed.slot !== null) {
+                feed.entry.style = style;
+                this.renderer.restyleGeometry(feed.slot, style);
+            }
+        }
     }
 
     /**
@@ -442,7 +464,10 @@ class Editor {
      */
     async treeChanged({ reload = false } = {}) {
         if (reload) {
-            await this.sync?.flush();
+            // Drained, not flushed: a flush returns at once when a batch is
+            // already on the wire, and the read below would then race the very
+            // command that made the reload necessary.
+            await this.sync?.drain();
             this.bootstrap = await getJson(`${this.config.apiBase}/maps/${this.bootstrap.id}`);
             hydrate(this.store, this.bootstrap);
             this.tree.rebuild();
@@ -461,6 +486,73 @@ class Editor {
 
         this.ignoreMoves();
         this.map.fitBounds([[south, west], [north, east]]);
+    }
+
+    /**
+     * Open or close the panels as the map remembers them.
+     *
+     * Both default to open: a map whose stored state predates this, or a user
+     * who cannot write the view, gets the panels rather than a blank canvas
+     * with two hidden controls.
+     */
+    applyPanels(panels = null) {
+        this.setSidebarOpen(panels?.sidebar ?? true, { save: false });
+        this.setPanelOpen(panels?.controls ?? true, { save: false });
+    }
+
+    setSidebarOpen(open, { save = true } = {}) {
+        const sidebar = document.getElementById('gis-sidebar');
+        const toggle = document.getElementById('gis-toggle-sidebar');
+
+        sidebar?.classList.toggle('is-closed', !open);
+        toggle?.setAttribute('aria-expanded', String(open));
+        toggle?.classList.toggle('active', open);
+
+        this.rememberPanels({ sidebar: open }, save);
+
+        // The map's container changed width and Leaflet only finds out if it
+        // is told. The move it makes is ours, not the user's, so it must not
+        // decide where the map opens tomorrow.
+        this.ignoreMoves();
+        this.map.invalidateSize();
+    }
+
+    setPanelOpen(open, { save = true } = {}) {
+        this.panel.setCollapsed(!open);
+        this.rememberPanels({ controls: open }, save);
+    }
+
+    rememberPanels(patch, save) {
+        this.bootstrap.viewState = {
+            ...this.bootstrap.viewState,
+            panels: { ...(this.bootstrap.viewState?.panels ?? {}), ...patch },
+        };
+
+        if (save) {
+            this.saveView();
+        }
+    }
+
+    /**
+     * The tile the basemap previews show: where the map is actually looking.
+     *
+     * A preview of somewhere else is a picture of a basemap rather than a
+     * preview of it — the useful question is what *this* area looks like in
+     * that style. Zoom 12 shows enough terrain and enough road network to tell
+     * four providers apart, which a street-level tile does not.
+     */
+    previewTile(zoom = 12) {
+        const centre = this.map.getCenter();
+        const n = 2 ** zoom;
+        const latitude = (centre.lat * Math.PI) / 180;
+
+        return {
+            z: zoom,
+            x: Math.floor(((centre.lng + 180) / 360) * n),
+            y: Math.floor(
+                ((1 - Math.log(Math.tan(latitude) + 1 / Math.cos(latitude)) / Math.PI) / 2) * n,
+            ),
+        };
     }
 
     goTo(point) {
@@ -497,7 +589,10 @@ class Editor {
             const flushed = await this.sync.flush().catch(() => null);
 
             if (flushed === null || this.sync.queue.length > 0) {
-                window.alert(this.config.strings.unsyncedChanges);
+                await notify({
+                    title: this.config.strings.unsyncedTitle,
+                    text: this.config.strings.unsyncedChanges,
+                });
 
                 return false;
             }
@@ -515,6 +610,7 @@ class Editor {
                 zoom: opened.zoom,
                 ...(opened.basemap ? { basemap: opened.basemap } : {}),
                 ...(opened.overlays?.length ? { overlays: opened.overlays } : {}),
+                ...(opened.panels ? { panels: opened.panels } : {}),
             })
             : null;
 
@@ -532,6 +628,7 @@ class Editor {
         );
         this.applyBasemap();
         this.applyOverlays(this.bootstrap.viewState?.overlays || []);
+        this.applyPanels(this.bootstrap.viewState?.panels);
         syncPanes(this.map, this.store.state);
         this.rebuildFeeds();
 
@@ -684,16 +781,26 @@ class Editor {
         // the user chose, not an absence of information.
         view.overlays = this.bootstrap.viewState?.overlays ?? [];
 
+        // Which panels are open. Chrome rather than geography, but the same
+        // question: how should this map look when it is opened again.
+        view.panels = this.bootstrap.viewState?.panels ?? {};
+
         const signature = JSON.stringify(view);
 
         if (signature === this.savedView) {
             return;
         }
 
-        this.savedView = signature;
         this.bootstrap.viewState = { ...this.bootstrap.viewState, ...view };
 
+        // The signature is recorded only once the write has landed. Setting it
+        // first means a write that never happened — refused, offline, raced —
+        // is remembered as saved, and the next identical state is then skipped
+        // as a duplicate. The failure is silent and the state is simply lost.
         putJson(`${this.config.apiBase}/maps/${this.bootstrap.id}/view`, view)
+            .then(() => {
+                this.savedView = signature;
+            })
             .catch((error) => console.warn('gis: could not remember the view', error));
     }
 
@@ -800,22 +907,16 @@ async function boot() {
         }, 100);
     }).observe(container);
 
-    document.getElementById('gis-toggle-sidebar')?.addEventListener('click', (event) => {
-        const sidebar = document.getElementById('gis-sidebar');
-        const open = sidebar.classList.toggle('is-open') || !sidebar.classList.contains('is-closed');
-
-        sidebar.classList.toggle('is-closed', !open);
-        event.currentTarget.setAttribute('aria-expanded', String(open));
-
-        // The map's container changed width, and Leaflet only finds out if it
-        // is told. The move it makes is ours, not the user's, so it must not
-        // decide where the map opens tomorrow.
-        editor.ignoreMoves();
-        map.invalidateSize();
+    // Through the editor, which owns the state and remembers it with the map.
+    document.getElementById('gis-toggle-sidebar')?.addEventListener('click', () => {
+        editor.setSidebarOpen(document.getElementById('gis-sidebar').classList.contains('is-closed'));
     });
 
     document.getElementById('gis-open-maps')?.addEventListener('click', () => editor.browser.open());
-    document.getElementById('gis-add-layer')?.addEventListener('click', () => editor.library.open());
+
+    // Delegated, so the tree's recycled rows are covered without rebinding on
+    // every render.
+    enableTooltips(document.getElementById('gis-app'));
 
     window.gis = { map, renderer, editor, config };
 
