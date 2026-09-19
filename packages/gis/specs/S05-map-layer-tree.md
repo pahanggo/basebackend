@@ -243,6 +243,26 @@ side, since that is where the merge lives.
   editing makes conflicts likely in the first place; the comment in `main.js`
   that promised it for S5b has been corrected rather than left to mislead.
 
+### Changed after the session, from using it
+
+The gate numbers above still hold; these are shape changes that the
+specification now carries in full (§8, §10, §21). Recorded here because a
+reader of this file would otherwise expect what S5b first shipped.
+
+- **Maps have slugs and open at `/app/gis/{slug}`**, and can be renamed in
+  place from the heading above the tree. Renaming was not possible at all: the
+  API took it and nothing called it.
+- **The control panel moved into the sidebar**, under the tree; both sections
+  fold, and which are open is remembered with the map. Isolate moved to the
+  tree, where the selection it solos is made. Choosing a map moved beside the
+  map's name. What is left over the canvas shares one size, radius and shadow.
+- **`style.fillOpacity` is gone.** One slider controls transparency, applied as
+  `globalAlpha` per layer in the paint loop.
+- **The drawn set is reconciled rather than rebuilt** — see the note above; it
+  is the single largest correctness-of-performance change in this session.
+- A coordinate readout follows the pointer; leaving the editor is confirmed,
+  and a paused sync queue now says so.
+
 ### What is deferred from this session's scope
 
 Search in the control panel is the shell only — the panel section exists and

@@ -478,11 +478,19 @@ CREATE TABLE gis_maps (
   id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   owner_id      BIGINT UNSIGNED NOT NULL,
   name          VARCHAR(255) NOT NULL,
-  view_state    JSON NOT NULL,          -- centre, zoom, basemap
+  slug          VARCHAR(160) NOT NULL,  -- the URL; see section 8
+  view_state    JSON NOT NULL,          -- centre, zoom, basemap, open panels
   version       INT UNSIGNED NOT NULL DEFAULT 1,
   created_at    TIMESTAMP, updated_at TIMESTAMP,
-  INDEX ix_owner (owner_id)
+  deleted_at    TIMESTAMP NULL,
+  UNIQUE KEY ux_slug (slug),            -- across soft-deleted rows too
+  INDEX ix_owner (owner_id),
+  INDEX ix_deleted (deleted_at)
 );
+
+`view_state` holds where the map opens and how it is laid out: `center`, `zoom`, `basemap`, and `panels` — which of the sidebar's sections were left open. It is written by the unversioned `PUT /maps/{map}/view`, never by a command, because the map's `version` is the command log's replay sequence and bumping it for a pan would thread holes through that sequence many times a minute.
+
+**That write MERGES, so a client must send a key it wants emptied.** A client that knows only where it is looking must not erase the basemap someone chose, which means an absent key reads as *unchanged* — and therefore that a state the user chose has to be sent explicitly, even when it is the empty or default one. Omitting it is how closing the last panel, and turning off the last weather overlay before they were removed, both failed to save.
 
 CREATE TABLE gis_layers (                -- identity: what the layer IS
   id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -1087,6 +1095,21 @@ All errors are RFC 7807 problem documents with a stable `code` for programmatic 
 
 A modal for choosing which map to work on, and inside a map, a drag-and-drop tree with groups, inherited visibility, and z-order driven by tree position.
 
+### Where a map lives
+
+| URL | Opens |
+| --- | --- |
+| `/app/gis` | The map this user touched most recently |
+| `/app/gis/{slug}` | That map, if they may open it |
+
+**A slug rather than an id**, because this is the URL people paste to each other and `/app/gis/pahang` says what it opens where `/app/gis/12` does not. It is derived from the name and follows a rename: a slug that slowly stops describing its map is worse than a URL that changed once. Uniqueness is checked against soft-deleted maps too — a map is restorable for thirty days, so a slug freed by a delete stays reserved until the sweep purges the row, or a restore collides with whatever took the name and fails at the one moment it is needed.
+
+A slug naming a map the user may not open falls back to their own most recent map rather than 404ing. A link shared by a colleague with wider access is otherwise a dead end, and the map browser is one click away either way.
+
+**The route parameter is `slug`, not `map`, and it is a string.** Naming it `map` invites Laravel's implicit route-model binding, and the only way to make that resolve by slug is `Map::getRouteKeyName()` — which is global, and would rebind every `{map}` on the id-based JSON API in section 7. The editor looks the map up itself, scoped to what the user may open.
+
+Switching maps inside the editor moves the address bar with `replaceState`, not `pushState`: Back belongs to whatever brought the user here, not to stepping through one map at a time.
+
 ### Map browser
 
 The editor always has exactly one map open. The map browser is how that choice is made and changed: a modal listing every map the user may open, in a table, with create, load and delete.
@@ -1130,13 +1153,16 @@ It was an overlay anchored top-right, and it is not any more. Two floating panel
 | --- | --- |
 | Basemap | Four previewed tiles, one active. See *Which basemaps are offered* below |
 | Go to coordinate | Accepts any format in section 11 — decimal degrees, DMS, UTM, MGRS — with paste detection, and recentres the map |
-
-A small readout at the bottom right of the map reports where the pointer is, latitude first. That order is the opposite of the one used everywhere else in this package — on the wire and in the database a coordinate is longitude-latitude, because that is what GeoJSON and WKB define — so the element carries a label saying which is which. A reader who guesses wrong lands in the wrong hemisphere and nothing tells them. It is written on an animation frame rather than on every `mousemove`, since the browser fires those faster than it paints.
 | Search | Finds features by attribute value across the visible layers, and layers by name. Results list, click to zoom and select |
 | Query | The spatial and attribute query builder (section 14): region, predicate, buffer, `where` clauses |
-| Isolate | Solo the selected layer, hiding its siblings temporarily. Not persisted, and restoring brings back the previous per-layer visibility rather than turning everything on |
 
-On phone widths the panel collapses to a single button that opens it as a sheet, per section 17. It is chrome, so it sits above the map canvas and never intercepts a drawing gesture — an active draw or edit tool collapses it automatically.
+**Isolate is not here.** It solos the tree's *selection*, and a control that solos the selection belongs where the selection is made; in this panel there was nothing to select from. It sits with the tree's other actions (section 8, *Layer operations*).
+
+A small readout at the bottom right of the map reports where the pointer is, **latitude first**. That order is the opposite of the one used everywhere else in this package — on the wire and in the database a coordinate is longitude-latitude, because that is what GeoJSON and WKB define — so the element carries a translated label saying which is which. A reader who guesses wrong lands in the wrong hemisphere and nothing tells them. It is written on an animation frame rather than on every `mousemove`, since the browser fires those faster than it paints.
+
+**The sidebar holds the controls; the canvas holds almost nothing.** Choosing a map sits beside the map's name, the sidebar toggle beside the way out, isolate with the tree's other actions — each next to the thing it acts on. What is left floating over the canvas is the sidebar toggle, the way out, Leaflet's zoom pair and the coordinate readout; the first three share one size, radius and shadow, so they read as one set of controls rather than three widgets from three sources. The toolbar over the canvas remains, empty, for the drawing tools in section 9 — it is for things that act on the canvas, and none of what left it did.
+
+On phone widths the sidebar slides over the map rather than taking a column from it, per section 17. Both of its sections stay collapsible, and an active draw or edit tool still collapses the controls so they never intercept a drawing gesture.
 
 #### Which basemaps are offered
 
@@ -1245,13 +1271,17 @@ Effective visibility is still `own.visible AND all ancestors visible AND zoom wi
 
 Tree order maps to Leaflet panes. One pane per top-level group, `zIndex` assigned in steps of 100 from tree order, with layers inside a group drawn in order onto the same canvas. Reordering recomputes pane `zIndex` values and, where the move is within a group, reorders the draw list for that group's canvas.
 
+**A layer's slot in the renderer is stable for its lifetime, and stack position is an explicit `order` rather than array position.** Removing a layer leaves a hole that the next one fills. This matters more than it sounds: the first implementation rebuilt the renderer's layer list whenever the drawn set changed, so hiding one layer discarded the geometry, spatial index and built paths of every *other* layer and refetched them — megabytes and a full path rebuild, for a checkbox. The drawn set is reconciled instead: a layer still wanted is left exactly as it is, one no longer wanted is released, and only a layer that was not drawn before is read. Measured after: hiding one of three layers costs zero feature reads.
+
 Tile, WMS and image-overlay layers get their own panes at the appropriate z-index, so a raster overlay can sit between two vector groups. An image overlay is a DOM `<img>` carrying a `matrix3d` transform (section 13), not canvas content, which is precisely why it needs a pane of its own rather than a place in the draw list.
 
 ### Virtualization
 
 The tree renders only visible rows plus a small overscan, through a shared `virtual-list.js` also used by the attribute table. Row height is fixed at 32 px (40 px on coarse pointers) to avoid measurement.
 
-A tree of 2,000 nodes must scroll at 60fps and expand a group in under 50 ms.
+A tree of 2,000 nodes must scroll at 60fps and expand a group in under 50 ms. Measured: 0.5 ms per render at the 95th percentile, and 1.6 ms to expand, holding 41 rows in the DOM.
+
+**Nothing may ask the tree a question by scanning it.** Both budgets were missed on the first measurement — 98 ms to flatten and 67 ms to expand — and nothing looked wrong: every function was a short, readable traversal. The cost was that resolving a node's children scanned the whole tree and sorted, and the traversal did that once per node. Two thousand nodes is four million operations to draw forty rows. One parent-to-children index, built per render pass and thrown away after, is what makes the numbers above possible. It is a snapshot deliberately: an index that outlives a mutation is a tree that disagrees with the store.
 
 ### Tree search
 
@@ -1344,6 +1374,10 @@ Copy, cut and paste operate on the selection, carrying geometry and properties. 
 ## 10. Styling and symbology
 
 Style is stored per layer as JSON and resolved to a paint batch key at draw time. Resolution is cached per feature until style or zoom changes.
+
+**Fill and line colour are editable from the layer's row menu** in v1, ahead of the rest of this section, because a layer nobody can recolour is hard to tell from the one beneath it. They write `layer.setStyle`, which replaces the whole style object rather than patching a key — a half-applied style renders nothing. Style is layer-level, so a recolour changes the layer in every map that shows it; that is by design, and section 8 says so.
+
+**A style carries no `fillOpacity`.** How see-through a layer is has exactly one control — the layer's opacity in the tree — which the renderer applies as `globalAlpha` per layer. A second alpha in the style multiplied it, which gave two controls for one visible property and a slider that could not reach opaque: the imported layers carried 0.15, so 100% painted at 15%.
 
 ### Style properties
 
@@ -2250,6 +2284,8 @@ Each of these has a defined behaviour. Undefined behaviour under failure is what
 | WFS or Esri source times out | Layer marked stale, last successful data retained and labelled with its age |
 | Network lost mid-edit | Queue holds commands, banner shows unsynced count, editing continues locally |
 | Map switch requested with unsynced commands | Queue is flushed first; on failure the switch is blocked and the changes are offered as an export, never discarded |
+| Version conflict pauses the sync queue | **The user is told, once.** A paused queue sends nothing at all, while the optimistic UI keeps reporting every later change as applied — so the loss is invisible until a reload. The notice names the recovery, which is to reload: the queue cannot be replayed against a map that has moved on |
+| Leaving the editor with work in flight | Confirmed first, and the question names the unsaved work rather than asking in general. The browser's own prompt does not fire here, because this is not a form |
 | Map deleted by another user while open | Editor keeps working locally, banner offers export of unsynced changes and a return to the map browser |
 | Shared layer deleted by its owning map while open elsewhere | Placement is dropped, the layer disappears from the tree with a notice naming who removed it. Unsynced edits to it are offered as an export first |
 | Placement downgraded from `edit` to `read` mid-session | Editing affordances disappear, queued edits to that layer are held and offered as an export; nothing already queued is silently dropped |
