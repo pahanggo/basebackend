@@ -23,6 +23,8 @@ So a classification is **placement** state, beside `visible` and `opacity`, and 
 - `classify=` on the feature read; GIS1 version 3 carrying a class index and dictionary
 - Per-class paint batching in the renderer
 - Sublayer rows in the tree, with checkbox, opacity and colours
+- Reordering a sublayer by drag among its own siblings, which is both list and paint order
+- **Correcting layer z-order on the shared feature canvas**, which stacked upside down
 
 ## Out of scope
 
@@ -33,7 +35,7 @@ Labels, the legend panel, and the graduated, rule-based and heatmap modes — al
 ```
 packages/gis/database/migrations/..._add_classification_to_gis_map_layer.php
 packages/gis/src/Support/Classification.php
-packages/gis/src/Commands/Handlers/{LayerSetClassification,LayerSetClassState}.php
+packages/gis/src/Commands/Handlers/{LayerSetClassification,LayerSetClassState,LayerReorderClass}.php
 packages/gis/src/Http/Controllers/Api/LayerValuesController.php
 packages/gis/resources/js/map/style/classify.js
 packages/gis/resources/js/ui/sublayer-panel.js
@@ -47,6 +49,8 @@ packages/gis/resources/js/ui/sublayer-panel.js
 - **A class's opacity is not a second alpha.** It is one more level of the inheritance chain that already runs group → layer. `style.fillOpacity` remains forbidden.
 - **The class index lives inside `geometry`, beside `types`.** `compact()` rebuilds every typed array it knows about and silently drops what it does not, so a parallel array desynchronises on the first pan eviction.
 - **Anything `replaceGeometry` does not carry over is reset on every pan that reads.** `evict()` calls it after every eviction.
+- **Paint order must be explicit.** A `Map` iterates by insertion, which is the order features arrived, so without a sort the question of which sublayer covers which was answered by the read and changed between reads.
+- **A drop position is a named sibling, never an index.** The list can be reordered by someone else mid-drag, and every index in range still looks plausible.
 
 ## Gate
 
@@ -63,7 +67,9 @@ packages/gis/resources/js/ui/sublayer-panel.js
 - Pest: both commands apply, bump the placement version and not the layer version; a stale version conflicts and reports `classification`; a `read` placement may still classify, a viewer may not; unknown fields, duplicate class values and non-`#rrggbb` colours are refused.
 - Pest: the values endpoint lists, sorts, excludes empty values and reports `truncated` rather than listing a unique key.
 - Pest: the read emits a class byte and dictionary per feature in both encodings, and neither without `classify=`.
-- Node: the accumulator renumbers each frame's dictionary into one, and carries the class index through an eviction; `classify` maps values to slots including nulls, unknown values and PHP's empty-style `[]`; the tree emits sublayer rows in order and refuses drops on them; `replaceGeometry` preserves how a layer paints.
+- Pest: a reorder moves one class and carries its colours with it, lands at the end when the class it aimed at is gone, and conflicts on a stale version.
+- Node: the accumulator renumbers each frame's dictionary into one, and carries the class index through an eviction; `classify` maps values to slots including nulls, unknown values and PHP's empty-style `[]`; the tree emits sublayer rows in order; `replaceGeometry` preserves how a layer paints; the first row paints last; paint order does not depend on the order features arrived.
+- Browser: a sublayer drags among its siblings and sends one command; a sublayer dropped on another layer, and a layer dropped on a sublayer, both send none; a drop where the row already sits sends none.
 
 ## Results
 
@@ -81,7 +87,10 @@ Measured on the development machine against the real imported data, map `pahang-
 | Attribute discovery, `upi` (672,132 values) | 0.00 s, reported as truncated |
 | Zoom-12 read, plain / classified / with attributes | 15.33 MB / 15.49 MB / 41.39 MB |
 
-Two bugs worth keeping in the record, because neither raised an error:
+Reordering, measured the same way: one `layer.reorderClass` per drag, zero feature reads, and the order survives a reload. A drop onto another layer, a layer dropped onto a sublayer, and a drop where the row already sits all send nothing at all.
+
+Three bugs worth keeping in the record, because none raised an error:
 
 - **`replaceGeometry` dropped the classification**, so a classified layer reverted to its base colour on the first pan that read. It is called from `evict()`, which runs after every read that dropped anything.
 - **An empty class style arrives from PHP as `[]`, not `{}`**, and `[].fill` is `Array.prototype.fill` — a function, so `entry.style?.fill ?? fallback` never reached the fallback and the swatch painted nothing. Every read of a class style goes through `classStyle()` now.
+- **The shared feature canvas stacked layers upside down.** `panes.js` had reversed tree order into `zIndex` since S5b and documented that the first row paints on top, but panes only stack groups, tiles and overlays — vector layers share one canvas whose draw list sorted the other way. `Lot`, the second row, was painting over the land use and hiding every colour this session added. Found only by turning both layers on and looking.

@@ -466,3 +466,89 @@ function pick(source, keys) {
 
     return out;
 }
+
+/**
+ * PLACEMENT. Move one sublayer among its siblings.
+ *
+ * Sublayer order is the order the rows read in AND the order they paint in,
+ * first on top. `before` names the class this one lands in front of, or null
+ * for the end — never an index, which would be read against a list that may
+ * have been reordered since the drag began and would then move the wrong row.
+ *
+ * Its own inverse is the same op pointing at whatever used to follow it.
+ */
+export function layerReorderClass({ id, version, value, before, previousBefore = null }) {
+    return {
+        op: 'layer.reorderClass',
+        topics: ['layers', 'tree', `placements:${id}`, 'style'],
+
+        apply(state) {
+            const placement = state.placements[id];
+            const classes = placement?.classification?.classes;
+            const was = previousBefore ?? successorOf(classes, value);
+
+            if (classes) {
+                placement.classification.classes = movedBefore(classes, value, before);
+                placement.version += 1;
+            }
+
+            return layerReorderClass({
+                id,
+                version: (placement?.version ?? version) + 1,
+                value,
+                before: was,
+                previousBefore: before,
+            });
+        },
+
+        serialize() {
+            return { op: 'layer.reorderClass', id, version, value, before };
+        },
+    };
+}
+
+/**
+ * The value that currently follows this one, or null when it is last.
+ *
+ * This is what "put it back" means for undo: a class is restored by naming the
+ * sibling it used to sit in front of, because that survives the other classes
+ * moving around it in a way an index does not.
+ */
+export function successorOf(classes, value) {
+    const at = (classes ?? []).findIndex((entry) => entry.value === value);
+
+    if (at === -1) {
+        return null;
+    }
+
+    return classes[at + 1]?.value ?? null;
+}
+
+/**
+ * The list with one class lifted out and reinserted before another.
+ *
+ * Mirrors `LayerReorderClass::moved()` on the server, and must keep mirroring
+ * it: the client applies this optimistically and the server applies it for
+ * real, so a disagreement is a tree that reorders itself on the next reload.
+ */
+export function movedBefore(classes, value, before) {
+    const moving = classes.find((entry) => entry.value === value);
+
+    if (!moving) {
+        return classes;
+    }
+
+    const rest = classes.filter((entry) => entry !== moving);
+
+    if (before === null || before === value) {
+        return [...rest, moving];
+    }
+
+    const at = rest.findIndex((entry) => entry.value === before);
+
+    if (at === -1) {
+        return [...rest, moving];
+    }
+
+    return [...rest.slice(0, at), moving, ...rest.slice(at)];
+}

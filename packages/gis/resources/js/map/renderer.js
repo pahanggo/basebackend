@@ -33,6 +33,28 @@ function pathKey(type, slot) {
     return (type << SLOT_BITS) | slot;
 }
 
+/**
+ * The order to paint one layer's paths in.
+ *
+ * A `Map` iterates in insertion order, which is the order features happened to
+ * arrive — so without this, which sublayer covers which was decided by the
+ * read, and changed between reads. Two rules, and the first wins:
+ *
+ * - **Class order, first on top.** The sublayer rows read top to bottom like
+ *   the layer rows above them, so the first class paints last. The "other"
+ *   bucket holds the highest slot and therefore ends up underneath, which is
+ *   where leftovers belong.
+ * - **Then geometry type**, polygons under lines under points, so a boundary
+ *   or a marker is never buried by a fill that shares its class.
+ */
+function paintOrder(paths) {
+    return [...paths.keys()].sort((a, b) => {
+        const bySlot = (b & SLOT_MASK) - (a & SLOT_MASK);
+
+        return bySlot !== 0 ? bySlot : (b >> SLOT_BITS) - (a >> SLOT_BITS);
+    });
+}
+
 /** Web Mercator, matching Leaflet's EPSG3857 exactly. */
 function worldSize(zoom) {
     return 256 * (2 ** zoom);
@@ -173,7 +195,12 @@ export const GisRenderer = L.Layer.extend({
         }
     },
 
-    /** Where this layer paints in the stack. Tree order, lowest first. */
+    /**
+     * Where this layer sits in the tree: 0 is the first row.
+     *
+     * Not paint order — the first row paints LAST, so that it paints on top.
+     * `_ordered()` does that inversion in one place.
+     */
     setOrder(slot, order) {
         const layer = this._layers[slot];
 
@@ -184,13 +211,24 @@ export const GisRenderer = L.Layer.extend({
     },
 
     /**
-     * The layers to paint, in stack order, holes skipped.
+     * The layers to paint, in paint order, holes skipped.
+     *
+     * **`order` is the row's position in the tree, and the FIRST row paints on
+     * top**, so paint runs from the deepest row upward — descending `order`.
+     * This sorted ascending until S5d, which meant the second row in the tree
+     * covered the first: on the map that motivated the fix, `Lot` sat above
+     * `Gunatanah Semasa` and buried every land-use colour under a sheet of
+     * pink. `panes.js` had always reversed for the same reason, and said so;
+     * the shared feature canvas simply never agreed with it.
+     *
+     * The hit test consumes this array backwards and is therefore still
+     * correct: last painted is topmost, whichever way this sorts.
      *
      * Sorted per draw rather than kept sorted, because the set is tens of
      * entries and a frame already costs more than this in `setTransform`.
      */
     _ordered() {
-        return this._layers.filter(Boolean).sort((a, b) => a.order - b.order);
+        return this._layers.filter(Boolean).sort((a, b) => b.order - a.order);
     },
 
     /**
@@ -653,7 +691,8 @@ export const GisRenderer = L.Layer.extend({
      * @param {number} [opacity] the layer's effective opacity, 0 to 1
      */
     _paintPaths(context, paths, layerStyle = null, opacity = 1, paints = null) {
-        for (const [key, path] of paths) {
+        for (const key of paintOrder(paths)) {
+            const path = paths.get(key);
             const type = key >> SLOT_BITS;
             const paint = paints ? paints[key & SLOT_MASK] : null;
 

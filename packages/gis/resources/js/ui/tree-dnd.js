@@ -12,6 +12,12 @@
  * drop that cannot work — a group into its own descendant — is refused while
  * the pointer is still down, so the gesture never completes into a rejection.
  *
+ * **A sublayer row drags too, but only among its own siblings.** It is a value
+ * in the data rather than a node in the tree: it has no sort key, no parent
+ * and no meaning underneath a different layer, which may not even carry the
+ * attribute it names. So a class picks up, reorders within its layer, and
+ * refuses everywhere else — and nothing else may be dropped onto a class.
+ *
  * The rows are recycled, so nothing here holds a row node across a scroll. A
  * drag is described by the placement id it picked up and the row *index* the
  * pointer is currently over, both re-read from the list on every move.
@@ -19,7 +25,7 @@
 
 import { el } from '../lib/dom.js';
 import { isGroup, resolveDrop, dropPosition } from './tree-model.js';
-import { layerReorder } from '../store/commands/layer.js';
+import { layerReorder, layerReorderClass, successorOf } from '../store/commands/layer.js';
 import { between } from '../lib/sort-key.js';
 
 /** Pointer travel before a press becomes a drag, so a click is still a click. */
@@ -67,15 +73,16 @@ export function attachTreeDrag(tree) {
 
         const row = tree.rowAt(node);
 
-        // A sublayer is not a placement: it has no sort key, no parent and
-        // nothing to reorder. It rides wherever its layer goes.
-        if (!row || row.kind === 'class') {
+        if (!row) {
             return;
         }
 
         drag = {
             pointerId: event.pointerId,
             placementId: row.placement.id,
+            // The class being moved, or null for an ordinary node. It is the
+            // whole difference between the two gestures.
+            classValue: row.kind === 'class' ? row.value : null,
             startX: event.clientX,
             startY: event.clientY,
             active: false,
@@ -124,6 +131,20 @@ export function attachTreeDrag(tree) {
         const placement = tree.store.state.placements[pending.placementId];
 
         if (!placement) {
+            return;
+        }
+
+        if (pending.classValue !== null) {
+            tree.store.commit(layerReorderClass({
+                id: placement.id,
+                version: placement.version,
+                value: pending.classValue,
+                before: pending.drop.classBefore,
+            }));
+
+            tree.rebuild();
+            tree.onChanged();
+
             return;
         }
 
@@ -178,10 +199,25 @@ export function attachTreeDrag(tree) {
 
         const row = tree.rows[index];
 
-        // Nothing may be dropped onto a sublayer either — it is not a position
-        // in the tree, so "above", "below" and "into" all mean nothing there.
-        if (!row || row.kind === 'class') {
+        if (!row) {
             drag.drop = null;
+
+            return;
+        }
+
+        const node = tree.list.pool.find((pooled) => Number(pooled.dataset.index) === index);
+
+        if (drag.classValue !== null) {
+            classUpdate(row, index, clientY, node);
+
+            return;
+        }
+
+        // Nothing else may be dropped onto a sublayer — it is not a position
+        // in the tree, so "above", "below" and "into" all mean nothing there.
+        if (row.kind === 'class') {
+            drag.drop = null;
+            node?.classList.add('is-drop-invalid');
 
             return;
         }
@@ -189,7 +225,6 @@ export function attachTreeDrag(tree) {
         const group = isGroup(tree.store.state, row.placement);
         const position = dropPosition(tree.list.fractionAt(clientY), group);
         const resolved = resolveDrop(tree.store.state, drag.placementId, row.placement.id, position);
-        const node = tree.list.pool.find((pooled) => Number(pooled.dataset.index) === index);
 
         drag.drop = resolved;
 
@@ -209,6 +244,51 @@ export function attachTreeDrag(tree) {
         // The insertion line is positioned in list coordinates rather than
         // against the pooled node, which is a recycled element that may be
         // showing a different row by the next frame.
+        const top = (index + (position === 'below' ? 1 : 0)) * tree.list.height;
+
+        indicator.style.top = `${top}px`;
+        indicator.style.marginLeft = `${row.depth * 16}px`;
+        indicator.hidden = false;
+    }
+
+    /**
+     * Where a dragged sublayer would land.
+     *
+     * A class may only be reordered among the classes of its OWN layer, so
+     * anything else under the pointer is refused outright rather than
+     * interpreted generously. Within that, only above and below exist: there
+     * is nothing to drop a class *into*.
+     *
+     * The landing place is recorded as the class it would sit in front of —
+     * `before` — and never as an index, because the list can be reordered by
+     * someone else between the drag and the drop and every index in range
+     * would still look plausible.
+     */
+    function classUpdate(row, index, clientY, node) {
+        if (row.kind !== 'class' || row.placement.id !== drag.placementId) {
+            drag.drop = null;
+            node?.classList.add('is-drop-invalid');
+
+            return;
+        }
+
+        // `false`: a class is never a group, so the middle band that would
+        // mean "into" does not exist and the row splits cleanly in half.
+        const position = dropPosition(tree.list.fractionAt(clientY), false);
+        const after = position === 'below' ? tree.rows[index + 1] : row;
+
+        // Past the last sibling — the next row is another layer, or nothing.
+        const before = after && after.kind === 'class' && after.placement.id === drag.placementId
+            ? after.value
+            : null;
+
+        // Dropping a class where it already is: a legal gesture that changes
+        // nothing, so it shows a line and commits no command.
+        const unchanged = before === drag.classValue
+            || before === successorOf(row.placement.classification?.classes, drag.classValue);
+
+        drag.drop = unchanged ? null : { classBefore: before };
+
         const top = (index + (position === 'below' ? 1 : 0)) * tree.list.height;
 
         indicator.style.top = `${top}px`;

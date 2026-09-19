@@ -9,6 +9,7 @@ use Gis\Commands\Handlers\LayerCreate;
 use Gis\Commands\Handlers\LayerDelete;
 use Gis\Commands\Handlers\LayerGroup;
 use Gis\Commands\Handlers\LayerRemoveFromMap;
+use Gis\Commands\Handlers\LayerReorderClass;
 use Gis\Commands\Handlers\LayerRename;
 use Gis\Commands\Handlers\LayerRestore;
 use Gis\Commands\Handlers\LayerReorder;
@@ -107,6 +108,7 @@ class CommandRegistry
             LayerSetZoomRange::class,
             LayerSetClassification::class,
             LayerSetClassState::class,
+            LayerReorderClass::class,
             LayerReorder::class,
             LayerGroup::class,
             LayerUngroup::class,

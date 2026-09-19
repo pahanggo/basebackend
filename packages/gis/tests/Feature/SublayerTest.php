@@ -413,3 +413,128 @@ function classifiedHeader(Layer $layer, ?string $field): array
         )
         + unpack('Vtotal/VcoordExponent/VclassDictLength/Vreserved', substr($body, 64, 16));
 }
+
+// ------------------------------------------------------------- reordering
+
+/** The class values of a placement, in order. */
+function classOrder(MapLayer $placement): array
+{
+    return array_map(
+        fn (array $class) => $class['value'],
+        $placement->fresh()->classification['classes'],
+    );
+}
+
+it('moves one sublayer in front of another', function () {
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan', 'Pertanian', 'Hutan']),
+    ]])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 2,
+        'value' => 'Hutan', 'before' => 'Perumahan',
+    ]], envelope: ['seq' => 2])->assertOk();
+
+    expect(classOrder($placement))->toBe(['Hutan', 'Perumahan', 'Pertanian']);
+});
+
+it('moves a sublayer to the end when nothing follows the drop', function () {
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan', 'Pertanian', 'Hutan']),
+    ]])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 2,
+        'value' => 'Perumahan', 'before' => null,
+    ]], envelope: ['seq' => 2])->assertOk();
+
+    expect(classOrder($placement))->toBe(['Pertanian', 'Hutan', 'Perumahan']);
+});
+
+it('carries each class whole when it moves, colours and all', function () {
+    // A reorder is a move, not a rewrite: whatever someone set on a class has
+    // to survive the class changing position.
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan', 'Pertanian']),
+    ]])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassState', 'id' => $placement->id, 'version' => 2,
+        'value' => 'Pertanian', 'visible' => false, 'opacity' => 0.25,
+        'style' => ['fill' => '#ff0000'],
+    ]], envelope: ['seq' => 2])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 3,
+        'value' => 'Pertanian', 'before' => 'Perumahan',
+    ]], envelope: ['seq' => 3])->assertOk();
+
+    $classes = collect($placement->fresh()->classification['classes'])->keyBy('value');
+
+    expect(classOrder($placement))->toBe(['Pertanian', 'Perumahan']);
+    expect($classes['Pertanian']['visible'])->toBeFalse();
+    expect((float) $classes['Pertanian']['opacity'])->toBe(0.25);
+    expect($classes['Pertanian']['style']['fill'])->toBe('#ff0000');
+});
+
+it('drops a sublayer at the end when the class it aimed at is gone', function () {
+    // Someone can re-split the layer while a drag is in flight. Landing at the
+    // end is a position; refusing the whole batch would lose the gesture.
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan', 'Pertanian']),
+    ]])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 2,
+        'value' => 'Perumahan', 'before' => 'Tanah Kosong',
+    ]], envelope: ['seq' => 2])->assertOk();
+
+    expect(classOrder($placement))->toBe(['Pertanian', 'Perumahan']);
+});
+
+it('refuses to reorder a class that is not there, and an unclassified layer', function () {
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 1,
+        'value' => 'Perumahan', 'before' => null,
+    ]])->assertStatus(422);
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan']),
+    ]], envelope: ['seq' => 2])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 2,
+        'value' => 'Hutan', 'before' => null,
+    ]], envelope: ['seq' => 3])->assertStatus(422);
+});
+
+it('conflicts on a stale version rather than reordering blind', function () {
+    [$map, , $placement] = classifiableMap();
+
+    sendCommands($map, [[
+        'op' => 'layer.setClassification', 'id' => $placement->id, 'version' => 1,
+        'classification' => classificationOf(['Perumahan', 'Pertanian']),
+    ]])->assertOk();
+
+    sendCommands($map, [[
+        'op' => 'layer.reorderClass', 'id' => $placement->id, 'version' => 1,
+        'value' => 'Pertanian', 'before' => 'Perumahan',
+    ]], envelope: ['seq' => 2])->assertStatus(409);
+
+    expect(classOrder($placement))->toBe(['Perumahan', 'Pertanian']);
+});

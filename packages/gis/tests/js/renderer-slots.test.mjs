@@ -87,3 +87,85 @@ test('the slot map can be replaced mid-stream without invalidating the paths', (
 
     assert.equal(r._layers[slot].generation, before + 1, 'a real reclassify must');
 });
+
+// ------------------------------------------------------------- paint order
+
+/** The sequence `_paintPaths` would fill and stroke in. */
+function paintedOrder(r, layer) {
+    const seen = [];
+    const ctx = {
+        set fillStyle(v) { seen.push(v); },
+        set strokeStyle(v) {}, set lineWidth(v) {}, set globalAlpha(v) {},
+        fill() {}, stroke() {},
+    };
+
+    r._paintPaths(ctx, layer.paths, layer.style ?? null, 1, layer.paints ?? null);
+
+    return seen;
+}
+
+test('the first row in the tree paints on top', () => {
+    // `order` is tree position, 0 being the first row, and the first row must
+    // end up above the others. This sorted the other way until S5d, which put
+    // the second layer in the tree over the first.
+    const r = renderer();
+    const first = r.addGeometry({ geometry, index: null, order: 0 });
+    const second = r.addGeometry({ geometry, index: null, order: 1 });
+
+    const sequence = r._ordered().map((l) => l.order);
+
+    assert.deepEqual(sequence, [1, 0], 'deepest row painted first, first row last');
+    assert.notEqual(first, second);
+});
+
+test('a class paints above the classes below it in the list', () => {
+    const r = renderer();
+    // Three classes of polygons: slots 0, 1, 2 and the leftovers at 3.
+    const paths = new Map([
+        [(3 << 9) | 1, 'middle'],
+        [(3 << 9) | 3, 'leftovers'],
+        [(3 << 9) | 0, 'top'],
+        [(3 << 9) | 2, 'bottom'],
+    ]);
+    const paints = ['top', 'middle', 'bottom', 'leftovers'].map((fill) => ({
+        style: { fill }, opacity: 1, visible: true,
+    }));
+
+    // Painted first is underneath, so the list reads back-to-front.
+    assert.deepEqual(paintedOrder(r, { paths, paints }),
+        ['leftovers', 'bottom', 'middle', 'top']);
+});
+
+test('order does not depend on the order features happened to arrive', () => {
+    // A `Map` iterates by insertion, which is read order — so without an
+    // explicit sort, which sublayer covered which changed between reads.
+    const r = renderer();
+    const keys = [(3 << 9) | 0, (3 << 9) | 1, (3 << 9) | 2];
+    const paints = ['a', 'b', 'c'].map((fill) => ({ style: { fill }, opacity: 1, visible: true }));
+
+    const forwards = new Map(keys.map((k, i) => [k, i]));
+    const backwards = new Map([...keys].reverse().map((k, i) => [k, i]));
+
+    assert.deepEqual(paintedOrder(r, { paths: forwards, paints }),
+        paintedOrder(r, { paths: backwards, paints }));
+});
+
+test('within one class, polygons paint under lines under points', () => {
+    const r = renderer();
+    const paths = new Map([[(1 << 9) | 0, 'point'], [(3 << 9) | 0, 'polygon'], [(2 << 9) | 0, 'line']]);
+
+    r.options = { styles: { 1: { fill: 'point' }, 2: { fill: 'line' }, 3: { fill: 'polygon' } } };
+
+    assert.deepEqual(paintedOrder(r, { paths }), ['polygon', 'line', 'point']);
+});
+
+test('a hidden class is skipped rather than painted transparent', () => {
+    const r = renderer();
+    const paths = new Map([[(3 << 9) | 0, 'a'], [(3 << 9) | 1, 'b']]);
+    const paints = [
+        { style: { fill: 'a' }, opacity: 1, visible: false },
+        { style: { fill: 'b' }, opacity: 1, visible: true },
+    ];
+
+    assert.deepEqual(paintedOrder(r, { paths, paints }), ['b']);
+});

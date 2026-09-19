@@ -924,6 +924,7 @@ Batches cap at 500 commands (`capabilities.maxBatch`); a larger batch is rejecte
 | `layer.setZoomRange` | `id`, `version`, `minZoom`, `maxZoom` | **Placement.** |
 | `layer.setClassification` | `id`, `version`, `classification` | **Placement.** Splits the layer into sublayers by one attribute, or clears the split with `null`. Whole replacement |
 | `layer.setClassState` | `id`, `version`, `value`, and any of `label`, `visible`, `opacity`, `style` | **Placement.** One sublayer's row controls. A patch of one class, addressed by value; `other` names the fallback bucket |
+| `layer.reorderClass` | `id`, `version`, `value`, `before` | **Placement.** Moves one sublayer among its siblings. `before` names the class it lands in front of, or null for the end — never an index |
 | `layer.group` | `tempId`, `placementIds`, `parentId`, `sortKey`, `name` | **Placement.** Wraps nodes in a new group |
 | `layer.ungroup` | `id`, `version` | **Placement.** Dissolves a group, reparenting children |
 | `layer.share` | `layerId`, `mapId`, `access`, `parentId`, `sortKey` | Places an existing layer in a map. Copies nothing. `access: edit` is refused unless the user already holds edit rights on that layer |
@@ -1287,6 +1288,8 @@ Tree order maps to Leaflet panes. One pane per top-level group, `zIndex` assigne
 
 **A layer's slot in the renderer is stable for its lifetime, and stack position is an explicit `order` rather than array position.** Removing a layer leaves a hole that the next one fills. This matters more than it sounds: the first implementation rebuilt the renderer's layer list whenever the drawn set changed, so hiding one layer discarded the geometry, spatial index and built paths of every *other* layer and refetched them — megabytes and a full path rebuild, for a checkbox. The drawn set is reconciled instead: a layer still wanted is left exactly as it is, one no longer wanted is released, and only a layer that was not drawn before is read. Measured after: hiding one of three layers costs zero feature reads.
 
+**The first row in the tree paints on top, and the shared feature canvas did the opposite until S5d.** `panes.js` had always reversed tree order into `zIndex` and said so in as many words, but panes only stack groups, tiles and image overlays — every vector layer shares one canvas, where the draw list was sorted the other way. So two overlapping vector layers stacked upside down: on the map that found it, `Lot` was the second row and buried `Gunatanah Semasa` under a sheet of pink. The inversion now lives in one place, `_ordered()`, and the hit test consumes that array backwards so it needs no separate rule. Sublayers follow the same convention: the first class in the list paints on top, and the leftovers bucket paints underneath all of them.
+
 Tile, WMS and image-overlay layers get their own panes at the appropriate z-index, so a raster overlay can sit between two vector groups. An image overlay is a DOM `<img>` carrying a `matrix3d` transform (section 13), not canvas content, which is precisely why it needs a pane of its own rather than a place in the draw list.
 
 ### Virtualization
@@ -1431,6 +1434,8 @@ A categorized layer shows one row per class beneath it in the layer tree, each w
 **The values are discovered, not assumed.** `GET /layers/{layer}/values` returns the distinct values of one attribute, bounded at 256. The bound is what makes it terminate: there is no index inside `properties` and there cannot be a useful one, so this is a scan. Measured on the 2.2-million-row land-use layer, `gunatanah_kategori` takes 1.8 s — 13 values, plus two features carrying none; the national taxonomy has 14 and the last had not yet been imported, which is exactly why the list is discovered rather than configured — the whole scan, because a handful of values means no early exit, while `upi` (672,132 values, a unique key) answers in **0.00 s**, because the 257th distinct value arrives within the first few hundred rows and the scan stops there. The pathological field is the cheap one. No counts are returned: a `COUNT(*)` needs `GROUP BY`, `GROUP BY` cannot stop early, and grouping the cadastre by `upi` exhausts a 256 MB limit.
 
 **A class's opacity is not a second alpha.** Opacity has always multiplied down the tree — a group at 0.5 holding a layer at 0.5 paints at 0.25 — and a class is one more level of that same chain, the only control over its own level. What is forbidden is `style.fillOpacity`: a *second* control over one object, which is a different thing that happens to look the same.
+
+**Sublayer order is both list order and paint order**, first on top, the same rule the layer rows above them follow. A sublayer is dragged among its siblings and nowhere else: it is a value in the data rather than a node in the tree, with no sort key, no parent and no meaning under a layer that may not even carry the attribute it names. Positions travel as the class a row lands *in front of*, never as an index — the list can be reordered by someone else between the drag and the drop, and every index in range would still look plausible.
 
 **Splitting a layer costs a repaint, not a read.** Each feature carries a one-byte class index (section 7) and the client holds the raw value, so hiding a category, recolouring one or changing the opacity of one is a repaint of paths already built. Only changing the *field* needs the server again, because the class column is what the read computed. Measured: a sublayer toggle to painted is 15–22 ms and costs zero feature reads.
 
@@ -1991,6 +1996,7 @@ What belongs here is the client-side shape that section 7 does not describe: **g
 | `setLabels` | `layer.setStyle`, which replaces the style object whole |
 | `setClassification` | `layer.setClassification` — a PLACEMENT command, because a locked layer refuses a style write and every imported layer is locked (section 6) |
 | A sublayer's checkbox, opacity or colour | `layer.setClassState`, one class at a time so two people dimming two categories do not collide |
+| Dragging a sublayer among its siblings | `layer.reorderClass`, which moves it without rewriting the colours of the classes it passes |
 
 The undo stack holds the gesture; the queue sends the op. That is the only place the two vocabularies differ, and it differs in granularity rather than in meaning.
 
