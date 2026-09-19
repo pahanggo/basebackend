@@ -37,7 +37,9 @@ import { ImageOverlay, initialCorners } from './map/overlay/image-overlay.js';
 import { CornerHandles } from './map/overlay/corner-handles.js';
 import { DrawSession } from './map/draw/draw-session.js';
 import { Toolbar } from './ui/toolbar.js';
-import { featureCreate } from './store/commands/feature.js';
+import { featureCreate, featureUpdate } from './store/commands/feature.js';
+import { VertexEditor } from './map/edit/vertex-editor.js';
+import { Snapper } from './map/snap.js';
 import { layerSetSource } from './store/commands/layer.js';
 
 /** @returns {Object} the configuration blob rendered into the page */
@@ -1294,6 +1296,66 @@ class Editor {
         this.refreshLayer(layer.id);
     }
 
+    /**
+     * Pick the feature under a click, and put its vertices in play.
+     *
+     * Only when no drawing tool is active: while a tool is selected a click
+     * places a vertex, and hit-testing as well would do both at once.
+     */
+    pickFeature(event) {
+        if (this.draw?.tool) {
+            return;
+        }
+
+        const box = this.map.getContainer().getBoundingClientRect();
+        const hit = this.renderer.hitTest([
+            event.clientX - box.left,
+            event.clientY - box.top,
+        ]);
+
+        if (!hit) {
+            this.vertices.setTarget(null);
+
+            return;
+        }
+
+        const feed = this.feeds.find((candidate) => candidate.slot === hit.slot);
+        const placement = Object.values(this.store.state.placements)
+            .find((candidate) => candidate.layerId === feed?.layer.id);
+
+        if (!feed || !placement || feed.layer.locked || placement.access === 'read') {
+            notify(this.config.strings.featureNotEditable);
+
+            return;
+        }
+
+        this.vertices.setTarget({
+            slot: hit.slot,
+            feature: hit.feature,
+            id: hit.id,
+            layerId: feed.layer.id,
+            type: feed.entry.geometry.types[hit.feature],
+            // The feature's own version is not in the store — geometry is the
+            // renderer's and the store holds metadata — so an edit claims the
+            // version it was read at and lets the server say otherwise.
+            version: this.store.state.features[hit.id]?.version ?? 1,
+        });
+    }
+
+    /** A vertex edit finished: one command for the whole gesture. */
+    commitVertices(target, geometry) {
+        this.store.commit(featureUpdate({
+            id: target.id,
+            layerId: target.layerId,
+            version: target.version,
+            geom: geometry,
+            geomEncoding: 'geojson',
+        }));
+
+        target.version += 1;
+        this.refreshLayer(target.layerId);
+    }
+
     /** Force one layer to read again, discarding what it holds. */
     refreshLayer(layerId) {
         for (const feed of this.feeds) {
@@ -1590,6 +1652,26 @@ async function boot() {
         onCommit: (geometry) => editor.commitDrawn(geometry),
         onReadout: (readout) => editor.toolbar.showReadout(readout),
     });
+
+    editor.snapper = new Snapper({
+        map,
+        layers: () => editor.feeds
+            .filter((feed) => feed.slot !== null && feed.entry)
+            .map((feed) => ({ slot: feed.slot, layer: renderer.layerAt(feed.slot) }))
+            .filter((entry) => entry.layer),
+    });
+
+    editor.vertices = new VertexEditor({
+        map,
+        renderer,
+        snap: editor.snapper,
+        onCommit: (target, geometry) => editor.commitVertices(target, geometry),
+    });
+
+    // A plain click with no tool active selects what is under it. Bound on the
+    // map rather than the container so Leaflet's own drag handling gets first
+    // refusal — a pan should not select whatever it started over.
+    map.on('click', (event) => editor.pickFeature(event.originalEvent));
 
     editor.handles = new CornerHandles({
         map,

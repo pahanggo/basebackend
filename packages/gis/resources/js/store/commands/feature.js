@@ -67,6 +67,7 @@ export function featureUpdate({
     previousGeom = null,
     properties = null,
     coalescable = false,
+    geomEncoding = 'wkb',
 }) {
     return {
         op: 'feature.update',
@@ -110,6 +111,7 @@ export function featureUpdate({
                 geom: geom === null ? null : previousGeom,
                 previousGeom: geom,
                 properties: properties === null ? null : previousProperties,
+                geomEncoding,
             });
         },
 
@@ -117,7 +119,13 @@ export function featureUpdate({
             const payload = { op: 'feature.update', id, version };
 
             if (geom !== null) {
-                payload.geom = geom;
+                // GeoJSON travels as a string, like the base64 WKB it stands
+                // in for; an object arrives as something the server cannot
+                // parse.
+                payload.geom = geomEncoding === 'geojson' && typeof geom !== 'string'
+                    ? JSON.stringify(geom)
+                    : geom;
+                payload.geomEncoding = geomEncoding;
             }
 
             if (properties !== null) {

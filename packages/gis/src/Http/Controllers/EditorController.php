@@ -226,6 +226,7 @@ class EditorController extends Controller
             'latitude' => __('Latitude'),
             'place' => __('Place'),
             'drawNeedsLayer' => __('Select a layer you can edit before drawing.'),
+            'featureNotEditable' => __('That feature is on a layer you cannot edit.'),
         ];
     }
 }

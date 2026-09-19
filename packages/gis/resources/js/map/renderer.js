@@ -277,6 +277,11 @@ export const GisRenderer = L.Layer.extend({
         this.schedule();
     },
 
+    /** One layer by slot, or null where the slot is a hole. */
+    layerAt(slot) {
+        return this._layers[slot] ?? null;
+    },
+
     /**
      * The same map, without invalidating the paths.
      *
@@ -800,7 +805,14 @@ export const GisRenderer = L.Layer.extend({
                 }
 
                 if (this._contains(layer.geometry, f, x, y, tolerance)) {
-                    return { layer: l, feature: f, id: layer.geometry.ids[f] };
+                    // The SLOT, not this array's index. The array is paint
+                    // order and is rebuilt per draw; the slot is stable for the
+                    // life of the layer, which is what a caller needs to hold.
+                    return {
+                        slot: this._layers.indexOf(layer),
+                        feature: f,
+                        id: layer.geometry.ids[f],
+                    };
                 }
             }
         }
