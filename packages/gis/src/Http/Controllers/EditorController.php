@@ -126,6 +126,8 @@ class EditorController extends Controller
             'cancel' => __('Cancel'),
             'remove' => __('Remove'),
             'unsyncedTitle' => __('Unsaved changes'),
+            'syncPausedTitle' => __('Changes are no longer being saved'),
+            'syncPaused' => __('This map was changed elsewhere, so saving has stopped to avoid overwriting it. Reload the page to continue; changes made since will be lost.'),
             'unsyncedChanges' => __('There are unsaved changes that could not be sent. Switching maps now would lose them.'),
 
             // The layer tree.
@@ -158,14 +160,12 @@ class EditorController extends Controller
             // The map control panel.
             'mapControls' => __('Map controls'),
             'basemap' => __('Basemap'),
-            'overlays' => __('Overlays'),
             'view' => __('View'),
             'goTo' => __('Go to coordinate'),
             'goToPlaceholder' => __('Latitude, longitude'),
             'coordinateInvalid' => __('That is not a coordinate this can read.'),
             'isolate' => __('Isolate selected'),
             'isolateHint' => __('Show only the selected layers'),
-            'moreBasemaps' => __('More basemaps'),
             'fillColour' => __('Fill'),
             'lineColour' => __('Line'),
             'toggleLayers' => __('Show or hide the layers panel'),

@@ -1124,13 +1124,23 @@ A collapsible overlay anchored top-right of the map, holding the controls that a
 
 | Control | Behaviour |
 | --- | --- |
-| Basemap | The provider list from section 13, grouped into basemaps (one active) and weather overlays (independently toggled) |
+| Basemap | Four previewed tiles, one active. See *Which basemaps are offered* below |
 | Go to coordinate | Accepts any format in section 11 — decimal degrees, DMS, UTM, MGRS — with paste detection, and recentres the map |
 | Search | Finds features by attribute value across the visible layers, and layers by name. Results list, click to zoom and select |
 | Query | The spatial and attribute query builder (section 14): region, predicate, buffer, `where` clauses |
 | Isolate | Solo the selected layer, hiding its siblings temporarily. Not persisted, and restoring brings back the previous per-layer visibility rather than turning everything on |
 
 On phone widths the panel collapses to a single button that opens it as a sheet, per section 17. It is chrome, so it sits above the map canvas and never intercepts a drawing gesture — an active draw or edit tool collapses it automatically.
+
+#### Which basemaps are offered
+
+**Four, as previewed tiles, from `gis.basemaps.featured`.** The tile service offers twenty; listing all of them as radio buttons made the control something to read rather than something to choose from, and nineteen of the twenty were never picked. The preview is a real tile of where the map is currently looking, requested from the same URL the map itself would use — so it shows the provider rather than a picture of one, and a stylesheet change upstream appears without anything being regenerated.
+
+The ids are the service's and carry its vendors and its typos (`alidade-smooth-dark`, `satelite`); the labels are ours, live in config beside the id, and are translated.
+
+**A provider not in `featured` is not offered.** An earlier version kept the other sixteen behind a disclosure; it was removed because a second, longer list of the same thing is the problem the grid was solving. Changing what is on offer is a config edit, and that is the intended way to do it.
+
+**Weather overlays are not in v1.** Section 13 still classifies the `owm-*` providers server-side, and `viewState.overlays` is still accepted by the view write, so re-adding them is a client change and not a migration. The panel does not show them: they were built, and in use they were a row of five checkboxes nobody turned on, sitting above the controls people wanted.
 
 **Search and Query are different tools and should stay that way.** Search is a text box answering "where is the thing I can name". Query is a builder answering "which features satisfy these conditions". Merging them produces a control that does neither well; both run through the same endpoint (section 7).
 
@@ -1149,7 +1159,7 @@ On phone widths the panel collapses to a single button that opens it as a sheet,
 | Group | Wrap selected nodes in a new group |
 | Reorder | Drag within or between groups |
 | Toggle visibility | Checkbox, with group inheritance |
-| Set opacity | Slider, 0 to 100%, on every layer kind — vector, raster, image and group |
+| Set opacity | Slider, 0 to 100%, on every layer kind — vector, raster, image and group. **The only transparency control there is**: a style carries no `fillOpacity`, because a second alpha multiplying this one gives two controls for one visible property and a slider that cannot reach opaque |
 | Lock | Blocks editing; layer stays visible and selectable |
 | Solo / isolate | In the map control panel above, not the tree context menu |
 | Zoom to extent | Uses the cached `extent` column |
@@ -1611,7 +1621,7 @@ The application fetches it server-side, caches it, and includes it in the bootst
 | Group | Providers | Behaviour |
 | --- | --- | --- |
 | Basemap | Everything not prefixed `owm-` | Mutually exclusive, exactly one active. Stored in `viewState.basemap` |
-| Weather overlay | `owm-clouds`, `owm-precipitation`, `owm-pressure`, `owm-wind`, `owm-temp` | Independently toggleable, stack above the basemap and below vector layers. Stored in `viewState.overlays` as a list |
+| Weather overlay | `owm-clouds`, `owm-precipitation`, `owm-pressure`, `owm-wind`, `owm-temp` | Classified here and accepted by the view write as `viewState.overlays`, but **not offered by the control panel in v1** — see section 8 |
 
 The grouping is derived from the prefix, so a new `owm-` provider is classified without a code change.
 

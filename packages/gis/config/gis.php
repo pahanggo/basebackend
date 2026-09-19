@@ -94,6 +94,12 @@ return [
             |
             | `type` is what `attr_schema` reports to the client: `string` or
             | `number`. `where` is optional and defaults to `1=1`.
+            |
+            | **A style carries no `fillOpacity`.** How see-through a layer is
+            | has exactly one control — the layer's opacity, in the tree — and
+            | a second alpha multiplying it gave two controls for one visible
+            | property and a slider that could not reach opaque. A layer
+            | imports solid and is dialled back per map.
             */
 
             'sources' => [
@@ -113,7 +119,7 @@ return [
                         'KELUASAN' => ['keluasan', 'number'],
                     ],
 
-                    'style' => ['stroke' => '#8a6d3b', 'weight' => 1, 'fill' => '#f0ad4e', 'fillOpacity' => 0.15],
+                    'style' => ['stroke' => '#8a6d3b', 'weight' => 1, 'fill' => '#f0ad4e'],
                 ],
 
                 'gunatanah_semasa' => [
@@ -143,7 +149,6 @@ return [
                         'stroke' => '#2f6f3e',
                         'weight' => 1,
                         'fill' => '#7bc47f',
-                        'fillOpacity' => 0.2,
                     ],
                 ],
 
@@ -172,7 +177,6 @@ return [
                         'stroke' => '#5b3f8c',
                         'weight' => 1,
                         'fill' => '#b39ddb',
-                        'fillOpacity' => 0.2,
                     ],
                 ],
 
@@ -187,7 +191,7 @@ return [
                         'Nama' => ['nama', 'string'],
                         'Negeri' => ['negeri', 'string'],
                     ],
-                    'style' => ['stroke' => '#b71c1c', 'weight' => 2, 'fill' => '#ef5350', 'fillOpacity' => 0.05],
+                    'style' => ['stroke' => '#b71c1c', 'weight' => 2, 'fill' => '#ef5350'],
                 ],
 
                 'dun' => [
@@ -201,7 +205,7 @@ return [
                         'Parlimen' => ['parlimen', 'string'],
                         'Negeri' => ['negeri', 'string'],
                     ],
-                    'style' => ['stroke' => '#e65100', 'weight' => 2, 'fill' => '#ffb74d', 'fillOpacity' => 0.05],
+                    'style' => ['stroke' => '#e65100', 'weight' => 2, 'fill' => '#ffb74d'],
                 ],
 
                 'pbt' => [
@@ -216,7 +220,7 @@ return [
                         'KodNegeri' => ['kod_negeri', 'string'],
                         'NamaNegeri' => ['negeri', 'string'],
                     ],
-                    'style' => ['stroke' => '#00695c', 'weight' => 2, 'fill' => '#4db6ac', 'fillOpacity' => 0.05],
+                    'style' => ['stroke' => '#00695c', 'weight' => 2, 'fill' => '#4db6ac'],
                 ],
 
                 // Demarcation: the administrative hierarchy the cadastre's `negeri`,
@@ -233,7 +237,7 @@ return [
                         'kod_negeri' => ['kod_negeri', 'string'],
                         'nama_neger' => ['nama', 'string'],
                     ],
-                    'style' => ['stroke' => '#263238', 'weight' => 3, 'fill' => '#90a4ae', 'fillOpacity' => 0.04],
+                    'style' => ['stroke' => '#263238', 'weight' => 3, 'fill' => '#90a4ae'],
                 ],
 
                 'daerah' => [
@@ -247,7 +251,7 @@ return [
                         'kod_daerah' => ['kod_daerah', 'string'],
                         'nama_daera' => ['nama', 'string'],
                     ],
-                    'style' => ['stroke' => '#37474f', 'weight' => 2, 'fill' => '#b0bec5', 'fillOpacity' => 0.04],
+                    'style' => ['stroke' => '#37474f', 'weight' => 2, 'fill' => '#b0bec5'],
                 ],
 
                 'mukim' => [
@@ -262,7 +266,7 @@ return [
                         'kod_mukim' => ['kod_mukim', 'string'],
                         'nama_mukim' => ['nama', 'string'],
                     ],
-                    'style' => ['stroke' => '#455a64', 'weight' => 1, 'fill' => '#cfd8dc', 'fillOpacity' => 0.04],
+                    'style' => ['stroke' => '#455a64', 'weight' => 1, 'fill' => '#cfd8dc'],
                 ],
             ],
         ],

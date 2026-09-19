@@ -33,7 +33,7 @@ export const GisRenderer = L.Layer.extend({
         styles: {
             1: { stroke: '#2b6cb0', weight: 4, fill: null },
             2: { stroke: '#2b6cb0', weight: 2, fill: null },
-            3: { stroke: '#8a6d3b', weight: 1, fill: '#f0ad4e', fillOpacity: 0.15 },
+            3: { stroke: '#8a6d3b', weight: 1, fill: '#f0ad4e' },
         },
     },
 
@@ -94,12 +94,84 @@ export const GisRenderer = L.Layer.extend({
         };
     },
 
-    /** @param {{geometry: Object, index: Object}} layer */
+    /**
+     * Register a layer's working set and return the slot that names it.
+     *
+     * **A slot is stable for the life of the layer.** It has to be: the feed
+     * holds it across reads, and the alternative — rebuilding the array
+     * whenever the set of drawn layers changes — throws away every other
+     * layer's geometry, index and built paths, so hiding one layer refetches
+     * all the rest.
+     *
+     * Removed slots therefore become holes rather than closing up, and a new
+     * layer fills the first hole it finds. Paint order is the explicit `order`
+     * field, never array position.
+     *
+     * @param {{geometry: Object, index: Object, order?: number}} layer
+     */
     addGeometry(layer) {
-        this._layers.push({ visible: true, generation: 0, cache: null, ...layer });
+        const entry = {
+            visible: true, generation: 0, cache: null, opacity: 1,
+            order: this._layers.length, ...layer,
+        };
+        const hole = this._layers.indexOf(null);
+
         this.schedule();
 
+        if (hole !== -1) {
+            this._layers[hole] = entry;
+
+            return hole;
+        }
+
+        this._layers.push(entry);
+
         return this._layers.length - 1;
+    },
+
+    /** Drop one layer, leaving the others exactly as they are. */
+    removeGeometry(slot) {
+        if (this._layers[slot]) {
+            this._layers[slot] = null;
+            this.schedule();
+        }
+    },
+
+    /**
+     * How opaque this layer is, 0 to 1.
+     *
+     * Applied as `globalAlpha` in the paint loop — one property set per layer
+     * per frame — rather than through a pane. A pane can only fade a
+     * TOP-LEVEL tree node, because every vector layer shares one canvas, so a
+     * slider on a layer nested in a group did nothing at all.
+     */
+    setOpacity(slot, opacity) {
+        const layer = this._layers[slot];
+
+        if (layer && layer.opacity !== opacity) {
+            layer.opacity = opacity;
+            this.schedule();
+        }
+    },
+
+    /** Where this layer paints in the stack. Tree order, lowest first. */
+    setOrder(slot, order) {
+        const layer = this._layers[slot];
+
+        if (layer && layer.order !== order) {
+            layer.order = order;
+            this.schedule();
+        }
+    },
+
+    /**
+     * The layers to paint, in stack order, holes skipped.
+     *
+     * Sorted per draw rather than kept sorted, because the set is tens of
+     * entries and a frame already costs more than this in `setTransform`.
+     */
+    _ordered() {
+        return this._layers.filter(Boolean).sort((a, b) => a.order - b.order);
     },
 
     /**
@@ -123,9 +195,19 @@ export const GisRenderer = L.Layer.extend({
 
     /** Swap one layer's working set, keeping its position in draw order. */
     replaceGeometry(slot, layer) {
-        const generation = (this._layers[slot]?.generation ?? 0) + 1;
+        const previous = this._layers[slot];
 
-        this._layers[slot] = { visible: true, generation, cache: null, ...layer };
+        this._layers[slot] = {
+            visible: true,
+            generation: (previous?.generation ?? 0) + 1,
+            cache: null,
+            // Kept, or a layer would jump to the bottom of the stack every
+            // time its working set was swapped.
+            order: previous?.order ?? this._layers.length,
+            opacity: previous?.opacity ?? 1,
+            ...layer,
+        };
+
         this.schedule();
     },
 
@@ -179,6 +261,12 @@ export const GisRenderer = L.Layer.extend({
         this.schedule();
     },
 
+    /**
+     * Forget every layer.
+     *
+     * For switching maps, where nothing carries over. **Not for a visibility
+     * change** — see `removeGeometry`.
+     */
     clearGeometry() {
         this._layers = [];
         this.schedule();
@@ -301,7 +389,7 @@ export const GisRenderer = L.Layer.extend({
 
         const paintStart = performance.now();
 
-        for (const layer of this._layers) {
+        for (const layer of this._ordered()) {
             if (!layer.visible) {
                 continue;
             }
@@ -323,7 +411,7 @@ export const GisRenderer = L.Layer.extend({
 
             context.setTransform(this._ratio, 0, 0, this._ratio, dx * this._ratio, dy * this._ratio);
 
-            this._paintPaths(context, cache.paths, layer.style);
+            this._paintPaths(context, cache.paths, layer.style, layer.opacity ?? 1);
         }
 
         context.setTransform(this._ratio, 0, 0, this._ratio, 0, 0);
@@ -455,26 +543,35 @@ export const GisRenderer = L.Layer.extend({
      * than losing it. A null fill or stroke is a deliberate "do not paint
      * this", which is why the merge cannot simply drop nulls.
      *
+     * **The layer's opacity is the only alpha.** `style.fillOpacity` used to
+     * multiply it, which meant two controls for one visible property and a
+     * slider that could not reach opaque: the imported layers carry 0.15, so
+     * 100% opacity still painted at 15% and looked broken. One slider, one
+     * number, and what it says is what you see.
+     *
      * @param {Object} [layerStyle] the layer's `style`, or undefined for the defaults
+     * @param {number} [opacity] the layer's effective opacity, 0 to 1
      */
-    _paintPaths(context, paths, layerStyle = null) {
+    _paintPaths(context, paths, layerStyle = null, opacity = 1) {
         for (const [type, path] of paths) {
             const style = layerStyle
                 ? { ...this.options.styles[type], ...layerStyle }
                 : this.options.styles[type];
 
             if (style.fill) {
-                context.globalAlpha = style.fillOpacity ?? 1;
+                context.globalAlpha = opacity;
                 context.fillStyle = style.fill;
                 context.fill(path, 'evenodd');
-                context.globalAlpha = 1;
             }
 
             if (style.stroke) {
+                context.globalAlpha = opacity;
                 context.strokeStyle = style.stroke;
                 context.lineWidth = style.weight;
                 context.stroke(path);
             }
+
+            context.globalAlpha = 1;
         }
     },
 
@@ -497,8 +594,12 @@ export const GisRenderer = L.Layer.extend({
         const tolerance = tolerancePx / worldSize(map.getZoom());
         const threshold = this.areaThreshold();
 
-        for (let l = this._layers.length - 1; l >= 0; l--) {
-            const layer = this._layers[l];
+        // Topmost first, which is the reverse of paint order: a click belongs
+        // to the layer drawn last, not the one underneath it.
+        const ordered = this._ordered();
+
+        for (let l = ordered.length - 1; l >= 0; l--) {
+            const layer = ordered[l];
 
             if (!layer.visible) {
                 continue;

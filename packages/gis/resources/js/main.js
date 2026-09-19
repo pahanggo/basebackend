@@ -26,7 +26,7 @@ import { LayerTree } from './ui/layer-tree.js';
 import { ControlPanel } from './ui/control-panel.js';
 import { enableTooltips } from './ui/tooltips.js';
 import { notify } from './ui/confirm.js';
-import { effectiveVisible, buildIndex, childrenOf } from './ui/tree-model.js';
+import { effectiveVisible, effectiveOpacity, buildIndex, childrenOf } from './ui/tree-model.js';
 import { Activity } from './ui/activity.js';
 import { MapBrowser } from './ui/map-browser.js';
 import { LayerLibrary } from './ui/layer-library.js';
@@ -50,11 +50,13 @@ function readBootstrap() {
  * nobody is waiting for any more.
  */
 class LayerFeed {
-    constructor(renderer, config, layer, activity) {
+    constructor(renderer, config, layer, activity, order = 0, opacity = 1) {
         this.renderer = renderer;
         this.config = config;
         this.layer = layer;
         this.activity = activity;
+        this.order = order;
+        this.opacity = opacity;
         this.slot = null;
         this.controller = null;
         this.loaded = null;
@@ -63,7 +65,28 @@ class LayerFeed {
         this.capped = false;
     }
 
+    /**
+     * Give up this layer's slot and stop whatever it has in flight.
+     *
+     * Called when a layer stops being drawn — hidden, isolated away, removed
+     * from the map. The slot becomes a hole the next layer can fill; every
+     * other layer is untouched, which is the whole point.
+     */
+    release() {
+        if (this.controller) {
+            this.controller.abort();
+            this.controller = null;
+        }
 
+        if (this.slot !== null) {
+            this.renderer.removeGeometry(this.slot);
+            this.slot = null;
+        }
+
+        this.entry = null;
+        this.loaded = null;
+        this.accumulator = null;
+    }
 
     /**
      * Whether what is loaded still covers the view.
@@ -154,7 +177,7 @@ class LayerFeed {
                         this.entry = { geometry, index: new SpatialIndex(geometry), visible: true, style: this.layer.style };
 
                         if (this.slot === null) {
-                            this.slot = this.renderer.addGeometry(this.entry);
+                            this.slot = this.renderer.addGeometry({ ...this.entry, order: this.order, opacity: this.opacity });
                         } else {
                             this.renderer.replaceGeometry(this.slot, this.entry);
                         }
@@ -255,7 +278,7 @@ class LayerFeed {
  * which is to say, in production and not in any test that never reaches the
  * network.
  */
-function createStore(config, mapId, seq) {
+function createStore(config, mapId, seq, onSyncPaused = null) {
     const store = new Store();
 
     const sync = mapId === null ? null : new SyncQueue({
@@ -269,11 +292,16 @@ function createStore(config, mapId, seq) {
             store.emit(['features', 'layers', 'measurements', 'tree']);
         },
         onConflict: (problem) => {
-            // The queue is paused and the commands are kept, which is the safe
-            // half of the behaviour: nothing is lost. The resolution panel that
+            // The queue pauses and keeps the commands, which is the safe half:
+            // nothing is lost. **But it must not do that silently.** A paused
+            // queue stops sending everything, so every later change looks
+            // applied, survives until a reload and then is not there — and the
+            // only sign was a line in the console. The resolution panel that
             // uses `store/conflicts.js` is S6's, alongside the editing that
-            // makes a conflict likely in the first place.
+            // makes a real conflict likely; until then the user is at least
+            // told, and given the one action that recovers it.
             console.warn('gis: version conflict', problem);
+            onSyncPaused?.(problem);
         },
     });
 
@@ -338,11 +366,20 @@ function hydrate(store, bootstrap) {
  * changing their stored visibility — that is the whole point of it.
  */
 function visibleVectorLayers(store, { zoom = null, isolated = null } = {}) {
-    return childrenInTreeOrder(store.state, buildIndex(store.state))
+    const index = buildIndex(store.state);
+
+    return childrenInTreeOrder(store.state, index)
         .filter((placement) => isolated === null || isolated.has(placement.id))
         .filter((placement) => effectiveVisible(store.state, placement, zoom))
-        .map((placement) => store.state.layers[placement.layerId])
-        .filter((layer) => layer && layer.kind === 'vector');
+        .map((placement) => ({
+            layer: store.state.layers[placement.layerId],
+            placement,
+            // Multiplied down the chain, so a group at 50% halves what is
+            // under it — the renderer applies the product, not the layer's
+            // own figure.
+            opacity: effectiveOpacity(store.state, placement),
+        }))
+        .filter((entry) => entry.layer && entry.layer.kind === 'vector');
 }
 
 /**
@@ -415,9 +452,14 @@ class Editor {
             container: document.getElementById('gis-sidebar'),
             strings: config.strings,
             zoom: () => this.map.getZoom(),
+            zoomLimits: () => ({ min: this.map.getMinZoom(), max: this.map.getMaxZoom() }),
             onZoomTo: (layer) => this.zoomToLayer(layer),
             onRestyle: (layerId, style) => this.restyleLayer(layerId, style),
             onAddLayer: () => this.library.open(),
+
+            // A repaint per frame and nothing else: no command, no request,
+            // no reconcile of the drawn set.
+            onOpacityPreview: () => this.applyOpacities(),
             onChanged: (options) => this.treeChanged(options),
         });
 
@@ -425,7 +467,6 @@ class Editor {
             container: document.getElementById('gis-app'),
             strings: config.strings,
             onBasemap: (id) => this.setBasemap(id),
-            onOverlays: (ids) => this.setOverlays(ids),
             onGoTo: (point) => this.goTo(point),
             onIsolate: (on) => this.setIsolate(on),
             onCollapse: (collapsed) => this.setPanelOpen(!collapsed),
@@ -436,7 +477,62 @@ class Editor {
         // per-layer visibility rather than turning everything on, which is why
         // it is a filter over the draw set and never a write.
         this.isolated = null;
-        this.overlayLayers = new Map();
+    }
+
+    /**
+     * Push the current effective opacity of every drawn layer at the renderer.
+     *
+     * Cheap enough to run on every frame of a slider drag: it is a walk of the
+     * tree and one number per layer, and the renderer repaints from paths it
+     * has already built.
+     */
+    applyOpacities() {
+        // One pass to index the placements by layer, not a search per feed.
+        const byLayer = new Map();
+
+        for (const placement of Object.values(this.store.state.placements)) {
+            byLayer.set(placement.layerId, placement);
+        }
+
+        for (const feed of this.feeds) {
+            const placement = byLayer.get(feed.layer.id);
+
+            if (!placement) {
+                continue;
+            }
+
+            feed.opacity = effectiveOpacity(this.store.state, placement);
+
+            if (feed.slot !== null) {
+                this.renderer.setOpacity(feed.slot, feed.opacity);
+            }
+        }
+
+        // Groups, tiles and image overlays still fade through their pane.
+        syncPanes(this.map, this.store.state);
+    }
+
+    /**
+     * Tell the user their changes have stopped being saved.
+     *
+     * A paused queue is invisible otherwise: the UI is optimistic, so every
+     * change still appears to work, and the loss only shows up on the next
+     * reload. Reloading is also the recovery — the queue's contents cannot be
+     * replayed against a map that has moved on — so the notice says that
+     * rather than leaving the user to guess.
+     */
+    async reportSyncPaused(problem) {
+        if (this.syncPausedReported) {
+            return;
+        }
+
+        this.syncPausedReported = true;
+
+        await notify({
+            title: this.config.strings.syncPausedTitle,
+            text: problem?.detail || this.config.strings.syncPaused,
+            icon: 'warning',
+        });
     }
 
     /**
@@ -609,25 +705,36 @@ class Editor {
                 center: opened.center,
                 zoom: opened.zoom,
                 ...(opened.basemap ? { basemap: opened.basemap } : {}),
-                ...(opened.overlays?.length ? { overlays: opened.overlays } : {}),
                 ...(opened.panels ? { panels: opened.panels } : {}),
             })
             : null;
 
-        const { store, sync } = createStore(this.config, this.bootstrap.id, this.seq);
+        const { store, sync } = createStore(
+            this.config,
+            this.bootstrap.id,
+            this.seq,
+            (problem) => this.reportSyncPaused(problem),
+        );
 
         this.store = store;
         this.sync = sync;
+
+        // A map switch is the one case where nothing carries over, so the
+        // renderer is emptied outright rather than reconciled.
+        for (const feed of this.feeds) {
+            feed.release();
+        }
+
+        this.feeds = [];
+        this.renderer.clearGeometry();
 
         hydrate(this.store, this.bootstrap);
         this.tree.attach(this.store);
         this.panel.setProviders(
             this.bootstrap.basemaps,
             this.bootstrap.viewState?.basemap || this.bootstrap.basemaps.default,
-            this.bootstrap.viewState?.overlays || [],
         );
         this.applyBasemap();
-        this.applyOverlays(this.bootstrap.viewState?.overlays || []);
         this.applyPanels(this.bootstrap.viewState?.panels);
         syncPanes(this.map, this.store.state);
         this.rebuildFeeds();
@@ -647,42 +754,6 @@ class Editor {
         this.bootstrap.viewState = { ...this.bootstrap.viewState, basemap: id };
         this.applyBasemap();
         this.saveView();
-    }
-
-    setOverlays(ids) {
-        this.bootstrap.viewState = { ...this.bootstrap.viewState, overlays: ids };
-        this.applyOverlays(ids);
-        this.saveView();
-    }
-
-    /**
-     * Weather overlays, stacked above the basemap and below the vector layers.
-     *
-     * They are independently toggled rather than mutually exclusive, which is
-     * the whole reason the server classifies them apart from basemaps by their
-     * `owm-` prefix instead of putting everything in one list.
-     */
-    applyOverlays(ids) {
-        const wanted = new Set(ids);
-
-        for (const [id, layer] of this.overlayLayers) {
-            if (!wanted.has(id)) {
-                this.map.removeLayer(layer);
-                this.overlayLayers.delete(id);
-            }
-        }
-
-        for (const id of wanted) {
-            if (this.overlayLayers.has(id)) {
-                continue;
-            }
-
-            const url = this.bootstrap.basemaps.urlTemplate.replace(/\/tiles\/[^/]+\//, `/tiles/${id}/`);
-            const layer = L.tileLayer(url, { maxZoom: 20, opacity: 0.7, crossOrigin: 'anonymous' });
-
-            layer.addTo(this.map);
-            this.overlayLayers.set(id, layer);
-        }
     }
 
     applyBasemap() {
@@ -705,14 +776,60 @@ class Editor {
         }).addTo(this.map);
     }
 
+    /**
+     * Bring the drawn set into line with the tree, keeping what has not changed.
+     *
+     * **Reconciled, not rebuilt.** This used to clear every layer out of the
+     * renderer and construct a fresh `LayerFeed` for each visible one, so
+     * hiding a single layer discarded the geometry, spatial index and built
+     * paths of all the others and refetched them — megabytes and a full path
+     * rebuild per layer, for one checkbox. A feed that is still wanted is now
+     * kept exactly as it is, slot and held area included; a feed that is not
+     * is released; only a layer that was not drawn before is fetched.
+     *
+     * Stack position travels as the renderer's `order` rather than as array
+     * position, so a reorder is a number per layer rather than a rebuild.
+     */
     rebuildFeeds() {
-        this.renderer.clearGeometry();
-
-        this.feeds = visibleVectorLayers(this.store, {
+        const wanted = visibleVectorLayers(this.store, {
             zoom: this.map.getZoom(),
             isolated: this.isolated,
-        }).map((layer) => new LayerFeed(this.renderer, this.config, layer, this.activity));
+        });
 
+        const existing = new Map(this.feeds.map((feed) => [feed.layer.id, feed]));
+        const next = [];
+
+        wanted.forEach(({ layer, opacity }, order) => {
+            const feed = existing.get(layer.id);
+
+            if (feed) {
+                existing.delete(layer.id);
+
+                // The layer object is re-read from the store on every tree
+                // change, so the feed takes the new one — its style may have
+                // moved on since.
+                feed.layer = layer;
+                feed.order = order;
+                feed.opacity = opacity;
+
+                if (feed.slot !== null) {
+                    this.renderer.setOrder(feed.slot, order);
+                    this.renderer.setOpacity(feed.slot, opacity);
+                }
+
+                next.push(feed);
+
+                return;
+            }
+
+            next.push(new LayerFeed(this.renderer, this.config, layer, this.activity, order, opacity));
+        });
+
+        for (const gone of existing.values()) {
+            gone.release();
+        }
+
+        this.feeds = next;
         this.refresh();
     }
 
@@ -774,15 +891,12 @@ class Editor {
             view.basemap = basemap;
         }
 
-        // ALWAYS sent, empty list included. The server merges what it is given
-        // so that a client which knows only where it is looking cannot erase
-        // the basemap — which means an absent key reads as "unchanged", and
-        // turning the last overlay off would never be saved. "None" is a state
-        // the user chose, not an absence of information.
-        view.overlays = this.bootstrap.viewState?.overlays ?? [];
-
-        // Which panels are open. Chrome rather than geography, but the same
-        // question: how should this map look when it is opened again.
+        // ALWAYS sent, both keys, because the server MERGES what it is given so
+        // that a client which knows only where it is looking cannot erase the
+        // basemap. An absent key therefore reads as "unchanged" — so a state
+        // the user chose has to be sent explicitly, even when it is the empty
+        // or default one. Omitting it is how closing the last panel used to
+        // fail to save.
         view.panels = this.bootstrap.viewState?.panels ?? {};
 
         const signature = JSON.stringify(view);

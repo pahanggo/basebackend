@@ -115,13 +115,11 @@
     "Remove \":name\" from this map? The layer itself is kept.": "Buang \":name\" dari peta ini? Lapisan itu sendiri dikekalkan.",
     "Map controls": "Kawalan peta",
     "Basemap": "Peta asas",
-    "Overlays": "Lapisan tindanan",
     "View": "Paparan",
     "Go to coordinate": "Pergi ke koordinat",
     "Latitude, longitude": "Latitud, longitud",
     "That is not a coordinate this can read.": "Itu bukan koordinat yang boleh dibaca.",
     "Isolate selected": "Asingkan pilihan",
-    "More basemaps": "Peta asas lain",
     "Fill": "Isian",
     "Line": "Garisan",
     "Show or hide the layers panel": "Tunjuk atau sembunyi panel lapisan",
@@ -135,5 +133,7 @@
     "Untitled layer": "Lapisan tanpa nama",
     "Untitled group": "Kumpulan tanpa nama",
     "Cancel": "Batal",
-    "Unsaved changes": "Perubahan belum disimpan"
+    "Unsaved changes": "Perubahan belum disimpan",
+    "Changes are no longer being saved": "Perubahan tidak lagi disimpan",
+    "This map was changed elsewhere, so saving has stopped to avoid overwriting it. Reload the page to continue; changes made since will be lost.": "Peta ini telah diubah di tempat lain, jadi penyimpanan dihentikan untuk mengelak menimpanya. Muat semula halaman untuk meneruskan; perubahan selepas itu akan hilang."
 }

@@ -193,6 +193,24 @@ side, since that is where the merge lives.
 
 ### Decisions that differ from the plan
 
+- **The drawn set is reconciled, never rebuilt.** Hiding one layer used to
+  clear the renderer and construct a fresh feed per visible layer, so the
+  others lost their geometry, index and built paths and refetched them.
+  Measured after: hiding one of three costs **0 feature reads** and the
+  survivors keep their slots. Slots are now stable, removal leaves a hole, and
+  stack position travels as an explicit `order`.
+- **Opacity is a `globalAlpha` per layer in the paint loop**, not a pane
+  opacity. A pane can only fade a top-level node, so a slider on a layer nested
+  in a group did nothing at all — which is what it looked like. Groups, tiles
+  and image overlays still fade through their pane.
+- **There is one opacity control, and `style.fillOpacity` is gone.** It used to
+  multiply the layer's opacity, so the imported layers — which shipped at 0.15
+  — painted at 15% with the slider at 100%, and the slider could not reach
+  opaque. Exposing both as sliders answered the symptom and left two controls
+  for one visible property. Removing the style alpha answers it properly:
+  layers import solid, one slider dials them back per map, and what it says is
+  what you see.
+- **The panel offers four basemaps and no weather overlays.** See §8.
 - **A group's checkbox cascades to its descendants**, which is the opposite of
   what §8 originally specified. Setting only the group's flag and relying on
   inheritance left the children ticked while the map showed nothing, and the

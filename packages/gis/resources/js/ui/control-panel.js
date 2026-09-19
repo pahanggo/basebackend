@@ -2,9 +2,9 @@
  * The map control panel: where you are looking, and what you are looking for.
  *
  * The split from the layer tree is deliberate and worth keeping. The tree owns
- * *what exists and in what order*; this panel owns *the view*. Basemap, weather
- * overlays, go-to-coordinate, search and isolate all change what is on screen
- * without changing what the map contains (specification section 8).
+ * *what exists and in what order*; this panel owns *the view*. Basemap,
+ * go-to-coordinate and isolate all change what is on screen without changing
+ * what the map contains (specification section 8).
  *
  * It is chrome, so it sits above the map canvas — and an active draw or edit
  * tool collapses it, so it can never intercept a drawing gesture.
@@ -32,34 +32,23 @@ export class ControlPanel {
      * @param {HTMLElement} options.container
      * @param {Object} options.strings
      * @param {Function} options.onBasemap  (id) => void
-     * @param {Function} options.onOverlays (ids) => void
      * @param {Function} options.onGoTo     ({lng, lat}) => void
      * @param {Function} options.onIsolate  (placementId|null) => void
      */
-    constructor({ container, strings, onBasemap, onOverlays, onGoTo, onIsolate, onCollapse = null, previewTile = null }) {
+    constructor({ container, strings, onBasemap, onGoTo, onIsolate, onCollapse = null, previewTile = null }) {
         this.strings = strings;
         this.previewTile = previewTile;
         this.onCollapse = onCollapse;
         this.onBasemap = onBasemap;
-        this.onOverlays = onOverlays;
         this.onGoTo = onGoTo;
         this.onIsolate = onIsolate;
 
         this.basemap = null;
-        this.overlays = new Set();
         this.isolated = null;
 
-        // Four previews in a grid, then the rest as a plain list. Twenty radio
-        // buttons is a list to read; four pictures is a choice to make.
+        // The basemaps on offer, as previewed tiles. The set is
+        // `gis.basemaps.featured` — see `setProviders`.
         this.basemapGrid = el('div', { class: 'gis-panel-grid', role: 'radiogroup' });
-        this.basemapList = el('div', { class: 'gis-panel-basemaps', role: 'radiogroup' });
-        this.moreToggle = el('button', {
-            type: 'button',
-            class: 'btn btn-link btn-sm gis-panel-more',
-            'aria-expanded': 'false',
-            onclick: () => this.setMoreOpen(this.basemapList.hidden),
-        }, [strings.moreBasemaps]);
-        this.overlayList = el('div', { class: 'gis-panel-overlays', role: 'group' });
 
         this.coordinate = el('input', {
             type: 'text',
@@ -79,8 +68,7 @@ export class ControlPanel {
         }, [el('i', { class: 'la la-eye', 'aria-hidden': 'true' }), ` ${strings.isolate}`]);
 
         this.bodyNode = el('div', { class: 'gis-panel-body' }, [
-            this.section(strings.basemap, this.basemapGrid, this.moreToggle, this.basemapList),
-            this.overlaySection = this.section(strings.overlays, this.overlayList),
+            this.section(strings.basemap, this.basemapGrid),
             this.section(strings.goTo, el('div', {}, [this.coordinate, this.coordinateError])),
             this.section(strings.view, this.isolateButton),
         ]);
@@ -99,7 +87,6 @@ export class ControlPanel {
 
         this.bodyNode.id = 'gis-panel-body';
         this.collapsed = false;
-        this.basemapList.hidden = true;
 
         this.root = el('div', { class: 'gis-panel', role: 'region', 'aria-label': strings.mapControls }, [
             this.toggle,
@@ -136,46 +123,15 @@ export class ControlPanel {
      * year is a poor trade, and the fallbacks belong where the cache is
      * (specification section 13).
      */
-    setProviders({ basemaps = [], overlays = [], featured = [], urlTemplate = '' }, active, activeOverlays = []) {
+    setProviders({ featured = [], urlTemplate = '' }, active) {
         this.basemap = active;
-        this.overlays = new Set(activeOverlays);
         this.urlTemplate = urlTemplate;
 
         clear(this.basemapGrid);
-        clear(this.basemapList);
 
         for (const entry of featured) {
             this.basemapGrid.append(this.basemapTile(entry.id, entry.label));
         }
-
-        const featuredIds = featured.map((entry) => entry.id);
-        const rest = basemaps.filter((id) => !featuredIds.includes(id));
-
-        for (const id of rest) {
-            this.basemapList.append(this.basemapOption(id));
-        }
-
-        // Nothing left over is not a disclosure button with an empty list
-        // behind it.
-        this.moreToggle.hidden = rest.length === 0;
-
-        // **Always closed on load.** The four previews are the point of the
-        // panel; opening a twenty-item list every time because the active
-        // basemap happens to live in it would bury them. Where the active one
-        // IS in that list, the toggle names it — so the selection is visible
-        // without the list being open, which is what the disclosure was
-        // hiding in the first place.
-        this.setMoreOpen(false);
-        this.labelMore(rest.includes(active) ? active : null);
-
-        clear(this.overlayList);
-
-        for (const id of overlays) {
-            this.overlayList.append(this.overlayOption(id));
-        }
-
-        // Nothing to toggle is not an empty box with a heading over it.
-        this.overlaySection.hidden = overlays.length === 0;
     }
 
     /**
@@ -204,7 +160,6 @@ export class ControlPanel {
         input.addEventListener('change', () => {
             this.basemap = id;
             this.markSelected();
-            this.labelMore(null);
             this.onBasemap(id);
         });
 
@@ -244,74 +199,6 @@ export class ControlPanel {
         for (const tile of this.basemapGrid.querySelectorAll('.gis-panel-tile')) {
             tile.classList.toggle('is-selected', tile.dataset.basemap === this.basemap);
         }
-    }
-
-    setMoreOpen(open) {
-        this.basemapList.hidden = !open;
-        this.moreToggle.setAttribute('aria-expanded', String(open));
-    }
-
-    /** Name the active basemap on the toggle when it is one of the hidden ones. */
-    labelMore(activeId) {
-        clear(this.moreToggle);
-
-        this.moreToggle.append(activeId
-            ? `${this.strings.moreBasemaps} — ${providerLabel(activeId)}`
-            : this.strings.moreBasemaps);
-    }
-
-    basemapOption(id) {
-        const input = el('input', {
-            type: 'radio',
-            name: 'gis-basemap',
-            class: 'gis-panel-radio',
-            id: `gis-basemap-${id}`,
-            value: id,
-            checked: id === this.basemap,
-        });
-
-        input.addEventListener('change', () => {
-            this.basemap = id;
-            this.markSelected();
-            this.labelMore(id);
-            this.onBasemap(id);
-        });
-
-        return el('label', { class: 'gis-panel-option', for: `gis-basemap-${id}` }, [
-            input,
-            el('span', { text: providerLabel(id) }),
-        ]);
-    }
-
-    /**
-     * A weather overlay, independently toggled.
-     *
-     * Classified by the `owm-` prefix on the server, so a sixth one appears
-     * here without a code change — which is the reason the prefix rule exists
-     * rather than a hardcoded list.
-     */
-    overlayOption(id) {
-        const input = el('input', {
-            type: 'checkbox',
-            class: 'gis-panel-checkbox',
-            id: `gis-overlay-${id}`,
-            checked: this.overlays.has(id),
-        });
-
-        input.addEventListener('change', () => {
-            if (input.checked) {
-                this.overlays.add(id);
-            } else {
-                this.overlays.delete(id);
-            }
-
-            this.onOverlays([...this.overlays]);
-        });
-
-        return el('label', { class: 'gis-panel-option', for: `gis-overlay-${id}` }, [
-            input,
-            el('span', { text: providerLabel(id) }),
-        ]);
     }
 
     goTo() {

@@ -48,14 +48,17 @@ export class LayerTree {
      */
     constructor({
         container, strings, onChanged,
-        onZoomTo = null, onRestyle = null, onAddLayer = null, zoom = () => null,
+        onZoomTo = null, onRestyle = null, onAddLayer = null, onOpacityPreview = null,
+        zoom = () => null, zoomLimits = () => ({ min: 0, max: 22 }),
     }) {
         this.container = container;
         this.strings = strings;
         this.onChanged = onChanged;
         this.onZoomTo = onZoomTo;
         this.onRestyle = onRestyle;
+        this.onOpacityPreview = onOpacityPreview;
         this.zoom = zoom;
+        this.zoomLimits = zoomLimits;
 
         this.store = null;
         this.rows = [];
@@ -384,11 +387,49 @@ export class LayerTree {
         this.onChanged();
     }
 
-    setOpacity(row, opacity) {
+    /**
+     * Show an opacity while the slider is moving, without recording it.
+     *
+     * A range input fires `input` on every pixel of the drag. Committing there
+     * sent a command, a server round trip and a full reconcile of the drawn
+     * set per pixel — for a control whose whole value is that it responds
+     * continuously. So the drag only repaints, and `commitOpacity` records the
+     * value the user actually settled on.
+     */
+    previewOpacity(row, opacity) {
+        const placement = this.store.state.placements[row.placement.id];
+
+        if (!placement) {
+            return;
+        }
+
+        placement.opacity = opacity;
+        this.onOpacityPreview?.(this.store.state);
+    }
+
+    /**
+     * One command, for the value the user let go on.
+     *
+     * @param {number} from where the drag started
+     * @param {number} to where it ended
+     */
+    commitOpacity(row, from, to) {
+        const placement = this.store.state.placements[row.placement.id];
+
+        if (!placement || from === to) {
+            return;
+        }
+
+        // Wound back to where the drag started before committing, because the
+        // preview has already moved the local value — and a command applied to
+        // its own result produces an inverse that undoes to the preview rather
+        // than to where the layer actually was.
+        placement.opacity = from;
+
         this.store.commit(layerSetOpacity({
-            id: row.placement.id,
-            version: row.placement.version,
-            opacity,
+            id: placement.id,
+            version: placement.version,
+            opacity: to,
         }));
 
         this.onChanged();
@@ -603,7 +644,7 @@ export class LayerTree {
             kind,
             style: kind === 'group'
                 ? {}
-                : { stroke: '#2b6cb0', weight: 2, fill: '#63b3ed', fillOpacity: 0.2 },
+                : { stroke: '#2b6cb0', weight: 2, fill: '#63b3ed' },
             parentId: null,
             sortKey: between(null, first ? first.sortKey : null),
         }));
@@ -983,18 +1024,22 @@ export class LayerTree {
     }
 
     opacityItem(row) {
+        const started = row.placement.opacity ?? 1;
+
         const slider = el('input', {
             type: 'range',
             min: '0',
             max: '100',
-            value: String(Math.round((row.placement.opacity ?? 1) * 100)),
+            value: String(Math.round(started * 100)),
             class: 'custom-range gis-tree-opacity',
             'aria-label': this.strings.opacity,
         });
 
-        // On `input` while dragging, so the map follows the thumb; the command
-        // coalesces in the undo stack rather than recording a step per pixel.
-        slider.addEventListener('input', () => this.setOpacity(row, Number(slider.value) / 100));
+        // `input` repaints, `change` records. A range input fires `input` on
+        // every pixel of the drag, and a command per pixel is a round trip and
+        // a reconcile per pixel.
+        slider.addEventListener('input', () => this.previewOpacity(row, Number(slider.value) / 100));
+        slider.addEventListener('change', () => this.commitOpacity(row, started, Number(slider.value) / 100));
 
         return el('div', { class: 'dropdown-item-text gis-tree-slider' }, [
             el('label', { text: this.strings.opacity }),
@@ -1002,21 +1047,44 @@ export class LayerTree {
         ]);
     }
 
+    /**
+     * The zoom band a layer is visible in.
+     *
+     * **The fields default to the map's own limits**, not to blanks. An empty
+     * box says nothing about what the bound would be if you set one, and
+     * "0 to 22" is not the answer either — the map's real range is whatever
+     * the basemap allows, so those are the only numbers worth showing.
+     *
+     * A bound left at the map's limit is stored as `null`, which is what
+     * "unbounded" means in `gis_map_layer`. Writing the limit instead would
+     * pin the layer to today's basemap: swap in one that goes to 22 and every
+     * layer would silently stop drawing above 20.
+     */
     zoomRangeItem(row) {
-        const min = el('input', {
-            type: 'number', min: '0', max: '22', class: 'form-control form-control-sm',
-            value: row.placement.minZoom ?? '', 'aria-label': this.strings.minZoom,
+        const limits = this.zoomLimits();
+
+        const field = (value, fallback, label) => el('input', {
+            type: 'number',
+            min: String(limits.min),
+            max: String(limits.max),
+            class: 'form-control form-control-sm',
+            value: String(value ?? fallback),
+            'aria-label': label,
         });
 
-        const max = el('input', {
-            type: 'number', min: '0', max: '22', class: 'form-control form-control-sm',
-            value: row.placement.maxZoom ?? '', 'aria-label': this.strings.maxZoom,
-        });
+        const min = field(row.placement.minZoom, limits.min, this.strings.minZoom);
+        const max = field(row.placement.maxZoom, limits.max, this.strings.maxZoom);
+
+        const bound = (input, limit) => {
+            const value = input.value === '' ? limit : Number(input.value);
+
+            return value === limit ? null : value;
+        };
 
         const commit = () => this.setZoomRange(
             row,
-            min.value === '' ? null : Number(min.value),
-            max.value === '' ? null : Number(max.value),
+            bound(min, limits.min),
+            bound(max, limits.max),
         );
 
         min.addEventListener('change', commit);
