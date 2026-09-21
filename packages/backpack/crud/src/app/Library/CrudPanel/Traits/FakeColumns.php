@@ -26,7 +26,7 @@ trait FakeColumns
                         array_push($fakeFieldsColumnsArray, $field['store_in']);
                     }
                 } else {
-                    //otherwise in the one defined in the $crud variable
+                    // otherwise in the one defined in the $crud variable
                     if (! in_array('extras', $fakeFieldsColumnsArray, true)) {
                         array_push($fakeFieldsColumnsArray, 'extras');
                     }

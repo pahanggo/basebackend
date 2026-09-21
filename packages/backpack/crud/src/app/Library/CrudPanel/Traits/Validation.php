@@ -3,6 +3,7 @@
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
 
 trait Validation
 {
@@ -58,7 +59,7 @@ trait Validation
     /**
      * Run the authorization and validation the currently set FormRequest.
      *
-     * @return \Illuminate\Http\Request
+     * @return Request
      */
     public function validateRequest()
     {
@@ -84,7 +85,7 @@ trait Validation
      */
     public function setRequiredFields($class)
     {
-        $formRequest = new $class();
+        $formRequest = new $class;
         $rules = $formRequest->rules();
         $requiredFields = [];
 

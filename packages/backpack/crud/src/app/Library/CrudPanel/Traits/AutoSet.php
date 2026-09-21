@@ -21,22 +21,22 @@ trait AutoSet
         array_map(function ($field) use ($setFields, $setColumns) {
             if ($setFields && ! isset($this->fields()[$field])) {
                 $this->addField([
-                    'name'       => $field,
-                    'label'      => $this->makeLabel($field),
-                    'value'      => null,
-                    'default'    => isset($this->autoset['db_column_types'][$field]['default']) ? $this->autoset['db_column_types'][$field]['default'] : null,
-                    'type'       => $this->inferFieldTypeFromDbColumnType($field),
-                    'values'     => [],
+                    'name' => $field,
+                    'label' => $this->makeLabel($field),
+                    'value' => null,
+                    'default' => isset($this->autoset['db_column_types'][$field]['default']) ? $this->autoset['db_column_types'][$field]['default'] : null,
+                    'type' => $this->inferFieldTypeFromDbColumnType($field),
+                    'values' => [],
                     'attributes' => [],
-                    'autoset'    => true,
+                    'autoset' => true,
                 ]);
             }
 
             if ($setColumns && ! in_array($field, $this->model->getHidden()) && ! isset($this->columns()[$field])) {
                 $this->addColumn([
-                    'name'    => $field,
-                    'label'   => $this->makeLabel($field),
-                    'type'    => $this->inferFieldTypeFromDbColumnType($field),
+                    'name' => $field,
+                    'label' => $this->makeLabel($field),
+                    'type' => $this->inferFieldTypeFromDbColumnType($field),
                     'autoset' => true,
                 ]);
             }
@@ -126,9 +126,9 @@ trait AutoSet
             case 'set':
                 return 'text';
 
-            // case 'enum':
-            //     return 'enum';
-            // break;
+                // case 'enum':
+                //     return 'enum';
+                // break;
 
             case 'boolean':
                 return 'boolean';
@@ -162,9 +162,7 @@ trait AutoSet
     }
 
     // Fix for DBAL not supporting enum
-    public function setDoctrineTypesMapping()
-    {
-    }
+    public function setDoctrineTypesMapping() {}
 
     /**
      * Turn a database column name or PHP variable into a pretty label to be shown to the user.

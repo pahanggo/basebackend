@@ -9,8 +9,8 @@ use App\Console\Commands\Backpack\CrudModelBackpackCommand;
 use App\Console\Commands\Backpack\CrudRequestBackpackCommand;
 use App\Console\Commands\MakeReportCommand;
 use App\Console\Commands\MakeWidgetCommand;
-use App\Console\Commands\Reports\MakeReportViewCommand;
 use App\Console\Commands\Reports\MakeReportControllerCommand;
+use App\Console\Commands\Reports\MakeReportViewCommand;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -36,7 +36,6 @@ class Kernel extends ConsoleKernel
     /**
      * Define the application's command schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
     protected function schedule(Schedule $schedule)

@@ -37,14 +37,14 @@ class MakeReportViewCommand extends GeneratorCommand
     /**
      * Get the destination class path.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function getPath($name)
     {
         $baseName = str_replace($this->getNamespace($name).'\\', '', $name);
-        return resource_path('views/reports/' . strtolower($baseName) . '.blade.php');
+
+        return resource_path('views/reports/'.strtolower($baseName).'.blade.php');
     }
 
     /**
@@ -60,9 +60,8 @@ class MakeReportViewCommand extends GeneratorCommand
     /**
      * Replace the table name for the given stub.
      *
-     * @param string $stub
-     * @param string $name
-     *
+     * @param  string  $stub
+     * @param  string  $name
      * @return string
      */
     protected function replaceNameStrings(&$stub, $name)
@@ -70,14 +69,14 @@ class MakeReportViewCommand extends GeneratorCommand
         $baseName = str_replace($this->getNamespace($name).'\\', '', $name);
         $stub = str_replace('DummyClass', $baseName, $stub);
         $stub = str_replace('dummyclass', $baseName, $stub);
+
         return $this;
     }
 
     /**
      * Build the class with the given name.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function buildClass($name)

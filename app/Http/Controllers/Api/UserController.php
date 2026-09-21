@@ -24,6 +24,7 @@ class UserController extends BaseController
      * Gets the current authenticated user profile including name, username, email and avatar url.
      *
      * @header Authorization Bearer {YOUR_AUTH_KEY}
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -49,9 +50,11 @@ class UserController extends BaseController
      * Updates the current authenticated user profile including name, username, and email.
      *
      * @header Authorization Bearer {YOUR_AUTH_KEY}
+     *
      * @bodyParam username string The user's username
      * @bodyParam email string The user's email
      * @bodyParam name string The user's name
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -80,7 +83,9 @@ class UserController extends BaseController
      * Updates the current authenticated user's avatar.
      *
      * @header Authorization Bearer {YOUR_AUTH_KEY}
+     *
      * @bodyParam photo file The new avatar image
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -99,18 +104,18 @@ class UserController extends BaseController
     {
         $image = Image::read($request->file('photo'));
 
-        $image->resize(256, 256, function($constraint){
+        $image->resize(256, 256, function ($constraint) {
             $constraint->upsize();
         });
         $image = $image->toPng();
 
-        $filename = Uuid::uuid4()->__toString() . '.png';
+        $filename = Uuid::uuid4()->__toString().'.png';
         $existingFile = str_replace('/storage', '', $request->user()->getAvatarUrl());
-        if(Storage::disk('public')->exists($existingFile)) {
+        if (Storage::disk('public')->exists($existingFile)) {
             Storage::disk('public')->delete($existingFile);
         }
-        Storage::disk('public')->put('/avatars/' . $filename, $image);
-        $request->user()->update(['avatar_url' => '/storage/avatars/' . $filename]);
+        Storage::disk('public')->put('/avatars/'.$filename, $image);
+        $request->user()->update(['avatar_url' => '/storage/avatars/'.$filename]);
 
         return $this->send($this->profileData($request->user()));
     }
@@ -121,9 +126,11 @@ class UserController extends BaseController
      * Changes the current authenticated user's password.
      *
      * @header Authorization Bearer {YOUR_AUTH_KEY}
+     *
      * @bodyParam existing_password string The existing password
      * @bodyParam password string The new password
      * @bodyParam password_confirmation string The new password again
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -141,7 +148,7 @@ class UserController extends BaseController
     public function changePassword(ChangePasswordRequest $request)
     {
         $data = $request->only(['existing_password', 'password']);
-        if(!Hash::check($data['existing_password'], $request->user()->password)) {
+        if (! Hash::check($data['existing_password'], $request->user()->password)) {
             return $this->error([
                 'existing_password' => ['Existing password is invalid'],
             ]);
@@ -151,7 +158,7 @@ class UserController extends BaseController
         $user->password = bcrypt($data['password']);
         $user->save();
 
-        $user->notify(new PasswordChangedNotification());
+        $user->notify(new PasswordChangedNotification);
 
         return $this->send($this->profileData($request->user()));
     }

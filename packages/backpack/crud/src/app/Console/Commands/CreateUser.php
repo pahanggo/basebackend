@@ -50,7 +50,7 @@ class CreateUser extends Command
         }
 
         $auth = config('backpack.base.user_model_fqn', 'App\User');
-        $user = new $auth();
+        $user = new $auth;
         $user->name = $name;
         $user->email = $email;
         $user->password = $password;

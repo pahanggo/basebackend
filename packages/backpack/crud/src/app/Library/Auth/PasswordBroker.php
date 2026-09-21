@@ -17,10 +17,9 @@ class PasswordBroker extends OriginalPasswordBroker
     /**
      * Send a password reset link to a user.
      *
-     * @param  array  $credentials
      * @return string
      */
-    public function sendResetLink(array $credentials, Closure $callback = null)
+    public function sendResetLink(array $credentials, ?Closure $callback = null)
     {
         // First we will check to see if we found a user at the given credentials and
         // if we did not we will redirect back to this current URI with a piece of

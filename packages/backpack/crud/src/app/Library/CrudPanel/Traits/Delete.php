@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 trait Delete
 {
     /*
@@ -16,7 +18,7 @@ trait Delete
      * @param  int  $id  The id of the item to be deleted.
      * @return bool True if the item was deleted.
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException if the model was not found.
+     * @throws ModelNotFoundException if the model was not found.
      *
      * TODO: should this delete items with relations to it too?
      */

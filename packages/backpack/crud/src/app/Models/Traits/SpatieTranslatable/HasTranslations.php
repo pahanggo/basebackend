@@ -66,7 +66,6 @@ trait HasTranslations
     /**
      * Create translated items as json.
      *
-     * @param  array  $attributes
      * @return static
      */
     public static function create(array $attributes = [])
@@ -75,7 +74,7 @@ trait HasTranslations
         $attributes = Arr::except($attributes, ['locale']);
         $non_translatable = [];
 
-        $model = new static();
+        $model = new static;
 
         // do the actual saving
         foreach ($attributes as $attribute => $value) {
@@ -93,8 +92,6 @@ trait HasTranslations
     /**
      * Update translated items as json.
      *
-     * @param  array  $attributes
-     * @param  array  $options
      * @return bool
      */
     public function update(array $attributes = [], array $options = [])
@@ -176,7 +173,6 @@ trait HasTranslations
      *
      * @param  string  $method
      * @param  array  $parameters
-     * @return
      */
     public function __call($method, $parameters)
     {
@@ -207,7 +203,7 @@ trait HasTranslations
                 return parent::__call($method, $parameters);
                 break;
 
-            // do not translate any other methods
+                // do not translate any other methods
             default:
                 return parent::__call($method, $parameters);
                 break;

@@ -2,19 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\ForgotPasswordRequest;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Models\User;
 use Backpack\CRUD\app\Library\Auth\PasswordBrokerManager;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 /**
  * API Authentication Endpoints
- *
- * @package App\Http\Controllers\Api
  */
 class AuthController extends BaseController
 {
@@ -24,8 +20,10 @@ class AuthController extends BaseController
      * Checks the supplied username and password and returns a token if the details are valid
      *
      * @unauthenticated
+     *
      * @bodyParam username string The user's name
      * @bodyParam password string The user's password
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -50,18 +48,19 @@ class AuthController extends BaseController
     {
         $credentials = $request->only('username', 'password');
         $user = User::whereUsername($credentials['username'])->first();
-        if(!$user) {
+        if (! $user) {
             return $this->error([], 'Invalid Username or Password', 400);
         }
 
-        if(!Hash::check($credentials['password'], $user->password)) {
+        if (! Hash::check($credentials['password'], $user->password)) {
             return $this->error([], 'Invalid Username or Password', 400);
         }
 
         $token = $user->createToken('api')->plainTextToken;
+
         return $this->send([
-            'user'         => $this->profileData($user),
-            'access_token' => $token
+            'user' => $this->profileData($user),
+            'access_token' => $token,
         ]);
     }
 
@@ -71,11 +70,13 @@ class AuthController extends BaseController
      * Registeres a new user.
      *
      * @unauthenticated
+     *
      * @bodyParam name string The new user's name
      * @bodyParam username string The new user's username
      * @bodyParam email string The new user's email
      * @bodyParam password string The password
      * @bodyParam password_confirmation string The password again
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -96,7 +97,7 @@ class AuthController extends BaseController
             'name',
             'username',
             'email',
-            'password'
+            'password',
         ]);
 
         $params['password'] = bcrypt($params['password']);
@@ -116,7 +117,9 @@ class AuthController extends BaseController
      * Requests a Reset Password Email.
      *
      * @unauthenticated
+     *
      * @bodyParam username string The user's username or email
+     *
      * @response {
      *   "message": "Successful",
      *   "data": {
@@ -137,7 +140,7 @@ class AuthController extends BaseController
             ->orWhere('email', $request->username)
             ->first();
 
-        if($user) {
+        if ($user) {
             $this->broker()->sendResetLink(['email' => $user->email]);
         }
 

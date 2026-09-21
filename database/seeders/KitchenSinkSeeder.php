@@ -6,6 +6,7 @@ use App\Models\KitchenSink\KitchenSink;
 use App\Models\KitchenSink\KitchenSinkCategory;
 use App\Models\KitchenSink\KitchenSinkGroup;
 use App\Models\KitchenSink\KitchenSinkTag;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -127,7 +128,7 @@ class KitchenSinkSeeder extends Seeder
     /**
      * Generate a small labelled PNG on the given disk and return its relative path.
      */
-    private function sampleImage(\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path, string $label, string $hex): string
+    private function sampleImage(Filesystem $disk, string $path, string $label, string $hex): string
     {
         $canvas = imagecreatetruecolor(300, 300);
         [$r, $g, $b] = sscanf($hex, '#%02x%02x%02x');
@@ -144,7 +145,7 @@ class KitchenSinkSeeder extends Seeder
         return $path;
     }
 
-    private function sampleFile(\Illuminate\Contracts\Filesystem\Filesystem $disk, string $path, string $contents): string
+    private function sampleFile(Filesystem $disk, string $path, string $contents): string
     {
         $disk->put($path, $contents);
 

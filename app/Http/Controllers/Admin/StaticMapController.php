@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\StaticMapService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -35,7 +36,7 @@ class StaticMapController extends Controller
 
         $response = response($map['bytes'], 200, ['Content-Type' => 'image/png'])
             ->setEtag(sha1($map['bytes']))
-            ->setLastModified(\Carbon\Carbon::createFromTimestamp($map['cached_at']))
+            ->setLastModified(Carbon::createFromTimestamp($map['cached_at']))
             ->setPrivate()
             ->setMaxAge($ttlDays * 86400);
 

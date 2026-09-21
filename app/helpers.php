@@ -4,10 +4,11 @@ use Carbon\Carbon;
 use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Session;
 
-if(!function_exists('page')) {
-    function page($page) {
-        $path = resource_path('pages/' . str_replace('.', '/', $page) . '.md');
-        if(!file_exists($path)) {
+if (! function_exists('page')) {
+    function page($page)
+    {
+        $path = resource_path('pages/'.str_replace('.', '/', $page).'.md');
+        if (! file_exists($path)) {
             return abort(404);
         }
 
@@ -15,51 +16,59 @@ if(!function_exists('page')) {
     }
 }
 
-if(!function_exists('user')) {
-    function user() {
+if (! function_exists('user')) {
+    function user()
+    {
         return backpack_user();
     }
 }
 
-if(!function_exists('isAssuming')) {
-    function isAssuming() {
+if (! function_exists('isAssuming')) {
+    function isAssuming()
+    {
         return Session::has('_assuming_user_id');
     }
 }
 
-if(!function_exists('format_currency')) {
-    function format_currency($value, $decimals = 2, $currency = 'RM ') {
-        return $currency . number_format($value, $decimals, '.', ',');
+if (! function_exists('format_currency')) {
+    function format_currency($value, $decimals = 2, $currency = 'RM ')
+    {
+        return $currency.number_format($value, $decimals, '.', ',');
     }
 }
 
-if(!function_exists('format_date')) {
-    function format_date(Carbon $date) {
+if (! function_exists('format_date')) {
+    function format_date(Carbon $date)
+    {
         return $date->format('j M Y');
     }
 }
 
-if(!function_exists('format_datetime')) {
-    function format_datetime(Carbon $date) {
+if (! function_exists('format_datetime')) {
+    function format_datetime(Carbon $date)
+    {
         return $date->format('j M Y g:i a');
     }
 }
 
-if(!function_exists('app_version')) {
-    function app_version() {
+if (! function_exists('app_version')) {
+    function app_version()
+    {
         return json_decode(file_get_contents(base_path('composer.json')))->version;
     }
 }
 
-if(!function_exists('username_from_email')) {
-    function username_from_email($email) {
-        if(!trim($email)) {
+if (! function_exists('username_from_email')) {
+    function username_from_email($email)
+    {
+        if (! trim($email)) {
             return '';
         }
+
         return explode('@', $email)[0];
     }
 }
-if(!function_exists('frontend_locale')) {
+if (! function_exists('frontend_locale')) {
     /**
      * Resolve the app locale (e.g. "ms_MY") to the locale key a vendor JS package actually ships,
      * given a sprintf pattern for the file's public path (e.g. "packages/select2/dist/js/i18n/%s.js").

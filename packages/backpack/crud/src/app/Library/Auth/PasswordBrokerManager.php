@@ -4,10 +4,11 @@ namespace Backpack\CRUD\app\Library\Auth;
 
 use Backpack\CRUD\app\Library\Auth\PasswordBroker as BackpackPasswordBroker;
 use Illuminate\Auth\Passwords\PasswordBrokerManager as OriginalPasswordBrokerManager;
+use Illuminate\Contracts\Auth\PasswordBroker;
 use InvalidArgumentException;
 
 /**
- * @mixin \Illuminate\Contracts\Auth\PasswordBroker
+ * @mixin PasswordBroker
  */
 class PasswordBrokerManager extends OriginalPasswordBrokerManager
 {
@@ -15,9 +16,9 @@ class PasswordBrokerManager extends OriginalPasswordBrokerManager
      * Resolve the given broker.
      *
      * @param  string  $name
-     * @return \Illuminate\Contracts\Auth\PasswordBroker
+     * @return PasswordBroker
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     protected function resolve($name)
     {

@@ -2,6 +2,7 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 
 trait FakeFields
@@ -15,7 +16,7 @@ trait FakeFields
      * @param  string  $form  The CRUD form. Can be 'create' or 'update' . Default is 'create'.
      * @param  int|bool  $id  The CRUD entry id in the case of the 'update' form.
      *
-     * @see \Illuminate\Http\Request::all() For an example on how to get the request input.
+     * @see Request::all() For an example on how to get the request input.
      *
      * @return array The updated request input.
      */

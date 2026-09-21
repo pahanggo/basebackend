@@ -11,13 +11,13 @@ class ResetPasswordNotification extends ResetPassword
     /**
      * Build the mail representation of the notification.
      *
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
     public function toMail($notifiable, $email = null)
     {
         $email = $email ?? $notifiable->getEmailForPasswordReset();
 
-        return (new MailMessage())
+        return (new MailMessage)
             ->subject(trans('backpack::base.password_reset.subject'))
             ->greeting(trans('backpack::base.password_reset.greeting'))
             ->line([

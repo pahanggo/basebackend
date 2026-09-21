@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 class AddSettingsContent extends Command
 {
@@ -42,7 +41,7 @@ class AddSettingsContent extends Command
         $code = $this->argument('settings');
         $path = 'app/Http/Controllers/AdminController.php';
         $content = file_get_contents($path);
-        $content = str_replace('                    // New settings will be added here. Do not delete this line.', "                    $code" . PHP_EOL . '                    // New settings will be added here. Do not delete this line.', $content);
+        $content = str_replace('                    // New settings will be added here. Do not delete this line.', "                    $code".PHP_EOL.'                    // New settings will be added here. Do not delete this line.', $content);
         file_put_contents($path, $content);
     }
 

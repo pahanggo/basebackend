@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Console\Commands;
 
+use Backpack\CRUD\app\Console\Commands\Traits\PrettyCommandOutput;
+use Backpack\DevTools\Console\Commands\InstallDevTools;
 use File;
 use Illuminate\Console\Command;
 use Str;
@@ -9,7 +11,7 @@ use Symfony\Component\Process\Process;
 
 class RequireDevTools extends Command
 {
-    use \Backpack\CRUD\app\Console\Commands\Traits\PrettyCommandOutput;
+    use PrettyCommandOutput;
 
     protected $progressBar;
 
@@ -152,10 +154,10 @@ class RequireDevTools extends Command
         $this->info(' Now running the DevTools installation command.');
 
         // manually include the command in the run-time
-        if (! class_exists(\Backpack\DevTools\Console\Commands\InstallDevTools::class)) {
+        if (! class_exists(InstallDevTools::class)) {
             include base_path('vendor/backpack/devtools/src/Console/Commands/InstallDevTools.php');
         }
 
-        $this->call(\Backpack\DevTools\Console\Commands\InstallDevTools::class);
+        $this->call(InstallDevTools::class);
     }
 }

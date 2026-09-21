@@ -2,6 +2,7 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
+use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 
 trait SaveActions
@@ -24,10 +25,10 @@ trait SaveActions
      */
     public function getFallBackSaveAction()
     {
-        //we get the higher order in save actions array. By default it would be `save_and_back`
+        // we get the higher order in save actions array. By default it would be `save_and_back`
         $higherAction = $this->getSaveActionByOrder(1);
 
-        //if there is an higher action and that action is not the backpack default higher one `save_and_back` we return it.
+        // if there is an higher action and that action is not the backpack default higher one `save_and_back` we return it.
         if (! empty($higherAction) && key($higherAction) !== 'save_and_back') {
             return key($higherAction);
         }
@@ -73,13 +74,12 @@ trait SaveActions
     /**
      * Allow developers to register save action into CRUD.
      *
-     * @param  array  $saveAction
      * @return void
      */
     public function addSaveAction(array $saveAction)
     {
         $orderCounter = $this->getOperationSetting('save_actions') !== null ? (count($this->getOperationSetting('save_actions')) + 1) : 1;
-        //check for some mandatory fields
+        // check for some mandatory fields
         $saveAction['name'] ?? abort(500, 'Please define save action name.');
         $saveAction['redirect'] = $saveAction['redirect'] ?? function ($crud, $request, $itemId) {
             return $request->has('http_referrer') ? $request->get('http_referrer') : $crud->route;
@@ -100,8 +100,6 @@ trait SaveActions
     /**
      * Replaces setting order or forces some default.
      *
-     * @param  string  $saveAction
-     * @param  int  $wantedOrder
      * @return int
      */
     public function orderSaveAction(string $saveAction, int $wantedOrder)
@@ -132,7 +130,7 @@ trait SaveActions
      */
     public function replaceSaveActions($saveActions)
     {
-        //we reset all save actions
+        // we reset all save actions
         $this->setOperationSetting('save_actions', []);
 
         if (count($saveActions) != count($saveActions, COUNT_RECURSIVE)) {
@@ -156,7 +154,6 @@ trait SaveActions
     /**
      * Allow the developer to remove multiple save actions from settings.
      *
-     * @param  array  $saveActions
      * @return void
      */
     public function removeSaveActions(array $saveActions)
@@ -169,7 +166,6 @@ trait SaveActions
     /**
      * Allow the developer to remove a save action from settings.
      *
-     * @param  string  $saveAction
      * @return void
      */
     public function removeSaveAction(string $saveAction)
@@ -195,7 +191,6 @@ trait SaveActions
     /**
      * Allows the developer to set save actions order. It could be ['action1','action2'] or ['action1' => 1, 'action2' => 2].
      *
-     * @param  array  $saveActions
      * @return void
      */
     public function orderSaveActions(array $saveActions)
@@ -254,7 +249,7 @@ trait SaveActions
     public function getCurrentSaveAction($saveOptions)
     {
 
-        //get save action from session if exists, or get the developer defined order
+        // get save action from session if exists, or get the developer defined order
         $saveAction = session($this->getCurrentOperation().'.saveAction', $this->getFallBackSaveAction());
         if (isset($saveOptions[$saveAction])) {
             $currentAction = $saveOptions[$saveAction];
@@ -275,13 +270,13 @@ trait SaveActions
      */
     public function getSaveAction()
     {
-        //get only the save actions that pass visibility callback
+        // get only the save actions that pass visibility callback
         $saveOptions = $this->getVisibleSaveActions();
 
-        //get the current action
+        // get the current action
         $saveCurrent = $this->getCurrentSaveAction($saveOptions);
 
-        //get the dropdown options
+        // get the dropdown options
         $dropdownOptions = [];
         foreach ($saveOptions as $key => $option) {
             if ($option['name'] != $saveCurrent['value']) {
@@ -290,7 +285,7 @@ trait SaveActions
         }
 
         return [
-            'active'  => $saveCurrent,
+            'active' => $saveCurrent,
             'options' => $dropdownOptions,
         ];
     }
@@ -322,7 +317,7 @@ trait SaveActions
      * Redirect to the correct URL, depending on which save action has been selected.
      *
      * @param  string  $itemId
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function performSaveAction($itemId = null)
     {
@@ -336,7 +331,7 @@ trait SaveActions
                 $redirectUrl = $actions[$saveAction]['redirect']($this, $request, $itemId);
             }
 
-            //allow the save action to define default http_referrer (url for the save_and_back button)
+            // allow the save action to define default http_referrer (url for the save_and_back button)
             if (isset($actions[$saveAction]['referrer_url'])) {
                 if (is_callable($actions[$saveAction]['referrer_url'])) {
                     $referrer_url = $actions[$saveAction]['referrer_url']($this, $request, $itemId);
@@ -347,8 +342,8 @@ trait SaveActions
         // if the request is AJAX, return a JSON response
         if ($this->getRequest()->ajax()) {
             return [
-                'success'      => true,
-                'data'         => $this->entry,
+                'success' => true,
+                'data' => $this->entry,
                 'redirect_url' => $redirectUrl,
                 'referrer_url' => $referrer_url ?? false,
             ];

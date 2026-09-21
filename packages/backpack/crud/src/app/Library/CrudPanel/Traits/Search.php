@@ -3,6 +3,8 @@
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Validator;
 
 trait Search
@@ -17,7 +19,7 @@ trait Search
      * Add conditions to the CRUD query for a particular search term.
      *
      * @param  string  $searchTerm  Whatever string the user types in the search bar.
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function applySearchTerm($searchTerm)
     {
@@ -198,7 +200,7 @@ trait Search
     /**
      * Get the HTML of the cells in a table row, for a certain DB entry.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $entry  A db entry of the current entity;
+     * @param  Model  $entry  A db entry of the current entity;
      * @param  bool|int  $rowNumber  The number shown to the user as row number (index);
      * @return array Array of HTML cell contents.
      */
@@ -213,19 +215,19 @@ trait Search
         // add the buttons as the last column
         if ($this->buttons()->where('stack', 'line')->count()) {
             $row_items[] = \View::make('crud::inc.action_buttons', ['stack' => 'line'])
-                                ->with('crud', $this)
-                                ->with('entry', $entry)
-                                ->with('row_number', $rowNumber)
-                                ->render();
+                ->with('crud', $this)
+                ->with('entry', $entry)
+                ->with('row_number', $rowNumber)
+                ->render();
         }
 
         // add the details_row button to the first column
         if ($this->getOperationSetting('detailsRow')) {
             $details_row_button = \View::make('crud::columns.inc.details_row_button')
-                                           ->with('crud', $this)
-                                           ->with('entry', $entry)
-                                           ->with('row_number', $rowNumber)
-                                           ->render();
+                ->with('crud', $this)
+                ->with('entry', $entry)
+                ->with('row_number', $rowNumber)
+                ->render();
             $row_items[0] = $details_row_button.$row_items[0];
         }
 
@@ -236,7 +238,7 @@ trait Search
      * Get the HTML of a cell, using the column types.
      *
      * @param  array  $column
-     * @param  \Illuminate\Database\Eloquent\Model  $entry  A db entry of the current entity;
+     * @param  Model  $entry  A db entry of the current entity;
      * @param  bool|int  $rowNumber  The number shown to the user as row number (index);
      * @return string
      */
@@ -313,17 +315,17 @@ trait Search
         }
 
         return [
-            'draw'            => (isset($this->getRequest()['draw']) ? (int) $this->getRequest()['draw'] : 0),
-            'recordsTotal'    => $totalRows,
+            'draw' => (isset($this->getRequest()['draw']) ? (int) $this->getRequest()['draw'] : 0),
+            'recordsTotal' => $totalRows,
             'recordsFiltered' => $filteredRows,
-            'data'            => $rows,
+            'data' => $rows,
         ];
     }
 
     /**
      * Return the column attribute (column in database) prefixed with table to use in search.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      * @param  string  $column
      * @return string
      */

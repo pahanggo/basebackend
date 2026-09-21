@@ -41,28 +41,28 @@ class CrudBackpackCommand extends Command
         $this->call('backpack:crud-controller', ['name' => $nameTitle, '--settings' => $isSettings]);
 
         // Create the CRUD Request and show output
-        $this->call('backpack:crud-request', ['name' => $nameTitle . 'Create', '--settings' => $isSettings]);
-        $this->call('backpack:crud-request', ['name' => $nameTitle . 'Update', '--settings' => $isSettings]);
+        $this->call('backpack:crud-request', ['name' => $nameTitle.'Create', '--settings' => $isSettings]);
+        $this->call('backpack:crud-request', ['name' => $nameTitle.'Update', '--settings' => $isSettings]);
 
         // Create permissions
-        $this->call('backpack:permission', ['name' => 'Manage ' . $namePlural]);
+        $this->call('backpack:permission', ['name' => 'Manage '.$namePlural]);
 
         // Create the CRUD route
-        if($isSettings) {
+        if ($isSettings) {
             $this->call('backpack:add-custom-route', [
-            'code' => "Route::group(['middleware' => 'can:Manage $namePlural'], function(){
+                'code' => "Route::group(['middleware' => 'can:Manage $namePlural'], function(){
         Route::crud('settings/$nameKebab', 'Settings\\\\{$nameTitle}CrudController');
     });",
             ]);
         } else {
             $this->call('backpack:add-custom-route', [
-            'code' => "Route::group(['middleware' => 'can:Manage $namePlural'], function(){
+                'code' => "Route::group(['middleware' => 'can:Manage $namePlural'], function(){
         Route::crud('$nameKebab', '{$nameTitle}CrudController');
     });",
             ]);
         }
 
-        if($isSettings) {
+        if ($isSettings) {
             $this->call('backpack:add-settings-content', [
                 'settings' => "'$nameTitle' => [
                         'path' => 'settings/$nameKebab',

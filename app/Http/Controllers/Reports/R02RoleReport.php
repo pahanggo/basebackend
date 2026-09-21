@@ -17,13 +17,13 @@ class R02RoleReport
     }
 
     // grouping of report
-    public function getGroupName() : string
+    public function getGroupName(): string
     {
         return 'Access Control';
     }
 
     // what the user will see the widget name as
-    public function getReportName() : string
+    public function getReportName(): string
     {
         return 'R02: Role Report';
     }
@@ -34,7 +34,7 @@ class R02RoleReport
         return Role::with('permissions', 'users')->orderBy('id');
     }
 
-    protected function getViewPath() : string
+    protected function getViewPath(): string
     {
         return 'reports.role-report';
     }

@@ -29,16 +29,16 @@ class UserSeeder extends Seeder
                 'Manage Settings',
                 // more permissions
             ],
-            'User' => []
+            'User' => [],
         ];
 
         $createdPermissions = [];
-        foreach($roles as $role => $permissions) {
+        foreach ($roles as $role => $permissions) {
             $rolePermissions = [];
-            foreach($permissions as $permission) {
-                if(!isset($createdPermissions[$permission])) {
+            foreach ($permissions as $permission) {
+                if (! isset($createdPermissions[$permission])) {
                     $createdPermissions[$permission] = Permission::updateOrCreate([
-                        'name'       => $permission,
+                        'name' => $permission,
                         'guard_name' => $guard,
                     ], []);
                 }
@@ -46,20 +46,22 @@ class UserSeeder extends Seeder
             }
 
             $createdRole = Role::updateOrCreate([
-                'name'       => $role,
+                'name' => $role,
                 'guard_name' => $guard,
             ]);
 
             $createdRole->permissions()->sync(collect($rolePermissions)->pluck('id'));
 
-            if($role != 'Administrator') continue;
+            if ($role != 'Administrator') {
+                continue;
+            }
 
             $user = User::updateOrCreate([
                 'username' => $role,
             ], [
-                'name'              => $role,
-                'email'             => strtolower($role) . '@example.com',
-                'password'          => bcrypt(strtolower($role)),
+                'name' => $role,
+                'email' => strtolower($role).'@example.com',
+                'password' => bcrypt(strtolower($role)),
                 'email_verified_at' => now(),
             ]);
 

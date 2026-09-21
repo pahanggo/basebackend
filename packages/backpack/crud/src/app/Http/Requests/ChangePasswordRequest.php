@@ -4,6 +4,7 @@ namespace Backpack\CRUD\app\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Validator;
 
 class ChangePasswordRequest extends FormRequest
 {
@@ -26,8 +27,8 @@ class ChangePasswordRequest extends FormRequest
     public function rules()
     {
         return [
-            'old_password'     => 'required',
-            'new_password'     => 'required|min:6',
+            'old_password' => 'required',
+            'new_password' => 'required|min:6',
             'confirm_password' => 'required|same:new_password|min:6',
         ];
     }
@@ -35,7 +36,7 @@ class ChangePasswordRequest extends FormRequest
     /**
      * Configure the validator instance.
      *
-     * @param  \Illuminate\Validation\Validator  $validator
+     * @param  Validator  $validator
      * @return void
      */
     public function withValidator($validator)

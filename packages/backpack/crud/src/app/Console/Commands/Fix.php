@@ -78,6 +78,7 @@ class Fix extends Command
             // does it already escape the exception message?
             if (strpos($contents, 'e($exception->getMessage())') !== false) {
                 $this->info($view.' was ok.');
+
                 continue;
             }
 
@@ -87,6 +88,7 @@ class Fix extends Command
             if ($new_contents != $contents) {
                 file_put_contents($errorsDirectory.'/'.$view, $new_contents);
                 $this->warn($view.' has been fixed.');
+
                 continue;
             }
 

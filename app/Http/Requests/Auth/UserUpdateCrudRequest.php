@@ -27,9 +27,9 @@ class UserUpdateCrudRequest extends FormRequest
         $id = $this->get('id') ?? request()->route('id');
 
         return [
-            'email'    => 'required|unique:'.config('permission.table_names.users', 'users').',email,'.$id,
+            'email' => 'required|unique:'.config('permission.table_names.users', 'users').',email,'.$id,
             'username' => 'required|unique:'.config('permission.table_names.users', 'users').',username,'.$id,
-            'name'     => 'required',
+            'name' => 'required',
             'password' => 'confirmed',
         ];
     }

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Reports;
 use App\Models\Auth\Role;
 use App\Models\User;
 use App\Traits\ReportTrait;
-use Illuminate\Http\Request;
 
 class R01UserReport
 {
@@ -21,13 +20,13 @@ class R01UserReport
     }
 
     // grouping of report
-    public function getGroupName() : string
+    public function getGroupName(): string
     {
         return 'Access Control';
     }
 
     // what the user will see the widget name as
-    public function getReportName() : string
+    public function getReportName(): string
     {
         return 'R01: User Report';
     }
@@ -36,41 +35,44 @@ class R01UserReport
     {
         $subtitles = [];
         $request = request();
-        if($request->has('filter')) {
-            foreach($request->get('filter', []) as $name => $value) {
-                if(!$value) continue;
+        if ($request->has('filter')) {
+            foreach ($request->get('filter', []) as $name => $value) {
+                if (! $value) {
+                    continue;
+                }
                 $subtitle = '';
-                switch($name) {
+                switch ($name) {
                     case 'created_at':
-                        if(isset($value['from']) || isset($value['to'])) {
+                        if (isset($value['from']) || isset($value['to'])) {
                             $subtitle .= ' created at';
                         }
-                        if(isset($value['from'])) {
-                            $subtitle .= ' from ' . $value['from'];
+                        if (isset($value['from'])) {
+                            $subtitle .= ' from '.$value['from'];
                         }
-                        if(isset($value['to'])) {
-                            $subtitle .= ' to ' . $value['to'];
+                        if (isset($value['to'])) {
+                            $subtitle .= ' to '.$value['to'];
                         }
-                        if(isset($value['from']) || isset($value['to'])) {
+                        if (isset($value['from']) || isset($value['to'])) {
                             $subtitles[] = $subtitle;
                         }
                         break;
                     case 'role':
-                        $subtitles[] = ' has role ' . Role::find($value)->name;
+                        $subtitles[] = ' has role '.Role::find($value)->name;
                         break;
                 }
             }
         }
-        if(!count($subtitles)) {
+        if (! count($subtitles)) {
             return '';
         }
-        return 'Where ' . trim(implode(' and ', $subtitles));
+
+        return 'Where '.trim(implode(' and ', $subtitles));
     }
 
     protected function getData()
     {
         return array_merge($this->paretGetData(), [
-            'roles' => Role::all()
+            'roles' => Role::all(),
         ]);
     }
 
@@ -79,30 +81,33 @@ class R01UserReport
     {
         $request = request();
         $query = User::with('roles')->orderBy('id');
-        if($request->has('filter')) {
-            foreach($request->get('filter', []) as $name => $value) {
-                if(!$value) continue;
-                switch($name) {
+        if ($request->has('filter')) {
+            foreach ($request->get('filter', []) as $name => $value) {
+                if (! $value) {
+                    continue;
+                }
+                switch ($name) {
                     case 'created_at':
-                        if(isset($value['from'])) {
-                            $query->where('created_at', '>=', $value['from'] . ' 00:00:00');
+                        if (isset($value['from'])) {
+                            $query->where('created_at', '>=', $value['from'].' 00:00:00');
                         }
-                        if(isset($value['to'])) {
-                            $query->where('created_at', '<=', $value['to'] . ' 23:59:59');
+                        if (isset($value['to'])) {
+                            $query->where('created_at', '<=', $value['to'].' 23:59:59');
                         }
                         break;
                     case 'role':
-                        $query->whereHas('roles', function($query) use ($value) {
+                        $query->whereHas('roles', function ($query) use ($value) {
                             $query->where('id', $value);
                         });
                         break;
                 }
             }
         }
+
         return $query;
     }
 
-    protected function getViewPath() : string
+    protected function getViewPath(): string
     {
         return 'reports.user-report';
     }

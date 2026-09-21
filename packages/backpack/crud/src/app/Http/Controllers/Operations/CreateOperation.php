@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Http\Controllers\Operations;
 
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
 trait CreateOperation
@@ -16,14 +18,14 @@ trait CreateOperation
     protected function setupCreateRoutes($segment, $routeName, $controller)
     {
         Route::get($segment.'/create', [
-            'as'        => $routeName.'.create',
-            'uses'      => $controller.'@create',
+            'as' => $routeName.'.create',
+            'uses' => $controller.'@create',
             'operation' => 'create',
         ]);
 
         Route::post($segment, [
-            'as'        => $routeName.'.store',
-            'uses'      => $controller.'@store',
+            'as' => $routeName.'.store',
+            'uses' => $controller.'@store',
             'operation' => 'create',
         ]);
     }
@@ -48,7 +50,7 @@ trait CreateOperation
     /**
      * Show the form for creating inserting a new row.
      *
-     * @return \Illuminate\Contracts\View\View
+     * @return View
      */
     public function create()
     {
@@ -66,7 +68,7 @@ trait CreateOperation
     /**
      * Store a newly created resource in the database.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store()
     {

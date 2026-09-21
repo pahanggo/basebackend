@@ -33,11 +33,11 @@ trait HasIdentifiableAttribute
      */
     private static function guessIdentifiableColumnName()
     {
-        $instance = new static();
+        $instance = new static;
         $table = $instance->getTableWithPrefix();
         $columns = Schema::getColumns($table);
         $indexes = Schema::getIndexes($table);
-        $columnsNames = array_map(function($item) {
+        $columnsNames = array_map(function ($item) {
             return $item['name'];
         }, $columns);
 
@@ -68,7 +68,7 @@ trait HasIdentifiableAttribute
             $columnName = $columnProperties['name'];
             if (! in_array($columnName, $indexedColumns)) {
 
-                //check for convention "field<_id>" in case developer didn't add foreign key constraints.
+                // check for convention "field<_id>" in case developer didn't add foreign key constraints.
                 if (strpos($columnName, '_id') !== false) {
                     continue;
                 }

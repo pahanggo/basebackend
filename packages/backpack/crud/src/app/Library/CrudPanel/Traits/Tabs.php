@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
+use Illuminate\Support\Collection;
+
 trait Tabs
 {
     public function enableTabs()
@@ -97,7 +99,6 @@ trait Tabs
     }
 
     /**
-     * @param $label
      * @return bool
      */
     public function isLastTab($label)
@@ -106,7 +107,7 @@ trait Tabs
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function getFieldsWithoutATab()
     {
@@ -120,8 +121,7 @@ trait Tabs
     }
 
     /**
-     * @param $label
-     * @return array|\Illuminate\Support\Collection
+     * @return array|Collection
      */
     public function getTabFields($label)
     {

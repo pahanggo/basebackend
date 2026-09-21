@@ -3,6 +3,8 @@
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
 use Exception;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Properties and methods used by the List operation.
@@ -22,7 +24,7 @@ trait Read
 
         $params = \Route::current()->parameters();
 
-        return  // use the entity name to get the current entry
+        return // use the entity name to get the current entry
                 // this makes sure the ID is corrent even for nested resources
                 $this->getRequest()->input($this->entity_name) ??
                 // otherwise use the next to last parameter
@@ -34,7 +36,7 @@ trait Read
     /**
      * Find and retrieve the current entry.
      *
-     * @return \Illuminate\Database\Eloquent\Model|bool The row in the db or false.
+     * @return Model|bool The row in the db or false.
      */
     public function getCurrentEntry()
     {
@@ -51,7 +53,7 @@ trait Read
      * Find and retrieve an entry in the database or fail.
      *
      * @param int The id of the row in the db to fetch.
-     * @return \Illuminate\Database\Eloquent\Model The row in the db.
+     * @return Model The row in the db.
      */
     public function getEntry($id)
     {
@@ -67,7 +69,7 @@ trait Read
      * Find and retrieve an entry in the database or fail.
      *
      * @param int The id of the row in the db to fetch.
-     * @return \Illuminate\Database\Eloquent\Model The row in the db.
+     * @return Model The row in the db.
      */
     public function getEntryWithoutFakes($id)
     {
@@ -93,7 +95,7 @@ trait Read
                     try {
                         $model = $model->$part()->getRelated();
                     } catch (Exception $e) {
-                        $relation = join('.', array_slice($parts, 0, $i));
+                        $relation = implode('.', array_slice($parts, 0, $i));
                     }
                 }
             }
@@ -104,7 +106,7 @@ trait Read
     /**
      * Get all entries from the database.
      *
-     * @return array|\Illuminate\Database\Eloquent\Collection
+     * @return array|Collection
      */
     public function getEntries()
     {
@@ -154,31 +156,31 @@ trait Read
         $this->setOperationSetting('bulkActions', true);
 
         $this->addColumn([
-            'type'            => 'checkbox',
-            'name'            => 'bulk_actions',
-            'label'           => ' <input type="checkbox" class="crud_bulk_actions_main_checkbox" style="width: 16px; height: 16px;" />',
-            'priority'        => 0,
-            'searchLogic'     => false,
-            'orderable'       => false,
-            'visibleInTable'  => true,
-            'visibleInModal'  => false,
+            'type' => 'checkbox',
+            'name' => 'bulk_actions',
+            'label' => ' <input type="checkbox" class="crud_bulk_actions_main_checkbox" style="width: 16px; height: 16px;" />',
+            'priority' => 0,
+            'searchLogic' => false,
+            'orderable' => false,
+            'visibleInTable' => true,
+            'visibleInModal' => false,
             'visibleInExport' => false,
-            'visibleInShow'   => false,
-            'hasActions'      => true,
+            'visibleInShow' => false,
+            'hasActions' => true,
         ])->makeFirstColumn();
 
         $this->addColumn([
-            'type'            => 'custom_html',
-            'name'            => 'blank_first_column',
-            'label'           => ' ',
-            'priority'        => 0,
-            'searchLogic'     => false,
-            'orderable'       => false,
-            'visibleInTabel'  => true,
-            'visibleInModal'  => false,
+            'type' => 'custom_html',
+            'name' => 'blank_first_column',
+            'label' => ' ',
+            'priority' => 0,
+            'searchLogic' => false,
+            'orderable' => false,
+            'visibleInTabel' => true,
+            'visibleInModal' => false,
             'visibleInExport' => false,
-            'visibleInShow'   => false,
-            'hasActions'      => true,
+            'visibleInShow' => false,
+            'hasActions' => true,
         ])->makeFirstColumn();
     }
 

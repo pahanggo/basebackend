@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\CheckIfAdmin;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+
 return [
 
     /*
@@ -12,7 +15,7 @@ return [
     */
 
     // Date & Datetime Format Syntax: https://carbon.nesbot.com/docs/#api-localization
-    'default_date_format'     => 'D MMM YYYY',
+    'default_date_format' => 'D MMM YYYY',
     'default_datetime_format' => 'D MMM YYYY, HH:mm',
 
     // Direction, according to language
@@ -73,12 +76,12 @@ return [
     // `npm run build` needed. The defaults below match the colors currently
     // compiled into resources/scss/_variables.scss.
     'theme_colors' => [
-        'primary'   => env('BACKPACK_COLOR_PRIMARY', '#480049'),
+        'primary' => env('BACKPACK_COLOR_PRIMARY', '#480049'),
         'secondary' => env('BACKPACK_COLOR_SECONDARY', '#D9E2EF'),
-        'success'   => env('BACKPACK_COLOR_SUCCESS', '#269740'),
-        'info'      => env('BACKPACK_COLOR_INFO', '#467FD0'),
-        'warning'   => env('BACKPACK_COLOR_WARNING', '#FFC107'),
-        'danger'    => env('BACKPACK_COLOR_DANGER', '#DF4759'),
+        'success' => env('BACKPACK_COLOR_SUCCESS', '#269740'),
+        'info' => env('BACKPACK_COLOR_INFO', '#467FD0'),
+        'warning' => env('BACKPACK_COLOR_WARNING', '#FFC107'),
+        'danger' => env('BACKPACK_COLOR_DANGER', '#DF4759'),
     ],
 
     // ------
@@ -86,7 +89,7 @@ return [
     // ------
 
     // Menu logo. You can replace this with an <img> tag if you have a logo.
-    'project_logo'   => env('APP_NAME', 'Laravel'),
+    'project_logo' => env('APP_NAME', 'Laravel'),
     // 'project_logo'   => '<b>Base</b>App',
 
     // Show / hide breadcrumbs on admin panel pages.
@@ -239,8 +242,8 @@ return [
     // The classes for the middleware to check if the visitor is an admin
     // Can be a single class or an array of classes
     'middleware_class' => [
-        App\Http\Middleware\CheckIfAdmin::class,
-        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        CheckIfAdmin::class,
+        ConvertEmptyStringsToNull::class,
         // \Backpack\CRUD\app\Http\Middleware\UseBackpackAuthGuardInsteadOfDefaultAuthGuard::class,
     ],
 
@@ -251,7 +254,7 @@ return [
     // Username column for authentication
     // The Backpack default is the same as the Laravel default (email)
     // If you need to switch to username, you also need to create that column in your db
-    'authentication_column'      => 'username',
+    'authentication_column' => 'username',
     'authentication_column_name' => 'Username',
 
     // The guard that protects the Backpack admin panel.

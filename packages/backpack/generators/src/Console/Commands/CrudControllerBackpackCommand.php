@@ -176,9 +176,9 @@ class CrudControllerBackpackCommand extends GeneratorCommand
         $stub = $this->files->get($this->getStub());
 
         $this->replaceNamespace($stub, $name)
-                ->replaceNameStrings($stub, $name)
-                ->replaceModel($stub, $name)
-                ->replaceSetFromDb($stub, $name);
+            ->replaceNameStrings($stub, $name)
+            ->replaceModel($stub, $name)
+            ->replaceSetFromDb($stub, $name);
 
         return $stub;
     }

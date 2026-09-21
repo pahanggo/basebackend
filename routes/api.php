@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,32 +13,29 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
 Route::group([
-    'namespace'  => 'App\Http\Controllers\Api',
+    'namespace' => 'App\Http\Controllers\Api',
     'middleware' => 'api',
-    'as'         => 'api.',
-], function(){
-    Route::get('/', 'BaseController@index');
-
-    Route::group([
-        'prefix' => 'auth/',
-        'as'     => 'auth.'
-    ], function(){
-        Route::post('login', 'AuthController@login');
-        Route::post('logout', 'AuthController@logout');
-        Route::post('register', 'AuthController@register');
-        Route::post('forgot-password', 'AuthController@forgotPassword');
-    });
-
-    Route::group([
-        'middleware' => 'auth:sanctum',
-        'prefix'     => 'user/',
-        'as'         => 'user.'
-    ], function(){
-        Route::get('/', 'UserController@profile');
-        Route::post('/', 'UserController@updateProfile');
-        Route::post('/avatar', 'UserController@updateAvatar');
-        Route::post('/password', 'UserController@changePassword');
-    });
+    'as' => 'api.',
+], function () {
+    // Route::get('/', 'BaseController@index');
+    // Route::group([
+    //     'prefix' => 'auth/',
+    //     'as'     => 'auth.'
+    // ], function(){
+    //     Route::post('login', 'AuthController@login');
+    //     Route::post('logout', 'AuthController@logout');
+    //     Route::post('register', 'AuthController@register');
+    //     Route::post('forgot-password', 'AuthController@forgotPassword');
+    // });
+    // Route::group([
+    //     'middleware' => 'auth:sanctum',
+    //     'prefix'     => 'user/',
+    //     'as'         => 'user.'
+    // ], function(){
+    //     Route::get('/', 'UserController@profile');
+    //     Route::post('/', 'UserController@updateProfile');
+    //     Route::post('/avatar', 'UserController@updateAvatar');
+    //     Route::post('/password', 'UserController@changePassword');
+    // });
 });

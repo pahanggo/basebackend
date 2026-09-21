@@ -22,7 +22,7 @@ class SocialAccount extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function handleCallback($driver, SocialiteUser $user) : SocialAccount
+    public static function handleCallback($driver, SocialiteUser $user): SocialAccount
     {
         // Laravel\Socialite\Two\User {#610 ▼
         //     +token: "ya29.a0AfH6SMDDm-Sd_Tn8l90MPkF8OEtO0dOZHmo7z3RfejuRM7lJZky29DuDXWfynB5YM16-9IPZ3htLfi3VRN4A1Py2ffAahmMrC5A5vInJu3g5cGoeIGxDQCF0F6fvTY0bTCikqbXkpwUcc-DkqKtBy7wi8 ▶"

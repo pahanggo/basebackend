@@ -5,9 +5,9 @@ namespace App\Traits;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
-trait DashboardWidgetTrait {
-
-    public function isEnabled() : bool
+trait DashboardWidgetTrait
+{
+    public function isEnabled(): bool
     {
         return true;
     }
@@ -17,16 +17,17 @@ trait DashboardWidgetTrait {
         return null;
     }
 
-    public function getPath() : string
+    public function getPath(): string
     {
         return strtolower(class_basename($this));
     }
 
-    public function getWidgetName() : string
+    public function getWidgetName(): string
     {
-        if(property_exists($this, 'name')) {
+        if (property_exists($this, 'name')) {
             return $this->name;
         }
+
         return class_basename($this);
     }
 
@@ -45,17 +46,17 @@ trait DashboardWidgetTrait {
     public function setup()
     {
         $middleware = [];
-        if($this->getRequiredPermission()) {
-            $middleware[] = 'can:' . $this->getRequiredPermission();
+        if ($this->getRequiredPermission()) {
+            $middleware[] = 'can:'.$this->getRequiredPermission();
         }
         Route::group([
-            'as'         => 'widgets.' . $this->getPath() . '.',
+            'as' => 'widgets.'.$this->getPath().'.',
             'middleware' => array_merge([config('backpack.base.web_middleware', 'web')], $middleware),
-            'prefix'     => config('backpack.base.route_prefix') . '/widgets/' . $this->getPath()
-        ], function(){
+            'prefix' => config('backpack.base.route_prefix').'/widgets/'.$this->getPath(),
+        ], function () {
             Route::get('/', [
-                'as'   => 'index',
-                'uses' => static::class . '@index',
+                'as' => 'index',
+                'uses' => static::class.'@index',
             ]);
         });
     }
@@ -67,12 +68,12 @@ trait DashboardWidgetTrait {
 
     // protected
 
-    protected function getClassName() : string
+    protected function getClassName(): string
     {
         return class_basename($this);
     }
 
-    protected function getLowerName() : string
+    protected function getLowerName(): string
     {
         return Str::slug($this->getWidgetName());
     }

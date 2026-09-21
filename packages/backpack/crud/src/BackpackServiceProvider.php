@@ -2,6 +2,15 @@
 
 namespace Backpack\CRUD;
 
+use Backpack\CRUD\app\Console\Commands\AddCustomRouteContent;
+use Backpack\CRUD\app\Console\Commands\AddSidebarContent;
+use Backpack\CRUD\app\Console\Commands\CreateUser;
+use Backpack\CRUD\app\Console\Commands\Fix;
+use Backpack\CRUD\app\Console\Commands\Install;
+use Backpack\CRUD\app\Console\Commands\PublishBackpackMiddleware;
+use Backpack\CRUD\app\Console\Commands\PublishView;
+use Backpack\CRUD\app\Console\Commands\RequireDevTools;
+use Backpack\CRUD\app\Console\Commands\Version;
 use Backpack\CRUD\app\Http\Middleware\ThrottlePasswordRecovery;
 use Backpack\CRUD\app\Library\CrudPanel\CrudPanel;
 use Illuminate\Routing\Router;
@@ -13,19 +22,20 @@ use Illuminate\Support\ServiceProvider;
 class BackpackServiceProvider extends ServiceProvider
 {
     protected $commands = [
-        \Backpack\CRUD\app\Console\Commands\Install::class,
-        \Backpack\CRUD\app\Console\Commands\AddSidebarContent::class,
-        \Backpack\CRUD\app\Console\Commands\AddCustomRouteContent::class,
-        \Backpack\CRUD\app\Console\Commands\Version::class,
-        \Backpack\CRUD\app\Console\Commands\CreateUser::class,
-        \Backpack\CRUD\app\Console\Commands\PublishBackpackMiddleware::class,
-        \Backpack\CRUD\app\Console\Commands\PublishView::class,
-        \Backpack\CRUD\app\Console\Commands\RequireDevTools::class,
-        \Backpack\CRUD\app\Console\Commands\Fix::class,
+        Install::class,
+        AddSidebarContent::class,
+        AddCustomRouteContent::class,
+        Version::class,
+        CreateUser::class,
+        PublishBackpackMiddleware::class,
+        PublishView::class,
+        RequireDevTools::class,
+        Fix::class,
     ];
 
     // Indicates if loading of the provider is deferred.
     protected $defer = false;
+
     // Where custom routes can be written, and will be registered by Backpack.
     public $customRoutesFilePath = '/routes/crud.php';
 
@@ -34,7 +44,7 @@ class BackpackServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot(\Illuminate\Routing\Router $router)
+    public function boot(Router $router)
     {
         $this->loadViewsWithFallbacks();
         $this->loadTranslationsFrom(realpath(__DIR__.'/resources/lang'), 'backpack');
@@ -58,7 +68,7 @@ class BackpackServiceProvider extends ServiceProvider
 
         // Bind the widgets collection object to Laravel's service container
         $this->app->singleton('widgets', function ($app) {
-            return new Collection();
+            return new Collection;
         });
 
         // load a macro for Route,
@@ -106,8 +116,8 @@ class BackpackServiceProvider extends ServiceProvider
 
         // sidebar content views, which are the only views most people need to overwrite
         $backpack_menu_contents_view = [
-            __DIR__.'/resources/views/base/inc/sidebar_content.blade.php'      => resource_path('views/vendor/backpack/base/inc/sidebar_content.blade.php'),
-            __DIR__.'/resources/views/base/inc/topbar_left_content.blade.php'  => resource_path('views/vendor/backpack/base/inc/topbar_left_content.blade.php'),
+            __DIR__.'/resources/views/base/inc/sidebar_content.blade.php' => resource_path('views/vendor/backpack/base/inc/sidebar_content.blade.php'),
+            __DIR__.'/resources/views/base/inc/topbar_left_content.blade.php' => resource_path('views/vendor/backpack/base/inc/topbar_left_content.blade.php'),
             __DIR__.'/resources/views/base/inc/topbar_right_content.blade.php' => resource_path('views/vendor/backpack/base/inc/topbar_right_content.blade.php'),
         ];
 
@@ -140,7 +150,6 @@ class BackpackServiceProvider extends ServiceProvider
     /**
      * Load custom routes file.
      *
-     * @param  \Illuminate\Routing\Router  $router
      * @return void
      */
     public function setupCustomRoutes(Router $router)
@@ -206,7 +215,7 @@ class BackpackServiceProvider extends ServiceProvider
         // add the root disk to filesystem configuration
         app()->config['filesystems.disks.'.config('backpack.base.root_disk_name')] = [
             'driver' => 'local',
-            'root'   => base_path(),
+            'root' => base_path(),
         ];
 
         /*
@@ -224,8 +233,8 @@ class BackpackServiceProvider extends ServiceProvider
         app()->config['auth.providers'] = app()->config['auth.providers'] +
         [
             'backpack' => [
-                'driver'  => 'eloquent',
-                'model'   => config('backpack.base.user_model_fqn'),
+                'driver' => 'eloquent',
+                'model' => config('backpack.base.user_model_fqn'),
             ],
         ];
 
@@ -233,9 +242,9 @@ class BackpackServiceProvider extends ServiceProvider
         app()->config['auth.passwords'] = app()->config['auth.passwords'] +
         [
             'backpack' => [
-                'provider'  => 'backpack',
-                'table'     => 'password_resets',
-                'expire'   => 60,
+                'provider' => 'backpack',
+                'table' => 'password_resets',
+                'expire' => 60,
                 'throttle' => config('backpack.base.password_recovery_throttle_notifications'),
             ],
         ];
@@ -244,7 +253,7 @@ class BackpackServiceProvider extends ServiceProvider
         app()->config['auth.guards'] = app()->config['auth.guards'] +
         [
             'backpack' => [
-                'driver'   => 'session',
+                'driver' => 'session',
                 'provider' => 'backpack',
             ],
         ];

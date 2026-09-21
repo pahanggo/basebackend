@@ -32,12 +32,14 @@ use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Arr;
 
 class CrudPanel
 {
     // load all the default CrudPanel features
-    use Create, Read, Search, Update, Delete, Errors, Reorder, Access, Columns, Fields, Query, Buttons, AutoSet, FakeFields, FakeColumns, AutoFocus, Filters, Tabs, Views, Validation, HeadingsAndTitles, Operations, SaveActions, Settings, Relationships;
+    use Access, AutoFocus, AutoSet, Buttons, Columns, Create, Delete, Errors, FakeColumns, FakeFields, Fields, Filters, HeadingsAndTitles, Operations, Query, Read, Relationships, Reorder, SaveActions, Search, Settings, Tabs, Update, Validation, Views;
+
     // allow developers to add their own closures to this object
     use Macroable;
 
@@ -49,8 +51,11 @@ class CrudPanel
     // All functions and methods are also public, so they can be used in your EntityCrudController to modify these variables.
 
     public $model = "\App\Models\Entity"; // what's the namespace for your entity's model
+
     public $route; // what route have you defined for your entity? used for links.
+
     public $entity_name = 'entry'; // what name will show up on the buttons, in singural (ex: Add entity)
+
     public $entity_name_plural = 'entries'; // what name will show up on the buttons, in plural (ex: Delete 5 entities)
 
     public $entry;
@@ -98,19 +103,19 @@ class CrudPanel
      *
      * @param  string  $model_namespace  Full model namespace. Ex: App\Models\Article
      *
-     * @throws \Exception in case the model does not exist
+     * @throws Exception in case the model does not exist
      */
     public function setModel($model_namespace)
     {
         if (! class_exists($model_namespace)) {
-            throw new \Exception('The model does not exist.', 500);
+            throw new Exception('The model does not exist.', 500);
         }
 
         if (! method_exists($model_namespace, 'hasCrudTrait')) {
-            throw new \Exception('Please use CrudTrait on the model.', 500);
+            throw new Exception('Please use CrudTrait on the model.', 500);
         }
 
-        $this->model = new $model_namespace();
+        $this->model = new $model_namespace;
         $this->query = $this->model->select('*');
         $this->entry = null;
     }
@@ -118,7 +123,7 @@ class CrudPanel
     /**
      * Get the corresponding Eloquent Model for the CrudController, as defined with the setModel() function.
      *
-     * @return string|\Illuminate\Database\Eloquent\Model
+     * @return string|Model
      */
     public function getModel()
     {
@@ -128,7 +133,7 @@ class CrudPanel
     /**
      * Get the database connection, as specified in the .env file or overwritten by the property on the model.
      *
-     * @return \Illuminate\Database\Schema\Builder
+     * @return Builder
      */
     private function getSchema()
     {
@@ -189,14 +194,14 @@ class CrudPanel
      * @param  string  $route  Route name.
      * @param  array  $parameters  Parameters.
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function setRouteName($route, $parameters = [])
     {
         $complete_route = $route.'.index';
 
         if (! \Route::has($complete_route)) {
-            throw new \Exception('There are no routes for this route name.', 404);
+            throw new Exception('There are no routes for this route name.', 404);
         }
 
         $this->route = route($complete_route, $parameters);
@@ -334,7 +339,7 @@ class CrudPanel
      * @param  int  $length  Optionally specify the number of relations to omit from the start of the relation string. If
      *                       the provided length is negative, then that many relations will be omitted from the end of the relation
      *                       string.
-     * @param  \Illuminate\Database\Eloquent\Model  $model  Optionally specify a different model than the one in the crud object.
+     * @param  Model  $model  Optionally specify a different model than the one in the crud object.
      * @return string Relation model name.
      */
     public function getRelationModel($relationString, $length = null, $model = null)
@@ -366,7 +371,7 @@ class CrudPanel
      * Get the given attribute from a model or models resulting from the specified relation string (eg: the list of streets from
      * the many addresses of the company of a given user).
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model  Model (eg: user).
+     * @param  Model  $model  Model (eg: user).
      * @param  string  $relationString  Model relation. Can be a string representing the name of a relation method in the given
      *                                  Model or one from a different Model through multiple relations. A dot notation can be used to specify
      *                                  multiple relations (eg: user.company.address).
@@ -378,20 +383,20 @@ class CrudPanel
         $endModels = $this->getRelatedEntries($model, $relationString);
         $attributes = [];
         foreach ($endModels as $model => $entries) {
-            $model_instance = new $model();
+            $model_instance = new $model;
             $modelKey = $model_instance->getKeyName();
 
             if (is_array($entries)) {
-                //if attribute does not exist in main array we have more than one entry OR the attribute
-                //is an acessor that is not in $appends property of model.
+                // if attribute does not exist in main array we have more than one entry OR the attribute
+                // is an acessor that is not in $appends property of model.
                 if (! isset($entries[$attribute])) {
-                    //we first check if we don't have the attribute because it's an acessor that is not in appends.
+                    // we first check if we don't have the attribute because it's an acessor that is not in appends.
                     if ($model_instance->hasGetMutator($attribute) && isset($entries[$modelKey])) {
                         $entry_in_database = $model_instance->find($entries[$modelKey]);
                         $attributes[$entry_in_database->{$modelKey}] = $this->parseTranslatableAttributes($model_instance, $attribute, $entry_in_database->{$attribute});
                     } else {
-                        //we have multiple entries
-                        //for each entry we check if $attribute exists in array or try to check if it's an acessor.
+                        // we have multiple entries
+                        // for each entry we check if $attribute exists in array or try to check if it's an acessor.
                         foreach ($entries as $entry) {
                             if (isset($entry[$attribute])) {
                                 $attributes[$entry[$modelKey]] = $this->parseTranslatableAttributes($model_instance, $attribute, $entry[$attribute]);
@@ -404,7 +409,7 @@ class CrudPanel
                         }
                     }
                 } else {
-                    //if we have the attribute we just return it, does not matter if it is direct attribute or an acessor added in $appends.
+                    // if we have the attribute we just return it, does not matter if it is direct attribute or an acessor added in $appends.
                     $attributes[$entries[$modelKey]] = $this->parseTranslatableAttributes($model_instance, $attribute, $entries[$attribute]);
                 }
             }
@@ -416,7 +421,7 @@ class CrudPanel
     /**
      * Parse translatable attributes from a model or models resulting from the specified relation string.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model  Model (eg: user).
+     * @param  Model  $model  Model (eg: user).
      * @param  string  $attribute  The attribute from the relation model (eg: the street attribute from the address model).
      * @param  string  $value  Attribute value translatable or not
      * @return string A string containing the translated attributed based on app()->getLocale()
@@ -452,7 +457,7 @@ class CrudPanel
      * Traverse the tree of relations for the given model, defined by the given relation string, and return the ending
      * associated model instance or instances.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model  The CRUD model.
+     * @param  Model  $model  The CRUD model.
      * @param  string  $relationString  Relation string. A dot notation can be used to chain multiple relations.
      * @return array An array of the associated model instances defined by the relation string.
      */

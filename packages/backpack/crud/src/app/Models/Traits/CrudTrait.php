@@ -4,12 +4,12 @@ namespace Backpack\CRUD\app\Models\Traits;
 
 trait CrudTrait
 {
-    use HasIdentifiableAttribute;
     use HasEnumFields;
-    use HasRelationshipFields;
-    use HasUploadFields;
     use HasFakeFields;
+    use HasIdentifiableAttribute;
+    use HasRelationshipFields;
     use HasTranslatableFields;
+    use HasUploadFields;
 
     public static function hasCrudTrait()
     {

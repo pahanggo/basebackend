@@ -49,7 +49,7 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
 
-            if(config('auth.socialite.enabled')) {
+            if (config('auth.socialite.enabled')) {
                 Route::middleware('web')
                     ->namespace('\App\Http\Controllers\Socialite')
                     ->prefix('oauth')

@@ -20,7 +20,7 @@ trait Macroable
      */
     public static function macro($name, $macro)
     {
-        if (method_exists(new static(), $name)) {
+        if (method_exists(new static, $name)) {
             abort(500, "Cannot register '$name' macro. '$name()' already exists on ".get_called_class());
         }
 

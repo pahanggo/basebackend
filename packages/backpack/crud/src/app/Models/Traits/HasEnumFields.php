@@ -18,7 +18,7 @@ trait HasEnumFields
         $default_connection = Config::get('database.default');
         $table_prefix = Config::get('database.connections.'.$default_connection.'.prefix');
 
-        $instance = new static(); // create an instance of the model to be able to get the table name
+        $instance = new static; // create an instance of the model to be able to get the table name
         $connectionName = $instance->getConnectionName();
 
         try {
@@ -38,7 +38,7 @@ trait HasEnumFields
 
     public static function getEnumValuesAsAssociativeArray($field_name)
     {
-        $instance = new static();
+        $instance = new static;
         $enum_values = $instance->getPossibleEnumValues($field_name);
 
         $array = array_flip($enum_values);

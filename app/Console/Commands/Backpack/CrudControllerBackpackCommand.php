@@ -3,7 +3,6 @@
 namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -40,13 +39,13 @@ class CrudControllerBackpackCommand extends GeneratorCommand
     /**
      * Get the destination class path.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function getPath($name)
     {
         $name = str_replace($this->laravel->getNamespace(), '', $name);
+
         return $this->laravel['path'].'/'.str_replace('\\', '/', $name).'CrudController.php';
     }
 
@@ -57,33 +56,33 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             return base_path('stubs/crud-settings-controller.stub');
         }
+
         return base_path('stubs/crud-controller.stub');
     }
 
     /**
      * Get the default namespace for the class.
      *
-     * @param string $rootNamespace
-     *
+     * @param  string  $rootNamespace
      * @return string
      */
     protected function getDefaultNamespace($rootNamespace)
     {
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             return $rootNamespace.'\Http\Controllers\Admin\Settings';
         }
+
         return $rootNamespace.'\Http\Controllers\Admin';
     }
 
     /**
      * Replace the table name for the given stub.
      *
-     * @param string $stub
-     * @param string $name
-     *
+     * @param  string  $stub
+     * @param  string  $name
      * @return string
      */
     protected function replaceNameStrings(&$stub, $name)
@@ -120,16 +119,15 @@ class CrudControllerBackpackCommand extends GeneratorCommand
     /**
      * Replace the table name for the given stub.
      *
-     * @param string $stub
-     * @param string $name
-     *
+     * @param  string  $stub
+     * @param  string  $name
      * @return string
      */
     protected function replaceSetFromDb(&$stub, $name)
     {
         $class = Str::afterLast($name, '\\');
         $model = "App\\Models\\$class";
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             $model = "App\\Models\\Settings\\$class";
         }
 
@@ -142,12 +140,14 @@ class CrudControllerBackpackCommand extends GeneratorCommand
         $instance = new $model;
 
         $fields = [];
-        foreach($attributes as $field) {
-            if(in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) continue;
+        foreach ($attributes as $field) {
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) {
+                continue;
+            }
             $columnType = Schema::getColumnType($instance->getTable(), $field);
             $label = Str::of($field)->replace('_', ' ')->title();
 
-            if(strstr($field, '_id') && in_array($columnType, [
+            if (strstr($field, '_id') && in_array($columnType, [
                 'bigint',
                 'integer',
             ])) {
@@ -156,8 +156,8 @@ class CrudControllerBackpackCommand extends GeneratorCommand
                 $modelName = $baseName->studly();
                 $entity = $modelName->camel();
                 $label = $baseName->replace('_', ' ')->title();
-                $modelFqdn = 'use App\\Models\\' . $modelName . ';';
-                if(!in_array($modelFqdn, $this->imports)) {
+                $modelFqdn = 'use App\\Models\\'.$modelName.';';
+                if (! in_array($modelFqdn, $this->imports)) {
                     $this->imports[] = $modelFqdn;
                 }
                 $fields[] = "[
@@ -203,7 +203,7 @@ class CrudControllerBackpackCommand extends GeneratorCommand
             }
         }
 
-        $fields = 'return [' . PHP_EOL . '            ' . implode(PHP_EOL.'            ', $fields). PHP_EOL .'        ];';
+        $fields = 'return ['.PHP_EOL.'            '.implode(PHP_EOL.'            ', $fields).PHP_EOL.'        ];';
 
         $columns = str_replace('select2', 'select', $fields);
 
@@ -222,7 +222,6 @@ class CrudControllerBackpackCommand extends GeneratorCommand
      *
      * @param  string  $stub
      * @param  string  $name
-     *
      * @return string
      */
     protected function replaceModel(&$stub, $name)
@@ -236,8 +235,7 @@ class CrudControllerBackpackCommand extends GeneratorCommand
     /**
      * Build the class with the given name.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function buildClass($name)
@@ -245,9 +243,9 @@ class CrudControllerBackpackCommand extends GeneratorCommand
         $stub = $this->files->get($this->getStub());
 
         $this->replaceNamespace($stub, $name)
-                ->replaceNameStrings($stub, $name)
-                ->replaceModel($stub, $name)
-                ->replaceSetFromDb($stub, $name);
+            ->replaceNameStrings($stub, $name)
+            ->replaceModel($stub, $name)
+            ->replaceSetFromDb($stub, $name);
 
         return $stub;
     }

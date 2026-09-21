@@ -2,7 +2,10 @@
 
 namespace Backpack\CRUD\app\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Illuminate\Routing\Redirector;
 
 class AdminController extends Controller
 {
@@ -19,13 +22,13 @@ class AdminController extends Controller
     /**
      * Show the admin dashboard.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function dashboard()
     {
         $this->data['title'] = trans('backpack::base.dashboard'); // set the page title
         $this->data['breadcrumbs'] = [
-            trans('backpack::crud.admin')     => backpack_url('dashboard'),
+            trans('backpack::crud.admin') => backpack_url('dashboard'),
             trans('backpack::base.dashboard') => false,
         ];
 
@@ -35,7 +38,7 @@ class AdminController extends Controller
     /**
      * Redirect to the dashboard.
      *
-     * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
+     * @return Redirector|RedirectResponse
      */
     public function redirect()
     {

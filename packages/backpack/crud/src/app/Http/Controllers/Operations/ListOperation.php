@@ -3,6 +3,7 @@
 namespace Backpack\CRUD\app\Http\Controllers\Operations;
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\View;
 
 trait ListOperation
 {
@@ -16,20 +17,20 @@ trait ListOperation
     protected function setupListRoutes($segment, $routeName, $controller)
     {
         Route::get($segment.'/', [
-            'as'        => $routeName.'.index',
-            'uses'      => $controller.'@index',
+            'as' => $routeName.'.index',
+            'uses' => $controller.'@index',
             'operation' => 'list',
         ]);
 
         Route::post($segment.'/search', [
-            'as'        => $routeName.'.search',
-            'uses'      => $controller.'@search',
+            'as' => $routeName.'.search',
+            'uses' => $controller.'@search',
             'operation' => 'list',
         ]);
 
         Route::get($segment.'/{id}/details', [
-            'as'        => $routeName.'.showDetailsRow',
-            'uses'      => $controller.'@showDetailsRow',
+            'as' => $routeName.'.showDetailsRow',
+            'uses' => $controller.'@showDetailsRow',
             'operation' => 'list',
         ]);
     }
@@ -51,7 +52,7 @@ trait ListOperation
     /**
      * Display all rows in the database for this entity.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -75,7 +76,7 @@ trait ListOperation
 
         if (request()->input('skip-truncate')) {
             $columns = $this->crud->columns();
-            foreach($columns as $index => $column) {
+            foreach ($columns as $index => $column) {
                 $column['limit'] = 1024 * 1024;
                 $columns[$index] = $column;
             }
@@ -148,7 +149,7 @@ trait ListOperation
      * Used with AJAX in the list view (datatables) to show extra information about that row that didn't fit in the table.
      * It defaults to showing some dummy text.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function showDetailsRow($id)
     {

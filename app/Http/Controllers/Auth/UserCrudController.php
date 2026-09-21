@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\CrudController;
 use App\Http\Requests\Auth\UserStoreCrudRequest as StoreRequest;
 use App\Http\Requests\Auth\UserUpdateCrudRequest as UpdateRequest;
+use Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,10 +20,10 @@ use Ramsey\Uuid\Uuid;
 
 class UserCrudController extends CrudController
 {
-    use \Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation { store as traitStore; }
-    use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation { update as traitUpdate; }
-    use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+    use CreateOperation { store as traitStore; }
+    use DeleteOperation;
+    use ListOperation;
+    use UpdateOperation { update as traitUpdate; }
 
     public function setup()
     {
@@ -31,22 +36,22 @@ class UserCrudController extends CrudController
     {
         $this->crud->addColumns([
             [
-                'name'  => 'name',
+                'name' => 'name',
                 'label' => trans('backpack::permissionmanager.name'),
-                'type'  => 'text',
+                'type' => 'text',
             ],
             [
-                'name'  => 'email',
+                'name' => 'email',
                 'label' => trans('backpack::permissionmanager.email'),
-                'type'  => 'email',
+                'type' => 'email',
             ],
             [ // n-n relationship (with pivot table)
-                'label'     => trans('backpack::permissionmanager.roles'), // Table column heading
-                'type'      => 'select_multiple',
-                'name'      => 'roles', // the method that defines the relationship in your Model
-                'entity'    => 'roles', // the method that defines the relationship in your Model
+                'label' => trans('backpack::permissionmanager.roles'), // Table column heading
+                'type' => 'select_multiple',
+                'name' => 'roles', // the method that defines the relationship in your Model
+                'entity' => 'roles', // the method that defines the relationship in your Model
                 'attribute' => 'name', // foreign key attribute that is shown to user
-                'model'     => config('permission.models.role'), // foreign key model
+                'model' => config('permission.models.role'), // foreign key model
             ],
         ]);
 
@@ -77,8 +82,8 @@ class UserCrudController extends CrudController
         // Role Filter
         $this->crud->addFilter(
             [
-                'name'  => 'role',
-                'type'  => 'dropdown',
+                'name' => 'role',
+                'type' => 'dropdown',
                 'label' => trans('backpack::permissionmanager.role'),
             ],
             config('permission.models.role')::all()->pluck('name', 'id')->toArray(),
@@ -146,7 +151,7 @@ class UserCrudController extends CrudController
     /**
      * Store a newly created resource in the database.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store()
     {
@@ -160,7 +165,7 @@ class UserCrudController extends CrudController
     /**
      * Update the specified resource in the database.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function update()
     {
@@ -195,43 +200,43 @@ class UserCrudController extends CrudController
     {
         $this->crud->addFields([
             [
-                'name'  => 'name',
+                'name' => 'name',
                 'label' => trans('backpack::permissionmanager.name'),
-                'type'  => 'text',
+                'type' => 'text',
                 'wrapper' => ['col' => 4],
             ],
             [
-                'name'    => 'username',
-                'label'   => 'Username',
-                'type'    => 'text',
+                'name' => 'username',
+                'label' => 'Username',
+                'type' => 'text',
                 'wrapper' => ['col' => 4],
             ],
             [
-                'name'    => 'email',
-                'label'   => trans('backpack::permissionmanager.email'),
-                'type'    => 'email',
+                'name' => 'email',
+                'label' => trans('backpack::permissionmanager.email'),
+                'type' => 'email',
                 'wrapper' => ['col' => 4],
             ],
             [
-                'name'    => 'password',
-                'label'   => trans('backpack::permissionmanager.password'),
-                'type'    => 'password',
+                'name' => 'password',
+                'label' => trans('backpack::permissionmanager.password'),
+                'type' => 'password',
                 'wrapper' => ['col' => 4],
             ],
             [
-                'name'    => 'password_confirmation',
-                'label'   => trans('backpack::permissionmanager.password_confirmation'),
-                'type'    => 'password',
+                'name' => 'password_confirmation',
+                'label' => trans('backpack::permissionmanager.password_confirmation'),
+                'type' => 'password',
                 'wrapper' => ['col' => 4],
             ],
             [
-                'label'     => trans('backpack::permissionmanager.roles'),
-                'name'      => 'roles',
-                'entity'    => 'roles',
+                'label' => trans('backpack::permissionmanager.roles'),
+                'name' => 'roles',
+                'entity' => 'roles',
                 'attribute' => 'name',
-                'model'     => config('permission.models.role'),
-                'pivot'     => true,
-                'type'      => 'select2_multiple',
+                'model' => config('permission.models.role'),
+                'pivot' => true,
+                'type' => 'select2_multiple',
                 'wrapper' => ['col' => 4],
             ],
         ]);
@@ -242,17 +247,19 @@ class UserCrudController extends CrudController
         Session::put('_assuming_user_id', user()->id);
         Auth::loginUsingId($userId);
         Alert::success('Logged in as user')->flash();
+
         return redirect()->to(backpack_url('dashboard'));
     }
 
     public function resume()
     {
-        if(!Session::has('_assuming_user_id')) {
+        if (! Session::has('_assuming_user_id')) {
             return redirect()->back();
         }
         $userId = Session::pull('_assuming_user_id');
         Auth::loginUsingId($userId);
         Alert::success('Resumed session')->flash();
+
         return redirect()->to(backpack_url('user'));
     }
 
@@ -261,14 +268,15 @@ class UserCrudController extends CrudController
         $user = backpack_user();
         $meta = explode(',', $request->payload);
         $content = base64_decode($meta[1]);
-        $filename = Uuid::uuid4()->__toString() . '.png';
+        $filename = Uuid::uuid4()->__toString().'.png';
 
         $existingFile = str_replace('/storage', '', $user->getAvatarUrl());
-        if(Storage::disk('public')->exists($existingFile)) {
+        if (Storage::disk('public')->exists($existingFile)) {
             Storage::disk('public')->delete($existingFile);
         }
-        Storage::disk('public')->put('/avatars/' . $filename, $content);
-        $user->update(['avatar_url' => '/storage/avatars/' . $filename]);
+        Storage::disk('public')->put('/avatars/'.$filename, $content);
+        $user->update(['avatar_url' => '/storage/avatars/'.$filename]);
+
         return $user->avatar_url;
     }
 }

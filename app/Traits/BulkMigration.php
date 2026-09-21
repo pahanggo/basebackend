@@ -9,8 +9,9 @@ trait BulkMigration
 {
     protected function getColumnName($column)
     {
-        if(strstr($column, ':')) {
+        if (strstr($column, ':')) {
             $parts = explode(':', $column);
+
             return $parts[0];
         }
 
@@ -19,18 +20,18 @@ trait BulkMigration
 
     protected function getForeignTableName($column)
     {
-        if(stristr($column, 'profile_id') !== false) {
+        if (stristr($column, 'profile_id') !== false) {
             return 'profiles';
         }
 
-        return Str::plural(substr($column, 0 , strlen($column) - 3));
+        return Str::plural(substr($column, 0, strlen($column) - 3));
     }
 
     protected function getColumnType($column)
     {
-        if(strstr($column, ':')) {
+        if (strstr($column, ':')) {
             $parts = explode(':', $column);
-            switch($parts[1]) {
+            switch ($parts[1]) {
                 case 's':
                     return 'string';
                 case 'b':
@@ -52,10 +53,10 @@ trait BulkMigration
             }
         }
 
-        if(substr($column, 0, 3) == 'is_') {
+        if (substr($column, 0, 3) == 'is_') {
             return 'bool';
         }
-        if(substr($column, -3) == '_id') {
+        if (substr($column, -3) == '_id') {
             return 'foreign';
         }
 
@@ -66,7 +67,7 @@ trait BulkMigration
     {
         $columnName = $this->getColumnName($column);
         $type = $this->getColumnType($column);
-        switch($type) {
+        switch ($type) {
             case 'foreign':
                 $table->unsignedBigInteger($columnName)->nullable();
                 break;
@@ -106,7 +107,7 @@ trait BulkMigration
         $columnName = $this->getColumnName($column);
         $type = $this->getColumnType($column);
         $foreignTable = $this->getForeignTableName($columnName);
-        switch($type) {
+        switch ($type) {
             case 'foreign':
                 $table->foreign($columnName)
                     ->references('id')

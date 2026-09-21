@@ -2,6 +2,7 @@
 
 namespace Backpack\CRUD\app\Console\Commands;
 
+use Composer\InstalledVersions;
 use Illuminate\Console\Command;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
@@ -33,11 +34,11 @@ class Version extends Command
         $this->runConsoleCommand(['php', '-v']);
 
         $this->comment('### LARAVEL VERSION:');
-        $this->line(\Composer\InstalledVersions::getVersion('laravel/framework'));
+        $this->line(InstalledVersions::getVersion('laravel/framework'));
         $this->line('');
 
         $this->comment('### BACKPACK VERSION:');
-        $this->line( 'v1.0.0');
+        $this->line('v1.0.0');
         $this->line('');
     }
 
@@ -51,7 +52,7 @@ class Version extends Command
     {
         $process = new Process($command, null, null, null, 60, null);
         $process->run(function ($type, $buffer) {
-            if (Process::ERR === $type) {
+            if ($type === Process::ERR) {
                 $this->line($buffer);
             } else {
                 $this->line($buffer);

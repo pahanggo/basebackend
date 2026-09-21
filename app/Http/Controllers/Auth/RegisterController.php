@@ -6,7 +6,9 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use Backpack\CRUD\app\Library\Auth\RegistersUsers;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 
@@ -45,45 +47,40 @@ class RegisterController extends Controller
     /**
      * Get a validator for an incoming registration request.
      *
-     * @param array $data
      *
      * @return \Illuminate\Contracts\Validation\Validator
      */
     protected function validator(array $data)
     {
         $user_model_fqn = config('backpack.base.user_model_fqn');
-        $user = new $user_model_fqn();
+        $user = new $user_model_fqn;
         $users_table = $user->getTable();
         $email_validation = backpack_authentication_column() == 'email' ? 'email|' : '';
 
         return Validator::make($data, [
-            'name'                             => 'required|max:255',
-            'email'                            => 'required|email|unique:'.$users_table,
-            backpack_authentication_column()   => 'required|'.$email_validation.'max:255|unique:'.$users_table,
-            'password'                         => 'required|min:6|confirmed',
+            'name' => 'required|max:255',
+            'email' => 'required|email|unique:'.$users_table,
+            backpack_authentication_column() => 'required|'.$email_validation.'max:255|unique:'.$users_table,
+            'password' => 'required|min:6|confirmed',
         ]);
     }
 
     /**
      * Create a new user instance after a valid registration.
-     *
-     * @param array $data
-     *
-     * @return User
      */
-    protected function create(array $data) : User
+    protected function create(array $data): User
     {
         $user_model_fqn = config('backpack.base.user_model_fqn');
-        $user = new $user_model_fqn();
+        $user = new $user_model_fqn;
 
         $user = $user->create([
-            'name'                             => $data['name'],
-            'email'                            => $data['email'],
-            backpack_authentication_column()   => $data[backpack_authentication_column()],
-            'password'                         => bcrypt($data['password']),
+            'name' => $data['name'],
+            'email' => $data['email'],
+            backpack_authentication_column() => $data[backpack_authentication_column()],
+            'password' => bcrypt($data['password']),
         ]);
 
-        if($socialiteToken = request()->get('socialite_token')) {
+        if ($socialiteToken = request()->get('socialite_token')) {
             $id = decrypt($socialiteToken);
             $socialAccount = SocialAccount::findOrFail($id);
             $user->avatar_url = $socialAccount->avatar;
@@ -98,7 +95,7 @@ class RegisterController extends Controller
     /**
      * Show the application registration form.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function showRegistrationForm()
     {
@@ -115,9 +112,8 @@ class RegisterController extends Controller
     /**
      * Handle a registration request for the application.
      *
-     * @param \Illuminate\Http\Request $request
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function register(Request $request)
     {
@@ -139,7 +135,7 @@ class RegisterController extends Controller
     /**
      * Get the guard to be used during registration.
      *
-     * @return \Illuminate\Contracts\Auth\StatefulGuard
+     * @return StatefulGuard
      */
     protected function guard()
     {

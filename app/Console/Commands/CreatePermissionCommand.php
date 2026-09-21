@@ -40,10 +40,11 @@ class CreatePermissionCommand extends Command
         $name = $this->argument('name');
         $seeder = base_path('database/seeders/UserSeeder.php');
         $content = file_get_contents($seeder);
-        $content = str_replace('                // more permissions', "                '$name'," . PHP_EOL . '                // more permissions', $content);
+        $content = str_replace('                // more permissions', "                '$name',".PHP_EOL.'                // more permissions', $content);
         file_put_contents($seeder, $content);
 
         $this->call('db:seed', ['class' => 'UserSeeder']);
+
         return 0;
     }
 }

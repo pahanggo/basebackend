@@ -122,7 +122,7 @@ trait FieldsProtectedMethods
             return $field;
         }
 
-        //if the name is dot notation we are sure it's a relationship
+        // if the name is dot notation we are sure it's a relationship
         if (strpos($field['name'], '.') !== false) {
             $field['entity'] = $field['name'];
 

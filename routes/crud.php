@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\Route;
 // Protect your routes with 'can:Manage System' middleware!!
 
 Route::group([
-    'prefix'     => config('backpack.base.route_prefix', 'admin'),
+    'prefix' => config('backpack.base.route_prefix', 'admin'),
     'middleware' => array_merge(
         (array) config('backpack.base.web_middleware', 'web'),
         (array) config('backpack.base.middleware_key', 'admin')
     ),
-    'namespace'  => 'App\Http\Controllers\Admin',
+    'namespace' => 'App\Http\Controllers\Admin',
 ], function () { // custom admin routes
     // Cached static map images for the latlng_map column
     Route::get('static-map', 'StaticMapController@show')->name('static-map');

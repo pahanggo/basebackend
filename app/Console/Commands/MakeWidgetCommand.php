@@ -84,5 +84,4 @@ class MakeWidgetCommand extends GeneratorCommand
 
         $this->components->info('Widget view created successfully.');
     }
-
 }

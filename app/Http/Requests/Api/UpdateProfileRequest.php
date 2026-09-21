@@ -24,11 +24,12 @@ class UpdateProfileRequest extends FormRequest
      */
     public function rules()
     {
-        $user = $this->user() ?? new User();
+        $user = $this->user() ?? new User;
+
         return [
-            'name'     => 'required',
-            'username' => 'required|unique:users,username,' . $user->id,
-            'email'    => 'required|email|unique:users,email,' . $user->id,
+            'name' => 'required',
+            'username' => 'required|unique:users,username,'.$user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
         ];
     }
 

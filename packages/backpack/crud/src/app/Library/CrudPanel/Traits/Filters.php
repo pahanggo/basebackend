@@ -27,7 +27,7 @@ trait Filters
     public function enableFilters()
     {
         if ($this->filtersDisabled()) {
-            $this->setOperationSetting('filters', new Collection());
+            $this->setOperationSetting('filters', new Collection);
         }
     }
 
@@ -38,7 +38,7 @@ trait Filters
 
     public function clearFilters()
     {
-        $this->setOperationSetting('filters', new Collection());
+        $this->setOperationSetting('filters', new Collection);
     }
 
     /**
@@ -101,7 +101,6 @@ trait Filters
     /**
      * Apply the filter.
      *
-     * @param  CrudFilter  $filter
      * @param  ParameterBag|array|null  $input
      */
     public function applyFilter(CrudFilter $filter, $input = null)
@@ -127,7 +126,7 @@ trait Filters
     }
 
     /**
-     * @return array|\Illuminate\Support\Collection
+     * @return array|Collection
      */
     public function filters()
     {
@@ -204,7 +203,7 @@ trait Filters
 
     public function removeAllFilters()
     {
-        $this->setOperationSetting('filters', new Collection());
+        $this->setOperationSetting('filters', new Collection);
     }
 
     /**

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Services\SettingsRenderer;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Illuminate\Routing\Redirector;
 
 class AdminController extends Controller
 {
@@ -21,7 +23,7 @@ class AdminController extends Controller
     /**
      * Show the admin dashboard.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function dashboard()
     {
@@ -33,7 +35,7 @@ class AdminController extends Controller
     /**
      * Redirect to the dashboard.
      *
-     * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
+     * @return Redirector|RedirectResponse
      */
     public function redirect()
     {
@@ -48,15 +50,15 @@ class AdminController extends Controller
                 'User Management' => [
                     'Users' => [
                         'path' => 'user',
-                        'permissions' => ['Manage Users']
+                        'permissions' => ['Manage Users'],
                     ],
                     'Roles' => [
                         'path' => 'role',
-                        'permissions' => ['Manage Roles and Permissions']
+                        'permissions' => ['Manage Roles and Permissions'],
                     ],
                     'Permissions' => [
                         'path' => 'permission',
-                        'permissions' => ['Manage Roles and Permissions']
+                        'permissions' => ['Manage Roles and Permissions'],
                     ],
                 ],
                 'Ungrouped' => [

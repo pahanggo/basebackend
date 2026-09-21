@@ -65,7 +65,7 @@ trait HasRelationshipFields
     public static function isColumnNullable($column_name)
     {
         // create an instance of the model to be able to get the table name
-        $instance = new static();
+        $instance = new static;
 
         $conn = $instance->getConnectionWithExtraTypeMappings();
         $table = $instance->getTableWithPrefix();
@@ -80,6 +80,7 @@ trait HasRelationshipFields
             $column = $conn->getDoctrineColumn($table, $column_name);
             // check for NOT NULL
             $notNull = $column->getNotnull();
+
             // return the value of nullable (aka the inverse of NOT NULL)
             return ! $notNull;
         } catch (\Exception $e) {

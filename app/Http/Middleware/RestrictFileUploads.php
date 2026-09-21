@@ -19,16 +19,16 @@ class RestrictFileUploads
      * even if the extension itself is on the whitelist.
      */
     protected array $allowedExtensionMimes = [
-        'jpg'  => ['image/jpeg'],
+        'jpg' => ['image/jpeg'],
         'jpeg' => ['image/jpeg'],
-        'png'  => ['image/png'],
-        'pdf'  => ['application/pdf'],
+        'png' => ['image/png'],
+        'pdf' => ['application/pdf'],
         'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
-        'xls'  => ['application/vnd.ms-excel'],
-        'csv'  => ['text/csv', 'text/plain'],
+        'xls' => ['application/vnd.ms-excel'],
+        'csv' => ['text/csv', 'text/plain'],
         'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-        'zip'  => ['application/zip'],
-        'rar'  => ['application/x-rar', 'application/x-rar-compressed', 'application/vnd.rar'],
+        'zip' => ['application/zip'],
+        'rar' => ['application/x-rar', 'application/x-rar-compressed', 'application/vnd.rar'],
     ];
 
     /**
@@ -47,7 +47,7 @@ class RestrictFileUploads
     public function handle(Request $request, Closure $next): Response
     {
         foreach ($this->flattenFiles($request->allFiles()) as $inputName => $file) {
-            if (!$file->isValid()) {
+            if (! $file->isValid()) {
                 continue;
             }
 
@@ -72,7 +72,7 @@ class RestrictFileUploads
                 || $lastExtension !== strtolower((string) end($segments))
                 || $hasDangerousSegment
                 || $expectedMimes === null
-                || !in_array($mime, $expectedMimes, true)
+                || ! in_array($mime, $expectedMimes, true)
             ) {
                 Log::channel('file_upload_rejections')->warning('Rejected file upload: disallowed extension/MIME', [
                     'original_name' => $originalName,

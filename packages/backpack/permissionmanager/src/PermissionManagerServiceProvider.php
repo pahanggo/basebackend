@@ -2,7 +2,6 @@
 
 namespace Backpack\PermissionManager;
 
-use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\PermissionServiceProvider;
 

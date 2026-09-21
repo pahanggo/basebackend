@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel;
 
+use Illuminate\Support\Collection;
+
 /**
  * Adds fluent syntax to Backpack CRUD Buttons.
  *
@@ -17,9 +19,13 @@ namespace Backpack\CRUD\app\Library\CrudPanel;
 class CrudButton
 {
     public $stack;
+
     public $name;
+
     public $type;
+
     public $content;
+
     public $position;
 
     public function __construct($name, $stack = null, $type = null, $content = null, $position = null)
@@ -354,7 +360,7 @@ class CrudButton
     /**
      * Access the global collection when all buttons are stored.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function collection()
     {
@@ -364,7 +370,7 @@ class CrudButton
     /**
      * Access the global CrudPanel object.
      *
-     * @return \Backpack\CRUD\app\Library\CrudPanel\CrudPanel
+     * @return CrudPanel
      */
     public function crud()
     {

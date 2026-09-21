@@ -7,8 +7,8 @@ use Illuminate\Support\Arr;
 
 trait Fields
 {
-    use FieldsProtectedMethods;
     use FieldsPrivateMethods;
+    use FieldsProtectedMethods;
 
     // ------------
     // FIELDS
@@ -417,7 +417,7 @@ trait Fields
      */
     public function getAllFieldNames()
     {
-        //we need to parse field names in relation fields so they get posted/stored correctly
+        // we need to parse field names in relation fields so they get posted/stored correctly
         $fields = $this->parseRelationFieldNamesFromHtml($this->getCurrentFields());
 
         return Arr::flatten(Arr::pluck($fields, 'name'));

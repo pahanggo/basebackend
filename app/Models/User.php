@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Backpack\CRUD\app\Models\Traits\CrudTrait;
-use Creativeorange\Gravatar\Facades\Gravatar;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +11,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles, CrudTrait, HasApiTokens;
+    use CrudTrait, HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -59,9 +57,10 @@ class User extends Authenticatable
 
     public function getAvatarUrl()
     {
-        if($this->avatar_url) {
+        if ($this->avatar_url) {
             return $this->avatar_url;
         }
+
         return \Avatar::create($this->name)->toBase64();
     }
 

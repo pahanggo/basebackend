@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,13 +40,13 @@ class CrudRequestBackpackCommand extends GeneratorCommand
     /**
      * Get the destination class path.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function getPath($name)
     {
         $name = str_replace($this->laravel->getNamespace(), '', $name);
+
         return $this->laravel['path'].'/'.str_replace('\\', '/', $name).'Request.php';
     }
 
@@ -56,38 +57,41 @@ class CrudRequestBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             return base_path('stubs/crud-request-settings.stub');
         }
+
         return base_path('stubs/crud-request.stub');
     }
 
     /**
      * Get the default namespace for the class.
      *
-     * @param string $rootNamespace
-     *
+     * @param  string  $rootNamespace
      * @return string
      */
     protected function getDefaultNamespace($rootNamespace)
     {
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             return $rootNamespace.'\Http\Requests\Settings';
         }
+
         return $rootNamespace.'\Http\Requests';
     }
 
     protected function addColumns(&$stub, $name)
     {
         $name = substr($name, 0, strlen($name) - 6);
-        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name) . '\\', '', $name))), '_');
+        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name).'\\', '', $name))), '_');
 
         $table = Str::snake(Str::plural($name));
 
         $columns = DB::getSchemaBuilder()->getColumnListing($table);
         $fields = [];
         foreach ($columns as $field) {
-            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at', 'parent_id', 'lft', 'rgt', 'depth'])) continue;
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at', 'parent_id', 'lft', 'rgt', 'depth'])) {
+                continue;
+            }
             $fields[] = "            '$field' => 'required',";
         }
 
@@ -102,7 +106,7 @@ class CrudRequestBackpackCommand extends GeneratorCommand
      * @param  string  $name
      * @return string
      *
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     * @throws FileNotFoundException
      */
     protected function buildClass($name)
     {

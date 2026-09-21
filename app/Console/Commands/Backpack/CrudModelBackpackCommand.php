@@ -3,8 +3,8 @@
 namespace App\Console\Commands\Backpack;
 
 use Illuminate\Console\GeneratorCommand;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CrudModelBackpackCommand extends GeneratorCommand
@@ -49,14 +49,14 @@ class CrudModelBackpackCommand extends GeneratorCommand
      *
      * @return bool|null
      *
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     * @throws FileNotFoundException
      */
     public function handle()
     {
         $name = $this->getNameInput();
         $namespaceApp = $this->qualifyClass($this->getNameInput());
         $namespaceModels = $this->qualifyClass('/Models/'.$this->getNameInput());
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             $namespaceModels = $this->qualifyClass('/Models/Settings/'.$this->getNameInput());
         }
 
@@ -146,18 +146,18 @@ class CrudModelBackpackCommand extends GeneratorCommand
      */
     protected function getStub()
     {
-        if($this->option('settings')) {
+        if ($this->option('settings')) {
             return base_path('stubs/crud-model-settings.stub');
         }
+
         return base_path('stubs/crud-model.stub');
     }
 
     /**
      * Replace the table name for the given stub.
      *
-     * @param string $stub
-     * @param string $name
-     *
+     * @param  string  $stub
+     * @param  string  $name
      * @return string
      */
     protected function replaceTable(&$stub, $name)
@@ -174,8 +174,7 @@ class CrudModelBackpackCommand extends GeneratorCommand
     /**
      * Build the class with the given name.
      *
-     * @param string $name
-     *
+     * @param  string  $name
      * @return string
      */
     protected function buildClass($name)
@@ -185,25 +184,24 @@ class CrudModelBackpackCommand extends GeneratorCommand
         return $this->replaceNamespace($stub, $name)
             ->replaceTable($stub, $name)
             ->addRelationships($stub, $name)
-            ->replaceClass($stub, $name)
-            ;
+            ->replaceClass($stub, $name);
     }
 
     protected function addRelationships(&$stub, $name)
     {
-        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name) . '\\', '', $name))), '_');
+        $name = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', str_replace($this->getNamespace($name).'\\', '', $name))), '_');
 
         $table = Str::snake(Str::plural($name));
 
         $columns = DB::getSchemaBuilder()->getColumnListing($table);
         $relationships = [];
-        foreach($columns as $field) {
+        foreach ($columns as $field) {
             $columnType = DB::getSchemaBuilder()->getColumnType($table, $field);
 
             if (strstr($field, '_id') && in_array($columnType, [
                 'bigint',
-                'integer'
-            ]) && !in_array($field, [
+                'integer',
+            ]) && ! in_array($field, [
                 'parent_id',
                 'lft',
                 'rgt',
@@ -220,7 +218,7 @@ class CrudModelBackpackCommand extends GeneratorCommand
             }
         }
 
-        $stub = str_replace('    // relations', implode(PHP_EOL . PHP_EOL, $relationships), $stub);
+        $stub = str_replace('    // relations', implode(PHP_EOL.PHP_EOL, $relationships), $stub);
 
         return $this;
     }

@@ -23,6 +23,7 @@ class BaseController extends Controller
             $user = Socialite::driver($this->driver)->user();
         } catch (\Exception $e) {
             Alert::error('Invalid social login')->flash();
+
             return redirect(route('backpack.auth.login'));
         }
 
@@ -31,25 +32,28 @@ class BaseController extends Controller
         $systemUser = $socialAccount->user;
 
         // 1) system user exists
-        if($systemUser) {
+        if ($systemUser) {
             Auth::login($systemUser, true);
-            Alert::success('Welcome ' . $systemUser->name)->flash();
+            Alert::success('Welcome '.$systemUser->name)->flash();
+
             return redirect()->intended(backpack_url('dashboard'));
         }
 
         $loggedInUser = user();
-        if($loggedInUser) {
+        if ($loggedInUser) {
             // 2) link to logged in user account
             // prompt for password
             $socialAccount->user_id = $loggedInUser->id;
             $socialAccount->save();
             Alert::success('Linked social account.')->flash();
+
             return redirect()->route('backpack.account.info');
-        } else if(User::where('email', $user->email)->first()) {
+        } elseif (User::where('email', $user->email)->first()) {
             // 3) email exists in the system and no login session
             Alert::error('A user already registered with this email. Kindly use the Social Accounts links in your profile.')->flash();
+
             return redirect(route('backpack.auth.login'));
-        } else if(config('backpack.base.registration_open')) {
+        } elseif (config('backpack.base.registration_open')) {
             // 3) email is not in system
             // create new user
             return view('socialite.register', [
@@ -59,17 +63,19 @@ class BaseController extends Controller
         }
 
         Alert::error('User does not exist.')->flash();
+
         return redirect(route('backpack.auth.login'));
     }
 
     public function unlink(Request $request)
     {
         $token = $request->get('token');
-        if($token) {
+        if ($token) {
             user()->socialAccounts()->whereId(decrypt($token))->update(['user_id' => null]);
         }
 
         Alert::success('Unlinked social account.')->flash();
+
         return redirect()->back();
     }
 }

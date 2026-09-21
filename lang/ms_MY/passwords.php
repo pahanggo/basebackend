@@ -17,6 +17,6 @@ return [
     'sent' => 'Emel tukar kata laluan telah dihantar kepada anda',
     'throttled' => 'Sila tunggu sebelum mencuba lagi.',
     'token' => 'Token ubah kata laluan tidak sah.',
-    'user' => "Tiada pengguna yang menggunakan emel ini.",
+    'user' => 'Tiada pengguna yang menggunakan emel ini.',
 
 ];

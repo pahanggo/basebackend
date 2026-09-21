@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Backpack\CRUD\app\Http\Controllers\CrudController;
 use App\Http\Requests\Auth\PermissionStoreCrudRequest as StoreRequest;
 use App\Http\Requests\Auth\PermissionUpdateCrudRequest as UpdateRequest;
+use Backpack\CRUD\app\Http\Controllers\CrudController;
+use Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
+use Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
 use Illuminate\Support\Facades\Cache;
 
 // VALIDATION
 
 class PermissionCrudController extends CrudController
 {
-    use \Backpack\CRUD\app\Http\Controllers\Operations\ListOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\CreateOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\UpdateOperation;
-    use \Backpack\CRUD\app\Http\Controllers\Operations\DeleteOperation;
+    use CreateOperation;
+    use DeleteOperation;
+    use ListOperation;
+    use UpdateOperation;
 
     public function setup()
     {
@@ -40,16 +44,16 @@ class PermissionCrudController extends CrudController
     public function setupListOperation()
     {
         $this->crud->addColumn([
-            'name'  => 'name',
+            'name' => 'name',
             'label' => trans('backpack::permissionmanager.name'),
-            'type'  => 'text',
+            'type' => 'text',
         ]);
 
         if (config('backpack.permissionmanager.multiple_guards')) {
             $this->crud->addColumn([
-                'name'  => 'guard_name',
+                'name' => 'guard_name',
                 'label' => trans('backpack::permissionmanager.guard_type'),
-                'type'  => 'text',
+                'type' => 'text',
             ]);
         }
 
@@ -66,7 +70,7 @@ class PermissionCrudController extends CrudController
         $this->addFields();
         $this->crud->setValidation(StoreRequest::class);
 
-        //otherwise, changes won't have effect
+        // otherwise, changes won't have effect
         Cache::forget('spatie.permission.cache');
 
         $this->data['breadcrumbs'] = [
@@ -82,7 +86,7 @@ class PermissionCrudController extends CrudController
         $this->addFields();
         $this->crud->setValidation(UpdateRequest::class);
 
-        //otherwise, changes won't have effect
+        // otherwise, changes won't have effect
         Cache::forget('spatie.permission.cache');
 
         $this->data['breadcrumbs'] = [
@@ -96,16 +100,16 @@ class PermissionCrudController extends CrudController
     private function addFields()
     {
         $this->crud->addField([
-            'name'  => 'name',
+            'name' => 'name',
             'label' => trans('backpack::permissionmanager.name'),
-            'type'  => 'text',
+            'type' => 'text',
         ]);
 
         if (config('backpack.permissionmanager.multiple_guards')) {
             $this->crud->addField([
-                'name'    => 'guard_name',
-                'label'   => trans('backpack::permissionmanager.guard_type'),
-                'type'    => 'select_from_array',
+                'name' => 'guard_name',
+                'label' => trans('backpack::permissionmanager.guard_type'),
+                'type' => 'select_from_array',
                 'options' => $this->getGuardTypes(),
             ]);
         }

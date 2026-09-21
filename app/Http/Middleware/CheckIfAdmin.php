@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\Request;
 
 class CheckIfAdmin
 {
@@ -23,7 +24,6 @@ class CheckIfAdmin
      * (again - users, not admins).
      *
      * @param [type] $user [description]
-     *
      * @return bool [description]
      */
     private function checkIfUserIsAdmin($user)
@@ -36,7 +36,6 @@ class CheckIfAdmin
      * Answer to unauthorized access request.
      *
      * @param [type] $request [description]
-     *
      * @return [type] [description]
      */
     private function respondToUnauthorizedRequest($request)
@@ -51,9 +50,7 @@ class CheckIfAdmin
     /**
      * Handle an incoming request.
      *
-     * @param \Illuminate\Http\Request $request
-     * @param \Closure                 $next
-     *
+     * @param  Request  $request
      * @return mixed
      */
     public function handle($request, Closure $next)

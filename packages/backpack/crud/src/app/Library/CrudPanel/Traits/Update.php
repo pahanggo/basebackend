@@ -2,6 +2,7 @@
 
 namespace Backpack\CRUD\app\Library\CrudPanel\Traits;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 
 trait Update
@@ -67,9 +68,9 @@ trait Update
         // always have a hidden input for the entry id
         if (! array_key_exists('id', $fields)) {
             $fields['id'] = [
-                'name'  => $entry->getKeyName(),
+                'name' => $entry->getKeyName(),
                 'value' => $entry->getKey(),
-                'type'  => 'hidden',
+                'type' => 'hidden',
             ];
         }
 
@@ -79,7 +80,7 @@ trait Update
     /**
      * Get the value of the 'name' attribute from the declared relation model in the given field.
      *
-     * @param  \Illuminate\Database\Eloquent\Model  $model  The current CRUD model.
+     * @param  Model  $model  The current CRUD model.
      * @param  array  $field  The CRUD field array.
      * @return mixed The value of the 'name' attribute from the relation model.
      */

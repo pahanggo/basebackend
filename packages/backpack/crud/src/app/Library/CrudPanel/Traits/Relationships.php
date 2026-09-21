@@ -101,7 +101,7 @@ trait Relationships
     public function parseRelationFieldNamesFromHtml($fields)
     {
         foreach ($fields as &$field) {
-            //we only want to parse fields that has a relation type and their name contains [ ] used in html.
+            // we only want to parse fields that has a relation type and their name contains [ ] used in html.
             if (isset($field['relation_type']) && preg_match('/[\[\]]/', $field['name']) !== 0) {
                 $chunks = explode('[', $field['name']);
 

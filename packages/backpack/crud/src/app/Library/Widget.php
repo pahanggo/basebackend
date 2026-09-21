@@ -81,14 +81,10 @@ class Widget extends Fluent
     }
 
     // TODO: add ability to push a widget right after another widget
-    public function after($destination)
-    {
-    }
+    public function after($destination) {}
 
     // TODO: add ability to push a widget right before another widget
-    public function before($destionation)
-    {
-    }
+    public function before($destionation) {}
 
     /**
      * Make this widget the first one in its section.

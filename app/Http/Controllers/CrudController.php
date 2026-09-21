@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Backpack\CRUD\app\Library\CrudPanel\CrudPanel;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
@@ -13,9 +14,10 @@ class CrudController extends Controller
     use DispatchesJobs, ValidatesRequests;
 
     /**
-     * @var \Backpack\CRUD\app\Library\CrudPanel\CrudPanel
+     * @var CrudPanel
      */
     public $crud;
+
     public $data = [];
 
     public function __construct()
@@ -47,17 +49,15 @@ class CrudController extends Controller
     /**
      * Allow developers to set their configuration options for a CrudPanel.
      */
-    public function setup()
-    {
-    }
+    public function setup() {}
 
     /**
      * Load routes for all operations.
      * Allow developers to load extra routes by creating a method that looks like setupOperationNameRoutes.
      *
-     * @param string $segment    Name of the current entity (singular).
-     * @param string $routeName  Route name prefix (ends with .).
-     * @param string $controller Name of the current controller.
+     * @param  string  $segment  Name of the current entity (singular).
+     * @param  string  $routeName  Route name prefix (ends with .).
+     * @param  string  $controller  Name of the current controller.
      */
     public function setupRoutes($segment, $routeName, $controller)
     {

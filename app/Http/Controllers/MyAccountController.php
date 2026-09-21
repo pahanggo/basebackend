@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Backpack\CRUD\app\Http\Requests\AccountInfoRequest;
 use Backpack\CRUD\app\Http\Requests\ChangePasswordRequest;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
 use Prologue\Alerts\Facades\Alert;
@@ -64,7 +65,7 @@ class MyAccountController extends Controller
     /**
      * Get the guard to be used for account manipulation.
      *
-     * @return \Illuminate\Contracts\Auth\StatefulGuard
+     * @return StatefulGuard
      */
     protected function guard()
     {

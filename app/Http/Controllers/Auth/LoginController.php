@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use Backpack\CRUD\app\Library\Auth\AuthenticatesUsers;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
@@ -65,7 +66,6 @@ class LoginController extends Controller
     /**
      * The user has logged out of the application.
      *
-     * @param \Illuminate\Http\Request $request
      *
      * @return mixed
      */
@@ -77,7 +77,7 @@ class LoginController extends Controller
     /**
      * Get the guard to be used during logout.
      *
-     * @return \Illuminate\Contracts\Auth\StatefulGuard
+     * @return StatefulGuard
      */
     protected function guard()
     {

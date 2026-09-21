@@ -10,20 +10,20 @@ return [
     | Author: Frederik Rabøl Madsen <frederik-rm@hotmail.com>
     |
     */
-    'name'                  => 'navn',
-    'role'                  => 'rolle',
-    'roles'                 => 'roller',
+    'name' => 'navn',
+    'role' => 'rolle',
+    'roles' => 'roller',
     'roles_have_permission' => 'roller der har denne rettighed',
-    'permission_singular'   => 'rettighed',
-    'permission_plural'     => 'rettigheder',
-    'user_singular'         => 'bruger',
-    'user_plural'           => 'brugere',
-    'email'                 => 'E-mail',
-    'extra_permissions'     => 'yderligere rettigheder',
-    'password'              => 'password',
+    'permission_singular' => 'rettighed',
+    'permission_plural' => 'rettigheder',
+    'user_singular' => 'bruger',
+    'user_plural' => 'brugere',
+    'email' => 'E-mail',
+    'extra_permissions' => 'yderligere rettigheder',
+    'password' => 'password',
     'password_confirmation' => 'gentag password',
-    'user_role_permission'  => 'bruger rolle rettigheder',
-    'user'                  => 'bruger',
-    'users'                 => 'brugere',
+    'user_role_permission' => 'bruger rolle rettigheder',
+    'user' => 'bruger',
+    'users' => 'brugere',
 
 ];

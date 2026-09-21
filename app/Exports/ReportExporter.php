@@ -8,6 +8,7 @@ use Maatwebsite\Excel\Concerns\FromView;
 class ReportExporter implements FromView
 {
     protected $viewPath;
+
     protected $exportData;
 
     public function __construct($viewPath, $exportData)
@@ -20,5 +21,4 @@ class ReportExporter implements FromView
     {
         return view($this->viewPath, $this->exportData);
     }
-
 }

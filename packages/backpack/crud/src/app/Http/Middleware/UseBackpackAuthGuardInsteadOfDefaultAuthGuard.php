@@ -3,14 +3,14 @@
 namespace Backpack\CRUD\app\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\Request;
 
 class UseBackpackAuthGuardInsteadOfDefaultAuthGuard
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
+     * @param  Request  $request
      * @param  string|null  $guard
      * @return mixed
      */

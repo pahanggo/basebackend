@@ -26,7 +26,7 @@ trait PrettyCommandOutput
 
         $process = new Process($command, null, null, null, $this->option('timeout'));
         $process->run(function ($type, $buffer) {
-            if (Process::ERR === $type) {
+            if ($type === Process::ERR) {
                 $this->echo('comment', $buffer);
             } else {
                 $this->echo('line', $buffer);
