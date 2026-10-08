@@ -76,7 +76,6 @@ class KitchenSinkSeeder extends Seeder
                 'color' => '#5f0461',
                 'accent_color' => '#269740',
                 'icon' => 'fa-star',
-                'body_ckeditor' => '<p><strong>CKEditor</strong> body</p>',
                 'body_tinymce' => '<p><em>TinyMCE</em> body</p>',
                 'body_summernote' => '<p>Summernote body</p>',
                 'body_wysiwyg' => '<p>WYSIWYG body</p>',

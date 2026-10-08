@@ -1,1 +1,1 @@
-@include('crud::fields.ckeditor')
+@include('crud::fields.tinymce')

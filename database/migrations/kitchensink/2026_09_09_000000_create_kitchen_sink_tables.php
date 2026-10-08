@@ -83,7 +83,6 @@ return new class extends Migration
             $table->string('icon')->nullable();
 
             // Rich text
-            $table->text('body_ckeditor')->nullable();
             $table->text('body_tinymce')->nullable();
             $table->text('body_summernote')->nullable();
             $table->text('body_wysiwyg')->nullable();

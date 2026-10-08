@@ -337,7 +337,6 @@ class KitchenSinkCrudController extends CrudController
                 ['name' => 'video', 'type' => 'video', 'label' => 'video'],
             ]),
             $tab('Editors', [
-                ['name' => 'body_ckeditor', 'type' => 'ckeditor', 'label' => 'ckeditor'],
                 ['name' => 'body_tinymce', 'type' => 'tinymce', 'label' => 'tinymce'],
                 ['name' => 'body_summernote', 'type' => 'summernote', 'label' => 'summernote'],
                 ['name' => 'body_wysiwyg', 'type' => 'wysiwyg', 'label' => 'wysiwyg'],
