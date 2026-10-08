@@ -4,14 +4,14 @@
     <div class="row mb-2">
         <div class="col-sm-3">
             <div class="mb-2 text-strong text-value-sm">
-                Created
+                {{ __('Created') }}
             </div>
             <input type="date" value="{{request()->input('filter.created_at.from')}}" class="form-control mb-2" name="filter[created_at][from]">
             <input type="date" value="{{request()->input('filter.created_at.to')}}" class="form-control" name="filter[created_at][to]">
         </div>
         <div class="col-sm-3">
             <div class="mb-2 text-strong text-value-sm">
-                Roles
+                {{ __('Roles') }}
             </div>
             <select class="form-control" name="filter[role]" id="">
                 <option value="">-</option>
@@ -22,16 +22,16 @@
         </div>
     </div>
     <button class="btn btn-primary">
-        Filter
+        {{ __('Filter') }}
     </button>
     @if(request()->has('filter'))
     <a href="?{{request()->page ? 'page=' . request()->page : '' }}" class="btn btn-default">
-        Reset
+        {{ __('Reset') }}
     </a>
     @endif
     <div class="float-right">
         <button name="export" value="excel" class="btn btn-default">
-            <i class="la la-download"></i> Export
+            <i class="la la-download"></i> {{ __('Export') }}
         </button>
     </div>
 @endsection
@@ -42,12 +42,12 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Roles</th>
-                <th>Created At</th>
-                <th>Updated At</th>
+                <th>{{ __('Name') }}</th>
+                <th>{{ __('Username') }}</th>
+                <th>{{ __('Email') }}</th>
+                <th>{{ __('Roles') }}</th>
+                <th>{{ __('Created At') }}</th>
+                <th>{{ __('Updated At') }}</th>
             </tr>
         </thead>
         <tbody>

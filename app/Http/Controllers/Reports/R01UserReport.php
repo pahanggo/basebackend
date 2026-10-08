@@ -31,42 +31,41 @@ class R01UserReport
         return 'R01: User Report';
     }
 
+    /**
+     * Human-readable summary of the active filters, shown under the report title.
+     *
+     * Each clause is a whole translatable sentence with placeholders rather than
+     * concatenated words, because clause order and wording differ between
+     * languages. Safe to translate here (unlike getReportName()/getGroupName(),
+     * which ReportService caches in a static property at boot).
+     */
     public function getReportSubtitle(): string
     {
-        $subtitles = [];
-        $request = request();
-        if ($request->has('filter')) {
-            foreach ($request->get('filter', []) as $name => $value) {
-                if (! $value) {
-                    continue;
-                }
-                $subtitle = '';
-                switch ($name) {
-                    case 'created_at':
-                        if (isset($value['from']) || isset($value['to'])) {
-                            $subtitle .= ' created at';
-                        }
-                        if (isset($value['from'])) {
-                            $subtitle .= ' from '.$value['from'];
-                        }
-                        if (isset($value['to'])) {
-                            $subtitle .= ' to '.$value['to'];
-                        }
-                        if (isset($value['from']) || isset($value['to'])) {
-                            $subtitles[] = $subtitle;
-                        }
-                        break;
-                    case 'role':
-                        $subtitles[] = ' has role '.Role::find($value)->name;
-                        break;
-                }
-            }
+        $filters = request()->get('filter', []);
+        $conditions = [];
+
+        $from = $filters['created_at']['from'] ?? null;
+        $to = $filters['created_at']['to'] ?? null;
+
+        if ($from && $to) {
+            $conditions[] = __('created between :from and :to', ['from' => $from, 'to' => $to]);
+        } elseif ($from) {
+            $conditions[] = __('created from :from', ['from' => $from]);
+        } elseif ($to) {
+            $conditions[] = __('created until :to', ['to' => $to]);
         }
-        if (! count($subtitles)) {
+
+        if ($role = Role::find($filters['role'] ?? null)) {
+            $conditions[] = __('has role :role', ['role' => $role->name]);
+        }
+
+        if (! $conditions) {
             return '';
         }
 
-        return 'Where '.trim(implode(' and ', $subtitles));
+        return __('Where :conditions', [
+            'conditions' => implode(' '.__('and').' ', $conditions),
+        ]);
     }
 
     protected function getData()

@@ -2,7 +2,7 @@
     @yield('report-header')
 @else
     <h3>
-        {{$reportGroup}} :: {{$reportTitle}}
+        {{ __($reportGroup) }} :: {{ __($reportTitle) }}
     </h3>
     @if($reportSubtitle)
     <p>
@@ -12,7 +12,7 @@
 @endif
 
 <p>
-    Generated At: {{format_datetime(now())}}
+    {{ __('Generated At') }}: {{format_datetime(now())}}
 </p>
 
 <p></p>

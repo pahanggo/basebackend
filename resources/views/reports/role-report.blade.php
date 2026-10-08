@@ -6,11 +6,11 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Users</th>
-                <th>Permissions</th>
-                <th>Created At</th>
-                <th>Updated At</th>
+                <th>{{ __('Name') }}</th>
+                <th>{{ __('Users') }}</th>
+                <th>{{ __('Permissions') }}</th>
+                <th>{{ __('Created At') }}</th>
+                <th>{{ __('Updated At') }}</th>
             </tr>
         </thead>
         <tbody>

@@ -4,7 +4,7 @@
   $breadcrumbs = [
       trans('backpack::crud.admin') => url(config('backpack.base.route_prefix'), 'dashboard'),
       'Reports' => route('reports.index'),
-      $reportName => null,
+      $reportTitle => null,
   ];
 @endphp
 
@@ -15,7 +15,7 @@
         @yield('report-header')
     @else
         <h3>
-            {{$reportGroup}} :: {{$reportTitle}}
+            {{ __($reportGroup) }} :: {{ __($reportTitle) }}
         </h3>
         @if($reportSubtitle)
         <small>
@@ -36,7 +36,7 @@
             @else
                 <div class="float-right">
                     <button name="export" value="excel" class="btn btn-default">
-                        <i class="la la-download"></i> Export
+                        <i class="la la-download"></i> {{ __('Export') }}
                     </button>
                 </div>
             @endif

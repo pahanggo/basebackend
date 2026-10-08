@@ -27,12 +27,12 @@
     <div class="col-sm-4">
         <div class="card">
             <div class="card-header text-value-sm">
-                {{$groupName}}
+                {{ __($groupName) }}
             </div>
             <div class="list-group">
                 @foreach($reportData as $report)
                 <a class="list-group-item" href="{{route('reports.' . $report['path'] . '.index')}}">
-                    {{$report['name']}}
+                    {{ __($report['title']) }}
                 </a>
                 @endforeach
             </div>
