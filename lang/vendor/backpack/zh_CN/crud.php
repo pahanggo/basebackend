@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| Backpack\CRUD Language Lines — zh-cn overrides
+| Backpack\CRUD Language Lines — zh_CN overrides
 |--------------------------------------------------------------------------
 |
 | Laravel merges this file over the package copy with array_replace_recursive,

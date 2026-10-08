@@ -1,9 +1,5 @@
 <?php
 
-// SCAFFOLD: seeded from English. These strings are NOT yet translated into Tamil.
-// Translate the values below in place; keys must stay unchanged. Until then
-// fallback_locale = 'en' means nothing breaks.
-
 return [
 
     /*
@@ -17,8 +13,8 @@ return [
     |
     */
 
-    'failed' => 'These credentials do not match our records.',
-    'password' => 'The provided password is incorrect.',
-    'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
+    'failed' => 'இந்த விவரங்கள் எங்கள் பதிவுகளுடன் பொருந்தவில்லை.',
+    'password' => 'வழங்கப்பட்ட கடவுச்சொல் தவறானது.',
+    'throttle' => 'அதிக முறை உள்நுழைய முயற்சித்துள்ளீர்கள். :seconds வினாடிகளில் மீண்டும் முயலுங்கள்.',
 
 ];

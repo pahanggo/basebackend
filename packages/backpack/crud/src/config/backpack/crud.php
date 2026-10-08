@@ -169,7 +169,7 @@ return [
         'ms_MY' => 'Bahasa Melayu',
         'en' => 'English',
         'ta' => 'Tamil',
-        'zh_Hans' => 'Chinese (Simplified)',
+        'zh_CN' => 'Chinese (Simplified)',
     ],
 
 ];

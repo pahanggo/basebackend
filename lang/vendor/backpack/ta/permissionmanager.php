@@ -1,20 +1,28 @@
 <?php
 
-// SCAFFOLD: seeded from English. These strings are NOT yet translated into Tamil.
-// Translate the values below in place; keys must stay unchanged. Until then
-// fallback_locale = 'en' means nothing breaks.
+return [
 
-// --------------------------------------------------------
-// This is only a pointer file, not an actual language file
-// --------------------------------------------------------
-//
-// If you've copied this file to your /resources/lang/vendor/backpack/
-// folder, please delete it, it's no use there. You need to copy/publish the
-// actual language file, from the package.
+    /*
+    |--------------------------------------------------------------------------
+    | Backpack\PermissionManager Language Lines
+    |--------------------------------------------------------------------------
+    */
 
-// If a langfile with the same name exists in the package, load that one
-if (file_exists(__DIR__.'/../../../../../permissionmanager/src/resources/lang/'.basename(__DIR__).'/'.basename(__FILE__))) {
-    return include __DIR__.'/../../../../../permissionmanager/src/resources/lang/'.basename(__DIR__).'/'.basename(__FILE__);
-}
+    'name' => 'பெயர்',
+    'role' => 'பங்கு',
+    'roles' => 'பங்குகள்',
+    'roles_have_permission' => 'இந்த அனுமதியைக் கொண்ட பங்குகள்',
+    'permission_singular' => 'அனுமதி',
+    'permission_plural' => 'அனுமதிகள்',
+    'user_singular' => 'பயனர்',
+    'user_plural' => 'பயனர்கள்',
+    'email' => 'மின்னஞ்சல்',
+    'extra_permissions' => 'கூடுதல் அனுமதிகள்',
+    'password' => 'கடவுச்சொல்',
+    'password_confirmation' => 'கடவுச்சொல் உறுதிப்படுத்தல்',
+    'user_role_permission' => 'பயனர் பங்கு அனுமதிகள்',
+    'user' => 'பயனர்',
+    'users' => 'பயனர்கள்',
+    'guard_type' => 'காப்பு வகை',
 
-return [];
+];

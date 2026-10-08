@@ -1,9 +1,5 @@
 <?php
 
-// SCAFFOLD: seeded from English. These strings are NOT yet translated into Tamil.
-// Translate the values below in place; keys must stay unchanged. Until then
-// fallback_locale = 'en' means nothing breaks.
-
 return [
 
     /*
@@ -17,10 +13,10 @@ return [
     |
     */
 
-    'reset' => 'Your password has been reset!',
-    'sent' => 'We have emailed your password reset link!',
-    'throttled' => 'Please wait before retrying.',
-    'token' => 'This password reset token is invalid.',
-    'user' => "We can't find a user with that email address.",
+    'reset' => 'உங்கள் கடவுச்சொல் மீட்டமைக்கப்பட்டது!',
+    'sent' => 'கடவுச்சொல் மீட்டமைப்புச் சுட்டியை மின்னஞ்சலில் அனுப்பியுள்ளோம்!',
+    'throttled' => 'மீண்டும் முயல்வதற்கு முன் சிறிது காத்திருங்கள்.',
+    'token' => 'இந்த கடவுச்சொல் மீட்டமைப்பு டோக்கன் செல்லாது.',
+    'user' => 'அந்த மின்னஞ்சல் முகவரியுடைய பயனரைக் கண்டறிய முடியவில்லை.',
 
 ];

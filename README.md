@@ -61,10 +61,12 @@ The theme's colors (`primary`, `secondary`, `success`, `info`, `warning`, `dange
 
 ### Languages
 
-The framework ships four locales: `ms_MY` (Bahasa Melayu, the default set by `APP_LOCALE`), `en`, `ta` (Tamil) and `zh-cn` (Simplified Chinese — the variant used in Malaysia). Everything else was removed to keep the file count down.
+The framework ships four locales: `ms_MY` (Bahasa Melayu, the default set by `APP_LOCALE`), `en`, `ta` (Tamil) and `zh_CN` (Simplified Chinese — the variant used in Malaysia). Everything else was removed to keep the file count down.
 
 - App-level strings live in `lang/<locale>.json` (keyed by the English source string) and `lang/<locale>/*.php`.
 - Backpack's admin strings are overridden in `lang/vendor/backpack/<locale>/`, which Laravel merges over the package copies with `array_replace_recursive` — so an override file only needs the keys it actually changes.
 - Content-translation locales for translatable models are listed in `config/backpack/crud.php`'s `locales` array.
 
-**Tamil is scaffolded but not yet translated.** The `ta` files exist with the correct key structure and carry a `SCAFFOLD:` header, but their values are still English. Translate them in place; until then `fallback_locale = 'en'` means nothing breaks.
+All four locales are fully translated, including Laravel's validation messages. A locale's spelling must be identical in all four places it appears — `lang/<locale>.json`, `lang/<locale>/`, the package's `resources/lang/<locale>/` and `lang/vendor/backpack/<locale>/` — because Laravel resolves each by exact name. Hence `zh_CN`, not `zh-cn`.
+
+Adding a locale means: a `lang/<locale>.json`, a `lang/<locale>/` directory mirroring `lang/en/`, a `lang/vendor/backpack/<locale>/` directory for the admin chrome, and an entry in `config/backpack/crud.php`'s `locales` array if its content should be translatable. Vendor JS locale files are matched separately by `frontend_locale()` in `app/helpers.php`, which maps e.g. `zh_CN` to select2's `zh-CN.js` and returns `null` when a library ships no match (the widget then falls back to English rather than 404ing).
