@@ -24,6 +24,21 @@
         </a>
     </li>
     @endif
+    @if (count(config('app.available_locales', [])) > 1)
+    <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" title="{{ trans('backpack::crud.language') }}">
+            <i class="la la-language"></i>
+        </a>
+        <div class="dropdown-menu {{ config('backpack.base.html_direction') == 'rtl' ? 'dropdown-menu-left' : 'dropdown-menu-right' }} pb-1 pt-1">
+            @foreach (config('app.available_locales') as $localeKey => $localeLabel)
+                @php($isCurrentLocale = app()->getLocale() === $localeKey)
+                <a class="dropdown-item{{ $isCurrentLocale ? ' active' : '' }}" href="{{ route('locale.switch', $localeKey) }}">
+                    <i class="la {{ $isCurrentLocale ? 'la-check' : 'la-language' }}"></i> {{ $localeLabel }}
+                </a>
+            @endforeach
+        </div>
+    </li>
+    @endif
     @can('Manage Settings')
     <li class="nav-item">
         <a class="nav-link" href="{{ route('settings') }}">

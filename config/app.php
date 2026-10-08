@@ -179,6 +179,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Available Locales
+    |--------------------------------------------------------------------------
+    |
+    | The locales a user may switch the interface to, keyed by locale string
+    | and labelled with each language's own endonym (so the label reads the
+    | same whatever locale is active, and needs no translation itself).
+    |
+    | A key here must match the locale spelling used by lang/<locale>.json,
+    | lang/<locale>/ and lang/vendor/backpack/<locale>/, because Laravel
+    | resolves all three by exact name. Leaving a single entry hides the
+    | language switcher in the admin header.
+    |
+    */
+
+    'available_locales' => [
+        'ms_MY' => 'Bahasa Melayu',
+        'en' => 'English',
+        'ta' => 'தமிழ்',
+        'zh_CN' => '简体中文',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Faker Locale
     |--------------------------------------------------------------------------
     |

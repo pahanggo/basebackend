@@ -59,6 +59,10 @@ Route::group(
             }
         }
 
+        // Language switcher in the admin header. Deliberately outside the auth
+        // checks below so the language can also be changed on the login page.
+        Route::get('locale/{locale}', 'LocaleController@switch')->name('locale.switch');
+
         // if not otherwise configured, setup the dashboard routes
         if (config('backpack.base.setup_dashboard_routes')) {
             Route::get('dashboard', 'AdminController@dashboard')->name('backpack.dashboard');

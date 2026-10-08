@@ -2,7 +2,7 @@
 
 Supercharged starter kit featuring:
 
-- Laravel 12
+- Laravel 13
 - [Laravel Backpack 4.1](https://backpackforlaravel.com/docs/4.1/introduction)
 - [Backstrap Frontend](https://backstrap.net/index.html)
 - [Roles & Permissions](https://spatie.be/docs/laravel-permission/v6/introduction)
@@ -11,6 +11,7 @@ Supercharged starter kit featuring:
 - User editable dashboard widgets
 - Painless reporting boilerplate
 - Customizable SCSS
+- Supports 4 languages: English, Bahasa Melayu, Mandarin, Tamil
 
 ### Installation
 
@@ -66,6 +67,7 @@ The framework ships four locales: `ms_MY` (Bahasa Melayu, the default set by `AP
 - App-level strings live in `lang/<locale>.json` (keyed by the English source string) and `lang/<locale>/*.php`.
 - Backpack's admin strings live in `lang/vendor/backpack/<locale>/`, which Laravel merges over the vendored package's copies with `array_replace_recursive`. Every locale carries a complete `base.php`, `crud.php` and `permissionmanager.php` there, so this directory — not `packages/backpack/*/resources/lang/` — is the one to edit. (A partial override would also work, merging key by key, but keeping the set complete means one place to look and makes a missing key detectable.)
 - Content-translation locales for translatable models are listed in `config/backpack/crud.php`'s `locales` array.
+- The admin header carries a language switcher, next to the Kitchen Sink flask. It offers whatever `config('app.available_locales')` lists (labelled with each language's own endonym), stores the choice in the session, and hides itself if only one locale is configured. `App\Http\Middleware\SetLocale` applies it on every web request.
 
 All four locales are fully translated, including Laravel's validation messages. A locale's spelling must be identical in all four places it appears — `lang/<locale>.json`, `lang/<locale>/`, the package's `resources/lang/<locale>/` and `lang/vendor/backpack/<locale>/` — because Laravel resolves each by exact name. Hence `zh_CN`, not `zh-cn`.
 
