@@ -64,7 +64,7 @@ The theme's colors (`primary`, `secondary`, `success`, `info`, `warning`, `dange
 The framework ships four locales: `ms_MY` (Bahasa Melayu, the default set by `APP_LOCALE`), `en`, `ta` (Tamil) and `zh_CN` (Simplified Chinese — the variant used in Malaysia). Everything else was removed to keep the file count down.
 
 - App-level strings live in `lang/<locale>.json` (keyed by the English source string) and `lang/<locale>/*.php`.
-- Backpack's admin strings are overridden in `lang/vendor/backpack/<locale>/`, which Laravel merges over the package copies with `array_replace_recursive` — so an override file only needs the keys it actually changes.
+- Backpack's admin strings live in `lang/vendor/backpack/<locale>/`, which Laravel merges over the vendored package's copies with `array_replace_recursive`. Every locale carries a complete `base.php`, `crud.php` and `permissionmanager.php` there, so this directory — not `packages/backpack/*/resources/lang/` — is the one to edit. (A partial override would also work, merging key by key, but keeping the set complete means one place to look and makes a missing key detectable.)
 - Content-translation locales for translatable models are listed in `config/backpack/crud.php`'s `locales` array.
 
 All four locales are fully translated, including Laravel's validation messages. A locale's spelling must be identical in all four places it appears — `lang/<locale>.json`, `lang/<locale>/`, the package's `resources/lang/<locale>/` and `lang/vendor/backpack/<locale>/` — because Laravel resolves each by exact name. Hence `zh_CN`, not `zh-cn`.

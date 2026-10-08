@@ -31,23 +31,23 @@ return [
     'save'                 => 'Simpan',
 
     // Translatable models
-    'edit_translations' => 'Translation',
-    'language'          => 'Language',
+    'edit_translations' => 'Terjemahan',
+    'language'          => 'Bahasa',
 
     // CRUD table view
     'all'                       => 'Semua ',
     'in_the_database'           => 'dalam simpanan',
     'list'                      => 'Senarai',
-    'reset'                     => 'Reset',
+    'reset'                     => 'Set semula',
     'actions'                   => 'Tindakan',
     'preview'                   => 'Lihat',
     'delete'                    => 'Hapus',
-    'admin'                     => 'Admin',
-    'details_row'               => 'This is the details row. Modify as you please.',
-    'details_row_loading_error' => 'There was an error loading the details. Please retry.',
-    'clone'                     => 'Clone',
-    'clone_success'             => '<strong>Entry cloned</strong><br>A new entry has been added, with the same information as this one.',
-    'clone_failure'             => '<strong>Cloning failed</strong><br>The new entry could not be created. Please try again.',
+    'admin'                     => 'Pentadbir',
+    'details_row'               => 'Ini ialah baris perincian. Ubah suai seperti yang anda mahu.',
+    'details_row_loading_error' => 'Terdapat ralat semasa memuatkan perincian. Sila cuba lagi.',
+    'clone'                     => 'Klon',
+    'clone_success'             => '<strong>Pendaftaran diklon</strong><br>Pendaftaran baharu telah ditambah, dengan maklumat yang sama seperti ini.',
+    'clone_failure'             => '<strong>Pengklonan gagal</strong><br>Pendaftaran baharu tidak dapat dicipta. Sila cuba lagi.',
 
     // Confirmation messages and bubbles
     'delete_confirm'                              => 'Adakah anda pasti ingin menghapuskan rekod ini?',
@@ -59,22 +59,22 @@ return [
     'delete_confirmation_not_deleted_message'     => 'Tiada tindakan. Rekod anda selamat.',
 
     // Bulk actions
-    'bulk_no_entries_selected_title'   => 'No entries selected',
-    'bulk_no_entries_selected_message' => 'Please select one or more items to perform a bulk action on them.',
+    'bulk_no_entries_selected_title'   => 'Tiada pendaftaran dipilih',
+    'bulk_no_entries_selected_message' => 'Sila pilih satu atau lebih item untuk melakukan tindakan pukal ke atasnya.',
 
     // Bulk delete
-    'bulk_delete_are_you_sure'   => 'Are you sure you want to delete these :number entries?',
-    'bulk_delete_sucess_title'   => 'Entries deleted',
-    'bulk_delete_sucess_message' => ' items have been deleted',
-    'bulk_delete_error_title'    => 'Delete failed',
-    'bulk_delete_error_message'  => 'One or more items could not be deleted',
+    'bulk_delete_are_you_sure'   => 'Adakah anda pasti mahu memadam :number pendaftaran ini?',
+    'bulk_delete_sucess_title'   => 'Pendaftaran dipadam',
+    'bulk_delete_sucess_message' => ' item telah dipadam',
+    'bulk_delete_error_title'    => 'Pemadaman gagal',
+    'bulk_delete_error_message'  => 'Satu atau lebih item tidak dapat dipadam',
 
     // Bulk clone
-    'bulk_clone_are_you_sure'   => 'Are you sure you want to clone these :number entries?',
-    'bulk_clone_sucess_title'   => 'Entries cloned',
-    'bulk_clone_sucess_message' => ' items have been cloned.',
-    'bulk_clone_error_title'    => 'Cloning failed',
-    'bulk_clone_error_message'  => 'One or more entries could not be created. Please try again.',
+    'bulk_clone_are_you_sure'   => 'Adakah anda pasti mahu mengklon :number pendaftaran ini?',
+    'bulk_clone_sucess_title'   => 'Pendaftaran diklon',
+    'bulk_clone_sucess_message' => ' item telah diklon.',
+    'bulk_clone_error_title'    => 'Pengklonan gagal',
+    'bulk_clone_error_message'  => 'Satu atau lebih pendaftaran tidak dapat dicipta. Sila cuba lagi.',
 
     // Ajax errors
     'ajax_error_title' => 'Ralat',
@@ -84,12 +84,12 @@ return [
     'emptyTable'     => 'Tiada rekod',
     'info'           => 'Memaparkan _START_ hingga _END_ daripada _TOTAL_ rekod',
     'infoEmpty'      => 'Tiada rekod',
-    'infoFiltered'   => '(filtered from _MAX_ total entries)',
+    'infoFiltered'   => '(ditapis daripada _MAX_ jumlah pendaftaran)',
     'infoPostFix'    => '.',
     'thousands'      => ',',
-    'lengthMenu'     => '_MENU_',
-    'loadingRecords' => 'Loading...',
-    'processing'     => 'Processing...',
+    'lengthMenu'     => '_MENU_ setiap halaman',
+    'loadingRecords' => 'Memuatkan...',
+    'processing'     => 'Memproses...',
     'search'         => 'Carian',
     'zeroRecords'    => 'Tiada rekod dijumpai',
     'paginate'       => [
@@ -99,21 +99,21 @@ return [
         'previous' => 'Sebelumnya',
     ],
     'aria' => [
-        'sortAscending'  => ': activate to sort column ascending',
-        'sortDescending' => ': activate to sort column descending',
+        'sortAscending'  => ': aktifkan untuk mengisih lajur menaik',
+        'sortDescending' => ': aktifkan untuk mengisih lajur menurun',
     ],
     'export' => [
         'export'            => 'Muat Turun',
-        'copy'              => 'Copy',
+        'copy'              => 'Salin',
         'excel'             => 'Excel',
         'csv'               => 'CSV',
         'pdf'               => 'PDF',
-        'print'             => 'Print',
+        'print'             => 'Cetak',
         'column_visibility' => 'Lajur',
     ],
 
     // global crud - errors
-    'unauthorized_access' => 'Unauthorized access - you do not have the necessary permissions to see this page.',
+    'unauthorized_access' => 'Akses tidak dibenarkan - anda tidak mempunyai kebenaran yang diperlukan untuk melihat halaman ini.',
     'please_fix'          => 'Sila perbetulkan maklumat ini:',
 
     // global crud - success / error notification bubbles
@@ -121,12 +121,12 @@ return [
     'update_success' => 'Data dikemas kini.',
 
     // CRUD reorder view
-    'reorder'                      => 'Reorder',
-    'reorder_text'                 => 'Use drag&drop to reorder.',
-    'reorder_success_title'        => 'Done',
-    'reorder_success_message'      => 'Your order has been saved.',
-    'reorder_error_title'          => 'Error',
-    'reorder_error_message'        => 'Your order has not been saved.',
+    'reorder'                      => 'Susun semula',
+    'reorder_text'                 => 'Seret dan lepas untuk menyusun semula.',
+    'reorder_success_title'        => 'Selesai',
+    'reorder_success_message'      => 'Susunan anda telah disimpan.',
+    'reorder_error_title'          => 'Ralat',
+    'reorder_error_message'        => 'Susunan anda tidak disimpan.',
 
     // CRUD yes/no
     'yes' => 'Ya',
@@ -149,20 +149,20 @@ return [
     'weekLabel' => 'M',
 
     // Fields
-    'browse_uploads'            => 'Browse uploads',
-    'select_all'                => 'Select All',
-    'select_files'              => 'Select files',
-    'select_file'               => 'Select file',
+    'browse_uploads'            => 'Lihat muat naik',
+    'select_all'                => 'Pilih semua',
+    'select_files'              => 'Pilih fail',
+    'select_file'               => 'Pilih fail',
     'clear'                     => 'Padam',
-    'page_link'                 => 'Page link',
+    'page_link'                 => 'Pautan halaman',
     'page_link_placeholder'     => 'http://example.com/your-desired-page',
-    'internal_link'             => 'Internal link',
-    'internal_link_placeholder' => 'Internal slug. Ex: \'admin/page\' (no quotes) for \':url\'',
-    'external_link'             => 'External link',
-    'choose_file'               => 'Choose file',
+    'internal_link'             => 'Pautan dalaman',
+    'internal_link_placeholder' => 'Slug dalaman. Cth: \'admin/page\' (tanpa tanda petik) untuk \':url\'',
+    'external_link'             => 'Pautan luaran',
+    'choose_file'               => 'Pilih fail',
     'new_item'                  => 'Rekod Baru',
-    'select_entry'              => 'Select an entry',
-    'select_entries'            => 'Select entries',
+    'select_entry'              => 'Pilih satu pendaftaran',
+    'select_entries'            => 'Pilih pendaftaran',
 
     //Table field
     'table_cant_add'    => 'Tidak dapat menambah :entity baharu',
@@ -175,12 +175,12 @@ return [
     'ajax_upload_session_expired' => 'Sesi anda telah tamat. Sila muat semula halaman dan cuba lagi.',
 
     // File manager
-    'file_manager' => 'File Manager',
+    'file_manager' => 'Pengurus Fail',
 
     // InlineCreateOperation
-    'related_entry_created_success' => 'Related entry has been created and selected.',
-    'related_entry_created_error' => 'Could not create related entry.',
+    'related_entry_created_success' => 'Pendaftaran berkaitan telah dicipta dan dipilih.',
+    'related_entry_created_error' => 'Tidak dapat mencipta pendaftaran berkaitan.',
 
     // returned when no translations found in select inputs
-    'empty_translations' => '(empty)',
+    'empty_translations' => '(kosong)',
 ];

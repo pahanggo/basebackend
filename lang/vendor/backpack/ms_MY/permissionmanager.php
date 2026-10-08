@@ -25,6 +25,6 @@ return [
     'user_role_permission'  => 'Peranan dan Keupayaan Pengguna',
     'user'                  => 'Pengguna',
     'users'                 => 'Pengguna',
-    'guard_type'            => 'Guard Type',
+    'guard_type'            => 'Jenis Guard',
 
 ];
