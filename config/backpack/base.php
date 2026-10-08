@@ -45,10 +45,6 @@ return [
 
     // CSS files that are loaded in all pages, using Laravel's asset() helper
     'styles' => [
-        // Here's what's inside the bundle:
-        // 'packages/@digitallyhappy/backstrap/css/style.min.css',
-        // 'packages/animate.css/animate.min.css',
-        // 'packages/noty/noty.css',
 
         // Load the fonts separately (so that you can replace them at will):
         'packages/source-sans-pro/source-sans-pro.css',
@@ -145,10 +141,7 @@ return [
         'build/vendor/bundle/coreui-2.1.16.min.js',
         'build/vendor/bundle/pace-1.2.4.min.js',
         'build/vendor/bundle/sweetalert-2.1.2.min.js',
-        'build/vendor/bundle/noty-3.1.4.min.js',
-        // Backstrap includes jQuery, Bootstrap, CoreUI, PNotify, Popper
-        // 'packages/backpack/base/js/bundle.js',
-        // 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js',
+        'build/vendor/bundle/noty-3.1.4.min.js',        // 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js',
 
         // examples (everything inside the bundle, loaded from CDN)
         // '/js/jquery-3.7.1.min.js',
