@@ -9,7 +9,7 @@
     <div class="checkbox">
         @if ($readonly)
             <label class="form-check-label font-weight-normal">{!! $field['label'] !!}</label>
-            @include('crud::fields.inc.readonly_value', ['value' => $checked ? __('Yes') : __('No')])
+            @include('crud::fields.inc.readonly_value', ['value' => $checked ? trans('backpack::crud.yes') : trans('backpack::crud.no')])
         @else
             <input type="hidden" name="{{ $field['name'] }}" value="{{ $checked ?: 0 }}">
         	  <input type="checkbox"

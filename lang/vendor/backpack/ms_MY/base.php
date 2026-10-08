@@ -66,5 +66,7 @@ return [
     'confirm_email'        => 'Sahkan Emel',
     'choose_new_password'  => 'Pilih Kata Laluan Baru',
     'confirm_new_password' => 'Sahkan kata laluan',
+    'throttled'            => 'Anda telah meminta penetapan semula kata laluan baru-baru ini. Sila periksa e-mel anda. Jika anda tidak menerima e-mel kami, sila cuba sebentar lagi.',
+    'throttled_request'    => 'Anda telah melebihi had cubaan. Sila tunggu beberapa minit dan cuba lagi.',
 
 ];

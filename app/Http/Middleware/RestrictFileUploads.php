@@ -87,7 +87,7 @@ class RestrictFileUploads
                 // `errors` map keyed by the input, regular forms are redirected back with the
                 // message attached to the offending field instead of a bare error page.
                 throw ValidationException::withMessages([
-                    $inputName => __('Jenis fail ini tidak dibenarkan untuk dimuat naik.'),
+                    $inputName => __('This file type is not allowed to be uploaded.'),
                 ]);
             }
         }

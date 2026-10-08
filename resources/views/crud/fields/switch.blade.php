@@ -26,7 +26,7 @@
     @include('crud::fields.inc.translatable_icon')
     @if ($readonly)
         <label class="mb-0 font-weight-normal d-block">{!! $field['label'] !!}</label>
-        @include('crud::fields.inc.readonly_value', ['value' => $value ? __('Yes') : __('No')])
+        @include('crud::fields.inc.readonly_value', ['value' => $value ? trans('backpack::crud.yes') : trans('backpack::crud.no')])
     @else
     <div class="d-flex align-items-center">
         <input type="hidden" name="{{ $field['name'] }}" value="{{ $value ? 1 : 0 }}">

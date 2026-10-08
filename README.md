@@ -56,5 +56,15 @@ Run `npm install` once, then `npm run dev` to start the Vite dev server with hot
 The theme's colors (`primary`, `secondary`, `success`, `info`, `warning`, `danger`) can be changed two ways:
 
 1. **Without a rebuild** — set a `BACKPACK_COLOR_*` env var (e.g. `BACKPACK_COLOR_PRIMARY=#5f0461`) and reload the page. See `config/backpack/base.php`'s `theme_colors` array for the full list. Every themed component (buttons, badges, alerts, tables, sidebar links, links, etc.) reads a CSS custom property (`--primary`, `--success`, ...) instead of a compiled-in color, so this takes effect immediately — no `npm run build` needed. This is the quickest way to try a color or make it admin/environment-configurable, and it's what those components fall back to if you don't set anything.
-2. **Permanently, at the source** — edit the color variables (`$primary`, `$secondary`, `$success`, `$info`, `$warning`, `$danger`) in `resources/scss/_variables.scss` and rebuild. This changes what actually ships in the compiled CSS (and the `theme_colors` config defaults, if you keep them in sync), rather than overriding it at runtime.
 
+
+
+### Languages
+
+The framework ships four locales: `ms_MY` (Bahasa Melayu, the default set by `APP_LOCALE`), `en`, `ta` (Tamil) and `zh-cn` (Simplified Chinese — the variant used in Malaysia). Everything else was removed to keep the file count down.
+
+- App-level strings live in `lang/<locale>.json` (keyed by the English source string) and `lang/<locale>/*.php`.
+- Backpack's admin strings are overridden in `lang/vendor/backpack/<locale>/`, which Laravel merges over the package copies with `array_replace_recursive` — so an override file only needs the keys it actually changes.
+- Content-translation locales for translatable models are listed in `config/backpack/crud.php`'s `locales` array.
+
+**Tamil is scaffolded but not yet translated.** The `ta` files exist with the correct key structure and carry a `SCAFFOLD:` header, but their values are still English. Translate them in place; until then `fallback_locale = 'en'` means nothing breaks.
