@@ -39,7 +39,7 @@
     {{-- FIELD CSS - will be loaded in the after_styles section --}}
     @push('crud_fields_styles')
         <!-- include summernote css-->
-        <link href="{{ asset('packages/summernote/dist/summernote-bs4.css') }}" rel="stylesheet" type="text/css" />
+        <link href="{{ asset('packages/summernote/dist/summernote-bs4.min.css') }}" rel="stylesheet" type="text/css" />
         <style type="text/css">
             .note-editor.note-frame .note-status-output, .note-editor.note-airframe .note-status-output {
                 height: auto;
@@ -50,7 +50,6 @@
     {{-- FIELD JS - will be loaded in the after_scripts section --}}
     @push('crud_fields_scripts')
         <!-- include summernote js-->
-        {{-- <script src="{{ asset('packages/summernote/dist/summernote.min.js') }}"></script> --}}
         <script src="{{ asset('packages/summernote/dist/summernote-bs4.min.js') }}"></script>
         <script>
             function bpFieldInitSummernoteElement(element) {

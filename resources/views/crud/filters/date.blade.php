@@ -32,7 +32,7 @@
 {{-- push things in the after_styles section --}}
 
 @push('crud_list_styles')
-    <link rel="stylesheet" href="{{ asset('packages/bootstrap-datepicker/dist/css/bootstrap-datepicker3.css') }}">
+    <link rel="stylesheet" href="{{ asset('packages/bootstrap-datepicker/dist/css/bootstrap-datepicker3.min.css') }}">
 	<style>
 		.input-group.date {
 			width: 320px;
