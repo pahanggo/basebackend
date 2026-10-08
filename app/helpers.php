@@ -72,19 +72,37 @@ if (! function_exists('frontend_locale')) {
     /**
      * Resolve the app locale (e.g. "ms_MY") to the locale key a vendor JS package actually ships,
      * given a sprintf pattern for the file's public path (e.g. "packages/select2/dist/js/i18n/%s.js").
-     * Tries "ms_MY", "ms-MY", then "ms"; returns null when the package has no matching file.
+     * Tries "ms_MY", "ms-MY", "ms-MY" canonicalised to "ms-MY"/"zh-CN" casing, then the bare "ms";
+     * returns null when the package has no matching file.
+     *
+     * The canonical "ll-CC" candidate matters because vendor packages name these files with an
+     * uppercase region ("zh-CN.js"), while our locale keys are lowercase ("zh-cn") to match the
+     * Backpack lang directories. A case-insensitive filesystem (macOS) hides the mismatch; a
+     * case-sensitive one (Linux) does not. The returned value is also fed straight to the library
+     * as its `language` option, which is case-sensitive everywhere.
      */
     function frontend_locale(string $pattern, ?string $locale = null): ?string
     {
         $locale = $locale ?: app()->getLocale();
+        $parts = explode('_', str_replace('-', '_', $locale));
+        $canonical = count($parts) > 1
+            ? strtolower($parts[0]).'-'.strtoupper($parts[1])
+            : strtolower($parts[0]);
+
         $candidates = array_unique([
             $locale,
             str_replace('_', '-', $locale),
-            explode('_', str_replace('-', '_', $locale))[0],
+            $canonical,
+            $parts[0],
         ]);
 
         foreach ($candidates as $candidate) {
-            if (file_exists(public_path(sprintf($pattern, $candidate)))) {
+            $path = public_path(sprintf($pattern, $candidate));
+
+            // Deliberately not file_exists(): on a case-insensitive filesystem that would
+            // match "zh-CN.js" for the candidate "zh-cn" and hand the caller a locale key
+            // the JS library then fails to look up. Compare the basename case-exactly.
+            if (in_array(basename($path), scandir(dirname($path)) ?: [], true)) {
                 return $candidate;
             }
         }
