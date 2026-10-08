@@ -27,10 +27,11 @@ use Illuminate\Support\Facades\Storage;
  * with this base framework, backed by the separate "kitchensink" SQLite
  * database. Toggle it with config('app.kitchensink').
  *
- * Not included because they need services this base does not ship:
- * browse / browse_multiple (elFinder), page_or_link (PageManager) and enum
- * (SQLite has no enum). The address / address_algolia fields were removed from
- * the framework because Algolia Places was shut down.
+ * Some field types were removed from the framework entirely rather than just
+ * excluded here: browse / browse_multiple (needed elFinder, never installed),
+ * page_or_link (needed PageManager), enum (SQLite has no enum and the AutoSet
+ * branch was commented out), ckeditor (2,856 files; wysiwyg now maps to tinymce)
+ * and address / address_algolia (Algolia Places was shut down).
  * The "checkbox" column is Backpack's bulk-action selector, not a data column.
  *
  * @property-read CrudPanel $crud

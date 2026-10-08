@@ -1,7 +1,6 @@
 <!-- Tiny MCE -->
 @php
 $defaultOptions = [
-    'file_picker_callback' => 'elFinderBrowser',
     'selector' => 'textarea.tinymce',
     'plugins' => 'image,link,media,anchor',
     //these two options allow tinymce to save the path of images "/upload/image.jpg" instead of the relative server path "../../../uploads/image.jpg"
@@ -54,7 +53,11 @@ $readonly = (bool) ($field['readonly'] ?? false);
 
         // the target should be the element the function has been called on
         configuration['target'] = element;
-        configuration['file_picker_callback'] = eval(configuration['file_picker_callback']);
+        // Only resolve a file picker when the field actually supplies one. This base ships
+        // no file manager, so there is no default callback to eval.
+        if (configuration['file_picker_callback']) {
+            configuration['file_picker_callback'] = eval(configuration['file_picker_callback']);
+        }
 
         // automatically update the textarea value on focusout
         configuration['setup'] = (function (editor) {
@@ -67,39 +70,6 @@ $readonly = (bool) ($field['readonly'] ?? false);
         tinymce.init(element.data('options'));
     }
 
-    function elFinderBrowser (callback, value, meta) {
-        tinymce.activeEditor.windowManager.openUrl({
-            title: 'elFinder 2.0',
-            url: '{{ backpack_url('elfinder/tinymce5') }}',
-            width: 900,
-            height: 460,
-            onMessage: function (dialogApi, details) {
-                if (details.mceAction === 'fileSelected') {
-                    const file = details.data.file;
-
-                    // Make file info
-                    const info = file.name;
-
-                    // Provide file and text for the link dialog
-                    if (meta.filetype === 'file') {
-                        callback(file.url, {text: info, title: info});
-                    }
-
-                    // Provide image and alt text for the image dialog
-                    if (meta.filetype === 'image') {
-                        callback(file.url, {alt: info});
-                    }
-
-                    // Provide alternative source and posted for the media dialog
-                    if (meta.filetype === 'media') {
-                        callback(file.url);
-                    }
-
-                    dialogApi.close();
-                }
-            }
-        });
-    }
     </script>
     @endpush
 
